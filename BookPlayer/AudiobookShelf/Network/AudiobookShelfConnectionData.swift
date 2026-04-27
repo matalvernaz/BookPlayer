@@ -16,6 +16,11 @@ struct AudiobookShelfConnectionData: Codable, Identifiable {
   let userName: String
   let apiToken: String
   var selectedLibraryId: String?
+  var customHeaders: [String: String] = [:]
+
+  enum CodingKeys: String, CodingKey {
+    case id, url, serverName, userID, userName, apiToken, selectedLibraryId, customHeaders
+  }
 
   init(
     id: String = UUID().uuidString,
@@ -24,7 +29,8 @@ struct AudiobookShelfConnectionData: Codable, Identifiable {
     userID: String,
     userName: String,
     apiToken: String,
-    selectedLibraryId: String? = nil
+    selectedLibraryId: String? = nil,
+    customHeaders: [String: String] = [:]
   ) {
     self.id = id
     self.url = url
@@ -33,6 +39,7 @@ struct AudiobookShelfConnectionData: Codable, Identifiable {
     self.userName = userName
     self.apiToken = apiToken
     self.selectedLibraryId = selectedLibraryId
+    self.customHeaders = customHeaders
   }
 
   init(from decoder: Decoder) throws {
@@ -44,6 +51,7 @@ struct AudiobookShelfConnectionData: Codable, Identifiable {
     self.userName = try container.decode(String.self, forKey: .userName)
     self.apiToken = try container.decode(String.self, forKey: .apiToken)
     self.selectedLibraryId = try container.decodeIfPresent(String.self, forKey: .selectedLibraryId)
+    self.customHeaders = try container.decodeIfPresent([String: String].self, forKey: .customHeaders) ?? [:]
   }
 }
 

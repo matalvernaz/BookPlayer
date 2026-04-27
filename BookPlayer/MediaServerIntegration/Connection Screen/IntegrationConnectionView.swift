@@ -33,6 +33,9 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             integrationName: integrationName,
             onCommit: onConnect
           )
+          IntegrationCustomHeadersSectionView(
+            customHeaders: $viewModel.form.customHeaders
+          )
         case .foundServer:
           IntegrationServerInformationSectionView(
             serverName: viewModel.form.serverName,
@@ -42,6 +45,9 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             username: $viewModel.form.username,
             password: $viewModel.form.password,
             onCommit: onSignIn
+          )
+          IntegrationCustomHeadersSectionView(
+            customHeaders: $viewModel.form.customHeaders
           )
         }
       } else {
@@ -55,6 +61,9 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             integrationName: integrationName,
             onCommit: onConnect
           )
+          IntegrationCustomHeadersSectionView(
+            customHeaders: $viewModel.form.customHeaders
+          )
         case .foundServer:
           IntegrationServerInformationSectionView(
             serverName: viewModel.form.serverName,
@@ -65,10 +74,17 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             password: $viewModel.form.password,
             onCommit: onSignIn
           )
+          IntegrationCustomHeadersSectionView(
+            customHeaders: $viewModel.form.customHeaders
+          )
         case .connected:
           IntegrationServerInformationSectionView(
             serverName: viewModel.form.serverName,
             serverUrl: viewModel.form.serverUrl
+          )
+          IntegrationCustomHeadersSectionView(
+            customHeaders: $viewModel.form.customHeaders,
+            onCommit: { viewModel.handleCustomHeadersUpdate() }
           )
           IntegrationConnectedView(viewModel: viewModel)
         }

@@ -56,4 +56,8 @@ protocol IntegrationConnectionViewModelProtocol: ObservableObject {
 
   /// Cancel adding a new server
   func handleCancelAddServerAction()
+
+  /// Persist any changes made to the custom-headers list while the connection is already live.
+  /// Called by the headers-editor UI in the `.connected` state.
+  func handleCustomHeadersUpdate()
 }

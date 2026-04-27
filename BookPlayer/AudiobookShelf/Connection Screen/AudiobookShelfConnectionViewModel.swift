@@ -42,7 +42,12 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
     let form = IntegrationConnectionFormViewModel()
 
     if let data = connectionService.connection {
-      form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
+      form.setValues(
+        url: data.url.absoluteString,
+        serverName: data.serverName,
+        userName: data.userName,
+        customHeaders: data.customHeaders
+      )
       self._connectionState = .init(initialValue: .connected)
     } else {
       self._connectionState = .init(initialValue: .disconnected)
@@ -53,7 +58,10 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
 
   @MainActor
   func handleConnectAction() async throws {
-    let serverName = try await connectionService.pingServer(at: form.serverUrl)
+    let serverName = try await connectionService.pingServer(
+      at: form.serverUrl,
+      customHeaders: form.customHeadersDictionary()
+    )
     connectionState = .foundServer
     form.serverName = serverName
   }
@@ -66,7 +74,8 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
         username: form.username,
         password: form.password,
         serverUrl: form.serverUrl,
-        serverName: form.serverName
+        serverName: form.serverName,
+        customHeaders: form.customHeadersDictionary()
       )
 
       if wasAdding {
@@ -122,5 +131,10 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
       form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
     }
     connectionState = .connected
+  }
+
+  @MainActor
+  func handleCustomHeadersUpdate() {
+    connectionService.updateCustomHeaders(form.customHeadersDictionary())
   }
 }

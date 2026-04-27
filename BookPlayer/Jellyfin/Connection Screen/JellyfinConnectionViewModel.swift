@@ -44,7 +44,12 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
     let form = IntegrationConnectionFormViewModel()
 
     if let data = connectionService.connection {
-      form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
+      form.setValues(
+        url: data.url.absoluteString,
+        serverName: data.serverName,
+        userName: data.userName,
+        customHeaders: data.customHeaders
+      )
       self._connectionState = .init(initialValue: .connected)
     } else {
       self._connectionState = .init(initialValue: .disconnected)
@@ -55,7 +60,10 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
 
   @MainActor
   func handleConnectAction() async throws {
-    let serverName = try await connectionService.findServer(at: form.serverUrl)
+    let serverName = try await connectionService.findServer(
+      at: form.serverUrl,
+      customHeaders: form.customHeadersDictionary()
+    )
     connectionState = .foundServer
     form.serverName = serverName
   }
@@ -67,7 +75,8 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       try await connectionService.signIn(
         username: form.username,
         password: form.password,
-        serverName: form.serverName
+        serverName: form.serverName,
+        customHeaders: form.customHeadersDictionary()
       )
 
       if wasAdding {
@@ -128,5 +137,10 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
     }
     connectionState = .connected
+  }
+
+  @MainActor
+  func handleCustomHeadersUpdate() {
+    connectionService.updateCustomHeaders(form.customHeadersDictionary())
   }
 }

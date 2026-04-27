@@ -16,6 +16,11 @@ struct JellyfinConnectionData: Codable, Identifiable {
   let userName: String
   let accessToken: String
   var selectedLibraryId: String?
+  var customHeaders: [String: String] = [:]
+
+  enum CodingKeys: String, CodingKey {
+    case id, url, serverName, userID, userName, accessToken, selectedLibraryId, customHeaders
+  }
 
   init(
     id: String = UUID().uuidString,
@@ -24,7 +29,8 @@ struct JellyfinConnectionData: Codable, Identifiable {
     userID: String,
     userName: String,
     accessToken: String,
-    selectedLibraryId: String? = nil
+    selectedLibraryId: String? = nil,
+    customHeaders: [String: String] = [:]
   ) {
     self.id = id
     self.url = url
@@ -33,6 +39,7 @@ struct JellyfinConnectionData: Codable, Identifiable {
     self.userName = userName
     self.accessToken = accessToken
     self.selectedLibraryId = selectedLibraryId
+    self.customHeaders = customHeaders
   }
 
   init(from decoder: Decoder) throws {
@@ -44,6 +51,7 @@ struct JellyfinConnectionData: Codable, Identifiable {
     self.userName = try container.decode(String.self, forKey: .userName)
     self.accessToken = try container.decode(String.self, forKey: .accessToken)
     self.selectedLibraryId = try container.decodeIfPresent(String.self, forKey: .selectedLibraryId)
+    self.customHeaders = try container.decodeIfPresent([String: String].self, forKey: .customHeaders) ?? [:]
   }
 }
 
