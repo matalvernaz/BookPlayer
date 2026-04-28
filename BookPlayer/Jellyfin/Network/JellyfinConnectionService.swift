@@ -41,6 +41,17 @@ final class JellyfinHeaderInjector: APIClientDelegate, @unchecked Sendable {
 class JellyfinConnectionService: BPLogger {
   private static let activeConnectionIDKey = "jellyfin_active_connection_id"
 
+  /// Polling cadence for Quick Connect, in seconds. The Jellyfin server expects the client to
+  /// poll `/QuickConnect/Connect` periodically until the user enters the code; matches the
+  /// JellyfinAPI helper's own default and is comfortable for the server.
+  private static let quickConnectPollIntervalSeconds = 5
+
+  /// Maximum number of Quick Connect polls before the helper aborts with `.maxPollingHit`.
+  /// At a 5-second cadence this gives the user roughly a 16-minute window to enter the code
+  /// on the Jellyfin web UI before the device gives up — long enough to switch devices and
+  /// sign in if they weren't already.
+  private static let quickConnectMaxPolls = 200
+
   private let keychainService: KeychainServiceProtocol
 
   var connections: [JellyfinConnectionData] = []
@@ -81,6 +92,89 @@ class JellyfinConnectionService: BPLogger {
     self.client = client
 
     return publicSystemInfo.value.serverName ?? ""
+  }
+
+  /// Builds a Quick Connect controller bound to the current api-client.
+  ///
+  /// The caller (the view model) owns the returned controller, drives `start()` / `stop()`,
+  /// and observes `state` for code/error transitions. Returning the JellyfinAPI helper
+  /// directly avoids reimplementing the polling loop here.
+  ///
+  /// Must be called only after `findServer(at:customHeaders:)` has populated `client`;
+  /// throws `IntegrationError.noClient` otherwise.
+  public func makeQuickConnectController() throws -> JellyfinAPI.QuickConnect {
+    guard let client else {
+      throw IntegrationError.noClient("Jellyfin")
+    }
+    return JellyfinAPI.QuickConnect(
+      client: client,
+      pollInterval: Self.quickConnectPollIntervalSeconds,
+      maxPolls: Self.quickConnectMaxPolls
+    )
+  }
+
+  /// Returns whether the server has the Quick Connect feature enabled.
+  ///
+  /// The server replies with a raw boolean body (`true` / `false`) at
+  /// `/QuickConnect/Enabled` — there's no typed model — so we decode it from `Data`
+  /// rather than a typed response. Used by the view model to decide whether to even
+  /// surface the "Use Quick Connect" affordance.
+  public func isQuickConnectEnabled() async throws -> Bool {
+    guard let client else {
+      throw IntegrationError.noClient("Jellyfin")
+    }
+    let response = try await client.send(Paths.getQuickConnectEnabled)
+    let raw = String(data: response.value, encoding: .utf8)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .lowercased()
+    return raw == "true"
+  }
+
+  /// Completes a Quick Connect sign-in: exchanges the authorized `secret` for an access token,
+  /// extracts the user identity from the response, and persists the connection in the same
+  /// shape as `signIn(username:password:...)`.
+  ///
+  /// The username is taken from the auth response (Quick Connect doesn't expose it client-side
+  /// before authentication) so the Connected screen still has a "you are signed in as X" line.
+  /// Returns the username for the view model to surface.
+  public func signInWithQuickConnect(
+    secret: String,
+    serverName: String,
+    customHeaders: [String: String] = [:]
+  ) async throws -> String {
+    guard let client else {
+      throw IntegrationError.noClient("Jellyfin")
+    }
+
+    let result = try await client.signIn(quickConnectSecret: secret)
+
+    guard
+      let accessToken = result.accessToken,
+      let userID = result.user?.id,
+      let userName = result.user?.name
+    else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+
+    let data = JellyfinConnectionData(
+      url: client.configuration.url,
+      serverName: serverName,
+      userID: userID,
+      userName: userName,
+      accessToken: accessToken,
+      customHeaders: customHeaders
+    )
+
+    // Deduplicate on url + userID, mirroring `signIn(username:password:...)`.
+    connections.removeAll { $0.url == data.url && $0.userID == data.userID }
+    connections.append(data)
+    activeConnectionID = data.id
+    saveConnections()
+
+    self.client = client
+    headerInjector?.setCustomHeaders(customHeaders)
+
+    return userName
   }
 
   /// Sign into the server using the api-client initialized in ``findServer(at:)``

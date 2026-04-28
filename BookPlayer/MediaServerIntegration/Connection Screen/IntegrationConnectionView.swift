@@ -19,6 +19,21 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
 
   @EnvironmentObject var theme: ThemeViewModel
 
+  /// Whether the Quick Connect sheet is currently being presented. Derived from the view
+  /// model's `quickConnectStatus`: a non-nil status means there is something for the sheet
+  /// to render (poll progress, code, success transition, or terminal failure).
+  private var isQuickConnectSheetPresented: Binding<Bool> {
+    Binding(
+      get: { viewModel.quickConnectStatus != nil },
+      set: { newValue in
+        // The user dismissed the sheet by gesture/swipe — clean up the in-flight flow.
+        if !newValue {
+          viewModel.handleCancelQuickConnect()
+        }
+      }
+    )
+  }
+
   var body: some View {
     Form {
       if viewModel.isAddingServer {
@@ -46,6 +61,9 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             password: $viewModel.form.password,
             onCommit: onSignIn
           )
+          if viewModel.quickConnectSupported {
+            IntegrationQuickConnectSectionView(onStart: onStartQuickConnect)
+          }
           IntegrationCustomHeadersSectionView(
             customHeaders: $viewModel.form.customHeaders
           )
@@ -74,6 +92,9 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             password: $viewModel.form.password,
             onCommit: onSignIn
           )
+          if viewModel.quickConnectSupported {
+            IntegrationQuickConnectSectionView(onStart: onStartQuickConnect)
+          }
           IntegrationCustomHeadersSectionView(
             customHeaders: $viewModel.form.customHeaders
           )
@@ -93,6 +114,17 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     .scrollContentBackground(.hidden)
     .background(theme.systemBackgroundColor)
     .errorAlert(error: $error)
+    .sheet(isPresented: isQuickConnectSheetPresented) {
+      // The sheet is bound to the view model's status. When the flow finishes successfully
+      // the view model nils out the status and the sheet auto-dismisses; when it fails the
+      // sheet shows the error message until the user taps OK.
+      IntegrationQuickConnectSheetView(
+        status: viewModel.quickConnectStatus ?? .retrievingCode,
+        serverUrl: viewModel.form.serverUrl,
+        onCancel: { viewModel.handleCancelQuickConnect() }
+      )
+      .environmentObject(theme)
+    }
     .overlay {
       Group {
         if isLoading {
@@ -167,6 +199,19 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
         isLoading = false
       } catch {
         isLoading = false
+        self.error = error
+      }
+    }
+  }
+
+  /// Starts the Quick Connect flow. Failures during the flow itself are surfaced inside the
+  /// sheet via the view model's `quickConnectStatus = .failed(...)`; this handler only needs
+  /// to catch the synchronous setup error (no api-client / network unreachable on initiate).
+  func onStartQuickConnect() {
+    Task {
+      do {
+        try await viewModel.handleStartQuickConnect()
+      } catch {
         self.error = error
       }
     }
