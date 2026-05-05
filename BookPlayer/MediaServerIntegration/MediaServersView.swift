@@ -148,8 +148,8 @@ struct MediaServersView: View {
       isPresented: $showingTypePicker,
       titleVisibility: .visible
     ) {
-      Button("Jellyfin") { handleAddServer(type: .jellyfin) }
-      Button("AudiobookShelf") { handleAddServer(type: .audiobookshelf) }
+      Button(ServerType.jellyfin.displayName) { handleAddServer(type: .jellyfin) }
+      Button(ServerType.audiobookshelf.displayName) { handleAddServer(type: .audiobookshelf) }
     }
     // Add-server sheets — each creates a fresh connection VM in "adding" mode
     .sheet(isPresented: $addingJellyfin) {
@@ -164,35 +164,41 @@ struct MediaServersView: View {
 
   // MARK: - Empty State
 
-  /// Shown when no servers are configured. Offers direct type selection buttons
-  /// so the user can immediately start connecting their first server.
+  /// Shown when no servers are configured. Offers direct type selection rows
+  /// styled to match the populated server list so they read as tappable.
   @ViewBuilder
   private var emptyStateSection: some View {
     ThemedSection {
-      Button {
-        handleAddServer(type: .jellyfin)
-      } label: {
-        Label {
-          Text("Jellyfin")
-            .foregroundStyle(theme.primaryColor)
-        } icon: {
-          Image(.jellyfinIcon)
-        }
-      }
-      Button {
-        handleAddServer(type: .audiobookshelf)
-      } label: {
-        Label {
-          Text("AudiobookShelf")
-            .foregroundStyle(theme.primaryColor)
-        } icon: {
-          Image(.audiobookshelfIcon)
-        }
-      }
+      addTypeRow(.jellyfin)
+      addTypeRow(.audiobookshelf)
     } header: {
       Text("media_servers_add_prompt".localized)
         .foregroundStyle(theme.secondaryColor)
     }
+  }
+
+  /// Empty-state row for a server type. Same layout as populated server rows
+  /// (icon + name + chevron) so the affordance reads as a tap target rather
+  /// than a static Form row.
+  @ViewBuilder
+  private func addTypeRow(_ type: ServerType) -> some View {
+    Button {
+      handleAddServer(type: type)
+    } label: {
+      HStack(spacing: 12) {
+        Image(type.icon)
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(width: 28, height: 28)
+        Text(type.displayName)
+          .foregroundStyle(theme.primaryColor)
+        Spacer()
+        Image(systemName: "chevron.right")
+          .bpFont(.caption)
+          .foregroundStyle(theme.secondaryColor)
+      }
+    }
+    .accessibilityLabel(type.displayName)
   }
 
   // MARK: - Server List
@@ -215,12 +221,12 @@ struct MediaServersView: View {
               Text(server.serverName)
                 .foregroundStyle(theme.primaryColor)
               Text("\(server.userName) — \(server.serverUrl)")
-                .font(.caption)
+                .bpFont(.caption)
                 .foregroundStyle(theme.secondaryColor)
             }
             Spacer()
             Image(systemName: "chevron.right")
-              .font(.caption)
+              .bpFont(.caption)
               .foregroundStyle(theme.secondaryColor)
           }
         }

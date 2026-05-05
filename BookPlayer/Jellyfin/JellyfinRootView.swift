@@ -108,7 +108,7 @@ struct JellyfinRootView: View {
         IntegrationConnectionView(viewModel: connectionViewModel, integrationName: "Jellyfin")
           .toolbar {
             ToolbarItemGroup(placement: .cancellationAction) {
-              Button { dismiss() } label: {
+              Button { showConnectionForm = false } label: {
                 Image(systemName: "xmark")
                   .foregroundStyle(theme.linkColor)
               }
@@ -126,11 +126,9 @@ struct JellyfinRootView: View {
       }
       .tint(theme.linkColor)
       .environmentObject(theme)
-      .interactiveDismissDisabled()
     }
     .sheet(isPresented: $showLibraryPicker) {
       libraryPickerSheet
-        .interactiveDismissDisabled(resolvedLibrary == nil)
     }
     .environmentObject(theme)
     .onChange(of: availableLibraries) { _, libraries in
@@ -214,9 +212,16 @@ struct JellyfinRootView: View {
       .navigationTitle("library_title".localized)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        if resolvedLibrary != nil {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("done_title".localized) { showLibraryPicker = false }
+        ToolbarItem(placement: .cancellationAction) {
+          Button("cancel_button".localized) {
+            // No library chosen yet — there's nothing to browse, so back out
+            // to the server picker rather than leave the user on a disabled view.
+            if resolvedLibrary == nil {
+              showLibraryPicker = false
+              dismiss()
+            } else {
+              showLibraryPicker = false
+            }
           }
         }
       }
