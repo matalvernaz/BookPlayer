@@ -376,10 +376,9 @@ private struct AudiobookShelfTabRoot: View {
         }
         .toolbar {
           ToolbarItemGroup(placement: .cancellationAction) {
-            // Calls dismissAll (= AudiobookShelfRootView's @Environment(\.dismiss)).
-            // ABS root is the content of a sheet from MediaServersView, so dismiss
-            // returns to the unified server list. Inner-NavStack root dismiss falls
-            // through to the enclosing sheet for free.
+            // dismissAll is AudiobookShelfRootView's `@Environment(\.dismiss)`.
+            // ABS root sits inside a sheet from MediaServersView, so calling it
+            // closes that sheet and lands you back on the server list.
             if let dismissAll {
               Button {
                 dismissAll()

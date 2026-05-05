@@ -8,15 +8,12 @@
 
 import SwiftUI
 
-/// Unified view that displays all saved media servers (Jellyfin and AudiobookShelf)
-/// in a single list. Replaces the separate "Download from Jellyfin" and
-/// "Download from AudiobookShelf" menu items with one entry point.
+/// One list of every saved Jellyfin and AudiobookShelf server, in place of the
+/// two separate "Download from …" menu items.
 ///
-/// Flow:
-/// - 0 servers: shows a type picker so the user can add their first server.
-/// - 1+ servers: shows the unified list; tapping a server activates it and
-///   navigates to its library browser (JellyfinRootView / AudiobookShelfRootView).
-/// - "Add Server" opens a type picker, then the connection form for that type.
+/// - No servers yet: pick a type and go straight into its connection form.
+/// - One or more saved: tap a row to open that server's library browser, or
+///   "Add Server" to add another.
 struct MediaServersView: View {
   let jellyfinService: JellyfinConnectionService
   let audiobookshelfService: AudiobookShelfConnectionService
@@ -24,15 +21,15 @@ struct MediaServersView: View {
   @Environment(\.listState) private var listState
   @EnvironmentObject var theme: ThemeViewModel
 
-  /// Drives the confirmation dialog for choosing a server type when adding
+  /// Drives the "which integration?" confirmation dialog when the user already
+  /// has at least one server saved.
   @State private var showingTypePicker = false
 
-  /// Controls the add-server sheet for each integration type
+  /// One per integration — flips true to open the matching add-server sheet.
   @State private var addingJellyfin = false
   @State private var addingAudiobookshelf = false
 
-  /// Identifier for the per-server library browser presented as a sheet
-  /// from inside this view. nil = nothing presented.
+  /// Which server's library browser is currently presented (nil = none).
   @State private var presentedServer: ServerRoute?
 
   // MARK: - Server Types
@@ -66,9 +63,9 @@ struct MediaServersView: View {
     let type: ServerType
   }
 
-  /// Identifies which integration's library browser to present. The connection
-  /// is activated synchronously before this is set (see `selectServer`), so
-  /// the presented view reads the right active connection from its service.
+  /// Which integration's library browser to present as a sheet. The connection
+  /// is activated synchronously before this is set (see `selectServer`), so the
+  /// presented view picks up the right active connection.
   enum ServerRoute: String, Identifiable, Hashable {
     case jellyfin
     case audiobookshelf
@@ -134,9 +131,9 @@ struct MediaServersView: View {
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
-    // Per-server library browser as a sheet on top of MediaServersView.
-    // Pushing JellyfinRootView (a TabView) inside a NavigationStack triggers
-    // an immediate auto-pop on iOS 26.x; sheet-on-sheet sidesteps that.
+    // The per-server library browser opens as a sheet on top of this list.
+    // Pushing JellyfinRootView (which wraps a TabView) onto a NavigationStack
+    // auto-pops immediately on iOS 26 — sheet-on-sheet avoids that entirely.
     .sheet(item: $presentedServer) { route in
       switch route {
       case .jellyfin:
@@ -147,7 +144,8 @@ struct MediaServersView: View {
           .environmentObject(theme)
       }
     }
-    // Type picker dialog shown when adding a server while others already exist
+    // "Which type?" dialog when the user taps Add Server with at least one
+    // server already saved.
     .confirmationDialog(
       "media_servers_choose_type_title".localized,
       isPresented: $showingTypePicker,
@@ -156,7 +154,8 @@ struct MediaServersView: View {
       Button(ServerType.jellyfin.displayName) { handleAddServer(type: .jellyfin) }
       Button(ServerType.audiobookshelf.displayName) { handleAddServer(type: .audiobookshelf) }
     }
-    // Add-server sheets — each creates a fresh connection VM in "adding" mode
+    // Add-server sheets, one per integration. Each builds a fresh connection
+    // VM in "adding" mode so existing servers aren't disturbed.
     .sheet(isPresented: $addingJellyfin) {
       AddJellyfinServerSheet(service: jellyfinService)
         .environmentObject(theme)

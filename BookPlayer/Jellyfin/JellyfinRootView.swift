@@ -615,10 +615,10 @@ extension JellyfinTabRoot {
     .accessibilityLabel("settings_title")
   }
 
-  /// "Servers" back button shown in each tab's leading toolbar slot. Calls
-  /// `dismissAll` (the parent JellyfinRootView's @Environment(\.dismiss)) which
-  /// — because JellyfinRootView is the content of a sheet from MediaServersView —
-  /// dismisses that sheet, returning to the unified server list.
+  /// Back button in each tab's leading toolbar slot. Calls `dismissAll`, which
+  /// is JellyfinRootView's `@Environment(\.dismiss)` — and since this whole
+  /// view is presented as a sheet from MediaServersView, that dismiss tears
+  /// down the sheet and lands you back on the server list.
   @ViewBuilder
   static func serversBackButton(theme: ThemeViewModel, dismissAll: DismissAction?) -> some View {
     if let dismissAll {
