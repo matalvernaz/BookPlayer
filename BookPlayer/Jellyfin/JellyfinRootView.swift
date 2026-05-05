@@ -298,7 +298,7 @@ private struct JellyfinTabRoot: View {
         }
         .toolbar {
           ToolbarItemGroup(placement: .cancellationAction) {
-            cogMenu
+            JellyfinTabRoot.outerBackButton(theme: theme, dismissAll: dismissAll)
           }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
@@ -310,6 +310,9 @@ private struct JellyfinTabRoot: View {
               }
               .accessibilityLabel("Switch Library")
             }
+          }
+          ToolbarItem(placement: .topBarTrailing) {
+            cogMenu
           }
         }
     }
@@ -388,11 +391,6 @@ private struct JellyfinTabRoot: View {
         showConnectionDetails = true
       } label: {
         Label("integration_connection_details_title".localized, systemImage: "server.rack")
-      }
-      Button {
-        onDismiss()
-      } label: {
-        Label("voiceover_close_button", systemImage: "xmark")
       }
     } label: {
       Image(systemName: "gearshape")
@@ -486,12 +484,7 @@ where ViewModel.Item == JellyfinLibraryItem {
         }
         .toolbar {
           ToolbarItemGroup(placement: .cancellationAction) {
-            JellyfinTabRoot.cogMenuView(
-              theme: theme,
-              connectionService: connectionService,
-              showConnectionDetails: $showConnectionDetails,
-              onDismiss: onDismiss
-            )
+            JellyfinTabRoot.outerBackButton(theme: theme, dismissAll: dismissAll)
           }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
@@ -503,6 +496,14 @@ where ViewModel.Item == JellyfinLibraryItem {
               }
               .accessibilityLabel("Switch Library")
             }
+          }
+          ToolbarItem(placement: .topBarTrailing) {
+            JellyfinTabRoot.cogMenuView(
+              theme: theme,
+              connectionService: connectionService,
+              showConnectionDetails: $showConnectionDetails,
+              onDismiss: onDismiss
+            )
           }
         }
     }
@@ -602,14 +603,32 @@ extension JellyfinTabRoot {
       } label: {
         Label("integration_connection_details_title".localized, systemImage: "server.rack")
       }
-      Button {
-        onDismiss()
-      } label: {
-        Label("voiceover_close_button", systemImage: "xmark")
-      }
     } label: {
       Image(systemName: "gearshape")
         .foregroundStyle(theme.linkColor)
+    }
+    .accessibilityLabel("settings_title")
+  }
+
+  /// Back button for the outer NavigationStack push from MediaServersView.
+  /// Uses the parent root view's `dismissAll` action — `@Environment(\.dismiss)`
+  /// captured inside an inner NavigationStack's root would no-op since there's
+  /// nothing on the inner stack to pop. `dismissAll` was captured at the outer
+  /// destination level (JellyfinRootView / AudiobookShelfRootView), so calling
+  /// it pops that destination and returns to MediaServersView.
+  @ViewBuilder
+  static func outerBackButton(theme: ThemeViewModel, dismissAll: DismissAction?) -> some View {
+    if let dismissAll {
+      Button {
+        dismissAll()
+      } label: {
+        HStack(spacing: 4) {
+          Image(systemName: "chevron.backward")
+          Text("media_servers_title".localized)
+        }
+        .foregroundStyle(theme.linkColor)
+      }
+      .accessibilityLabel("media_servers_title".localized)
     }
   }
 

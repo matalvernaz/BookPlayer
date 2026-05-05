@@ -371,22 +371,21 @@ private struct AudiobookShelfTabRoot: View {
         }
         .toolbar {
           ToolbarItemGroup(placement: .cancellationAction) {
-            Menu {
+            // Uses dismissAll captured at AudiobookShelfRootView level —
+            // @Environment(\.dismiss) at this inner NavStack's root would no-op
+            // since there's nothing to pop on the inner stack.
+            if let dismissAll {
               Button {
-                showConnectionDetails = true
+                dismissAll()
               } label: {
-                Label("integration_connection_details_title".localized, systemImage: "server.rack")
-              }
-              Button {
-                onDismiss()
-              } label: {
-                Label("voiceover_close_button", systemImage: "xmark")
-              }
-            } label: {
-              Image(systemName: "gearshape")
+                HStack(spacing: 4) {
+                  Image(systemName: "chevron.backward")
+                  Text("media_servers_title".localized)
+                }
                 .foregroundStyle(theme.linkColor)
+              }
+              .accessibilityLabel("media_servers_title".localized)
             }
-            .accessibilityLabel("settings_title")
           }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
@@ -398,6 +397,19 @@ private struct AudiobookShelfTabRoot: View {
               }
               .accessibilityLabel("Switch Library")
             }
+          }
+          ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+              Button {
+                showConnectionDetails = true
+              } label: {
+                Label("integration_connection_details_title".localized, systemImage: "server.rack")
+              }
+            } label: {
+              Image(systemName: "gearshape")
+                .foregroundStyle(theme.linkColor)
+            }
+            .accessibilityLabel("settings_title")
           }
         }
     }

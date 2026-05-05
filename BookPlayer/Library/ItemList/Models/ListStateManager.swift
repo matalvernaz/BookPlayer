@@ -23,12 +23,10 @@ final class ListStateManager {
   public var isEditing = false
 
   /// Integration sheet presented at MainView level for state preservation.
-  /// `.mediaServers` shows the unified server list; `.jellyfin` / `.audiobookshelf`
-  /// open the corresponding library browser directly.
+  /// MediaServersView is the unified entry point; per-server browsing is
+  /// pushed onto its NavigationStack rather than swapped via this binding.
   enum IntegrationSheet: String, Identifiable {
     case mediaServers
-    case jellyfin
-    case audiobookshelf
     var id: String { rawValue }
   }
   var activeIntegrationSheet: IntegrationSheet?

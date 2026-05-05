@@ -31,6 +31,9 @@ struct MediaServersView: View {
   @State private var addingJellyfin = false
   @State private var addingAudiobookshelf = false
 
+  /// Drives push navigation into a server's library browser.
+  @State private var navigationPath = NavigationPath()
+
   // MARK: - Server Types
 
   /// Identifies which integration back-end a server belongs to.
@@ -62,6 +65,14 @@ struct MediaServersView: View {
     let type: ServerType
   }
 
+  /// Typed destination for the per-server library browser. The connection is
+  /// activated immediately before the push (see `selectServer`), and the root
+  /// view reads the active connection from its service.
+  enum ServerRoute: Hashable {
+    case jellyfin
+    case audiobookshelf
+  }
+
   // MARK: - Computed Properties
 
   /// Combines all saved servers from both services into one list.
@@ -90,7 +101,7 @@ struct MediaServersView: View {
   // MARK: - Body
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $navigationPath) {
       Form {
         if allServers.isEmpty {
           emptyStateSection
@@ -116,6 +127,16 @@ struct MediaServersView: View {
             Image(systemName: "xmark")
               .foregroundStyle(theme.linkColor)
           }
+        }
+      }
+      .navigationDestination(for: ServerRoute.self) { route in
+        switch route {
+        case .jellyfin:
+          JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
+            .toolbar(.hidden, for: .navigationBar)
+        case .audiobookshelf:
+          AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
+            .toolbar(.hidden, for: .navigationBar)
         }
       }
     }
@@ -228,40 +249,29 @@ struct MediaServersView: View {
 
   // MARK: - Actions
 
-  /// Activates the selected server in its connection service and navigates
-  /// to the appropriate library browser (Jellyfin or AudiobookShelf root view).
+  /// Activates the selected server in its connection service and pushes the
+  /// appropriate library browser onto this view's NavigationStack. The pushed
+  /// destination renders the back chevron back to this list.
   private func selectServer(_ server: ServerItem) {
     switch server.type {
     case .jellyfin:
       jellyfinService.activateConnection(id: server.id)
-      listState.activeIntegrationSheet = .jellyfin
+      navigationPath.append(ServerRoute.jellyfin)
     case .audiobookshelf:
       audiobookshelfService.activateConnection(id: server.id)
-      listState.activeIntegrationSheet = .audiobookshelf
+      navigationPath.append(ServerRoute.audiobookshelf)
     }
   }
 
-  /// Routes the "add server" action based on whether the chosen type
-  /// already has saved connections.
-  ///
-  /// - No existing connections of that type: navigates directly to the root view,
-  ///   which will show its built-in connection form.
-  /// - Existing connections: opens an in-place add-server sheet so the root view
-  ///   doesn't try to load the existing server's library.
+  /// Opens the add-server sheet for the chosen type. Used for both empty
+  /// and populated states — adding a server is always a self-contained sheet
+  /// so the existing servers (if any) aren't disturbed.
   private func handleAddServer(type: ServerType) {
     switch type {
     case .jellyfin:
-      if jellyfinService.connections.isEmpty {
-        listState.activeIntegrationSheet = .jellyfin
-      } else {
-        addingJellyfin = true
-      }
+      addingJellyfin = true
     case .audiobookshelf:
-      if audiobookshelfService.connections.isEmpty {
-        listState.activeIntegrationSheet = .audiobookshelf
-      } else {
-        addingAudiobookshelf = true
-      }
+      addingAudiobookshelf = true
     }
   }
 }

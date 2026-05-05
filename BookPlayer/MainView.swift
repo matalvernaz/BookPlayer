@@ -92,10 +92,6 @@ struct MainView: View {
           jellyfinService: jellyfinService,
           audiobookshelfService: audiobookshelfService
         )
-      case .jellyfin:
-        JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
-      case .audiobookshelf:
-        AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
       }
     }
     .fullScreenCover(isPresented: playerState.isShowingPlayerBinding) {
