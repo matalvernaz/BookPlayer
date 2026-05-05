@@ -302,6 +302,9 @@ private struct JellyfinTabRoot: View {
           destinationView(for: destination)
         }
         .toolbar {
+          ToolbarItemGroup(placement: .cancellationAction) {
+            JellyfinTabRoot.serversBackButton(theme: theme, dismissAll: dismissAll)
+          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {
@@ -485,6 +488,9 @@ where ViewModel.Item == JellyfinLibraryItem {
           )
         }
         .toolbar {
+          ToolbarItemGroup(placement: .cancellationAction) {
+            JellyfinTabRoot.serversBackButton(theme: theme, dismissAll: dismissAll)
+          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {
@@ -607,6 +613,26 @@ extension JellyfinTabRoot {
         .foregroundStyle(theme.linkColor)
     }
     .accessibilityLabel("settings_title")
+  }
+
+  /// "Servers" back button shown in each tab's leading toolbar slot. Calls
+  /// `dismissAll` (the parent JellyfinRootView's @Environment(\.dismiss)) which
+  /// — because JellyfinRootView is the content of a sheet from MediaServersView —
+  /// dismisses that sheet, returning to the unified server list.
+  @ViewBuilder
+  static func serversBackButton(theme: ThemeViewModel, dismissAll: DismissAction?) -> some View {
+    if let dismissAll {
+      Button {
+        dismissAll()
+      } label: {
+        HStack(spacing: 4) {
+          Image(systemName: "chevron.backward")
+          Text("media_servers_title".localized)
+        }
+        .foregroundStyle(theme.linkColor)
+      }
+      .accessibilityLabel("media_servers_title".localized)
+    }
   }
 
   static func connectionDetailsSheetView(

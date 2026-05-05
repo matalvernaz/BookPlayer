@@ -31,8 +31,9 @@ struct MediaServersView: View {
   @State private var addingJellyfin = false
   @State private var addingAudiobookshelf = false
 
-  /// Drives push navigation into a server's library browser.
-  @State private var navigationPath = NavigationPath()
+  /// Identifier for the per-server library browser presented as a sheet
+  /// from inside this view. nil = nothing presented.
+  @State private var presentedServer: ServerRoute?
 
   // MARK: - Server Types
 
@@ -65,12 +66,13 @@ struct MediaServersView: View {
     let type: ServerType
   }
 
-  /// Typed destination for the per-server library browser. The connection is
-  /// activated immediately before the push (see `selectServer`), and the root
-  /// view reads the active connection from its service.
-  enum ServerRoute: Hashable {
+  /// Identifies which integration's library browser to present. The connection
+  /// is activated synchronously before this is set (see `selectServer`), so
+  /// the presented view reads the right active connection from its service.
+  enum ServerRoute: String, Identifiable, Hashable {
     case jellyfin
     case audiobookshelf
+    var id: String { rawValue }
   }
 
   // MARK: - Computed Properties
@@ -101,7 +103,7 @@ struct MediaServersView: View {
   // MARK: - Body
 
   var body: some View {
-    NavigationStack(path: $navigationPath) {
+    NavigationStack {
       Form {
         if allServers.isEmpty {
           emptyStateSection
@@ -129,17 +131,22 @@ struct MediaServersView: View {
           }
         }
       }
-      .navigationDestination(for: ServerRoute.self) { route in
-        switch route {
-        case .jellyfin:
-          JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
-        case .audiobookshelf:
-          AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
-        }
-      }
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
+    // Per-server library browser as a sheet on top of MediaServersView.
+    // Pushing JellyfinRootView (a TabView) inside a NavigationStack triggers
+    // an immediate auto-pop on iOS 26.x; sheet-on-sheet sidesteps that.
+    .sheet(item: $presentedServer) { route in
+      switch route {
+      case .jellyfin:
+        JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
+          .environmentObject(theme)
+      case .audiobookshelf:
+        AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
+          .environmentObject(theme)
+      }
+    }
     // Type picker dialog shown when adding a server while others already exist
     .confirmationDialog(
       "media_servers_choose_type_title".localized,
@@ -253,17 +260,17 @@ struct MediaServersView: View {
 
   // MARK: - Actions
 
-  /// Activates the selected server in its connection service and pushes the
-  /// appropriate library browser onto this view's NavigationStack. The pushed
-  /// destination renders the back chevron back to this list.
+  /// Activates the selected server in its connection service and presents the
+  /// appropriate library browser as a sheet on top of this list. The browser's
+  /// own toolbar provides the "back to servers" affordance via dismiss().
   private func selectServer(_ server: ServerItem) {
     switch server.type {
     case .jellyfin:
       jellyfinService.activateConnection(id: server.id)
-      navigationPath.append(ServerRoute.jellyfin)
+      presentedServer = .jellyfin
     case .audiobookshelf:
       audiobookshelfService.activateConnection(id: server.id)
-      navigationPath.append(ServerRoute.audiobookshelf)
+      presentedServer = .audiobookshelf
     }
   }
 

@@ -375,6 +375,24 @@ private struct AudiobookShelfTabRoot: View {
           }
         }
         .toolbar {
+          ToolbarItemGroup(placement: .cancellationAction) {
+            // Calls dismissAll (= AudiobookShelfRootView's @Environment(\.dismiss)).
+            // ABS root is the content of a sheet from MediaServersView, so dismiss
+            // returns to the unified server list. Inner-NavStack root dismiss falls
+            // through to the enclosing sheet for free.
+            if let dismissAll {
+              Button {
+                dismissAll()
+              } label: {
+                HStack(spacing: 4) {
+                  Image(systemName: "chevron.backward")
+                  Text("media_servers_title".localized)
+                }
+                .foregroundStyle(theme.linkColor)
+              }
+              .accessibilityLabel("media_servers_title".localized)
+            }
+          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {
