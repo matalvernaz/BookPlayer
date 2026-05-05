@@ -133,10 +133,8 @@ struct MediaServersView: View {
         switch route {
         case .jellyfin:
           JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
-            .toolbar(.hidden, for: .navigationBar)
         case .audiobookshelf:
           AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
-            .toolbar(.hidden, for: .navigationBar)
         }
       }
     }

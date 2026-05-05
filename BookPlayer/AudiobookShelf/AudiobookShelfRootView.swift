@@ -375,23 +375,6 @@ private struct AudiobookShelfTabRoot: View {
           }
         }
         .toolbar {
-          ToolbarItemGroup(placement: .cancellationAction) {
-            // Uses dismissAll captured at AudiobookShelfRootView level —
-            // @Environment(\.dismiss) at this inner NavStack's root would no-op
-            // since there's nothing to pop on the inner stack.
-            if let dismissAll {
-              Button {
-                dismissAll()
-              } label: {
-                HStack(spacing: 4) {
-                  Image(systemName: "chevron.backward")
-                  Text("media_servers_title".localized)
-                }
-                .foregroundStyle(theme.linkColor)
-              }
-              .accessibilityLabel("media_servers_title".localized)
-            }
-          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {

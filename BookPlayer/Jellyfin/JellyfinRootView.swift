@@ -302,9 +302,6 @@ private struct JellyfinTabRoot: View {
           destinationView(for: destination)
         }
         .toolbar {
-          ToolbarItemGroup(placement: .cancellationAction) {
-            JellyfinTabRoot.outerBackButton(theme: theme, dismissAll: dismissAll)
-          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {
@@ -488,9 +485,6 @@ where ViewModel.Item == JellyfinLibraryItem {
           )
         }
         .toolbar {
-          ToolbarItemGroup(placement: .cancellationAction) {
-            JellyfinTabRoot.outerBackButton(theme: theme, dismissAll: dismissAll)
-          }
           if let onSwitchLibrary {
             ToolbarItem(placement: .topBarTrailing) {
               Button {
@@ -613,28 +607,6 @@ extension JellyfinTabRoot {
         .foregroundStyle(theme.linkColor)
     }
     .accessibilityLabel("settings_title")
-  }
-
-  /// Back button for the outer NavigationStack push from MediaServersView.
-  /// Uses the parent root view's `dismissAll` action — `@Environment(\.dismiss)`
-  /// captured inside an inner NavigationStack's root would no-op since there's
-  /// nothing on the inner stack to pop. `dismissAll` was captured at the outer
-  /// destination level (JellyfinRootView / AudiobookShelfRootView), so calling
-  /// it pops that destination and returns to MediaServersView.
-  @ViewBuilder
-  static func outerBackButton(theme: ThemeViewModel, dismissAll: DismissAction?) -> some View {
-    if let dismissAll {
-      Button {
-        dismissAll()
-      } label: {
-        HStack(spacing: 4) {
-          Image(systemName: "chevron.backward")
-          Text("media_servers_title".localized)
-        }
-        .foregroundStyle(theme.linkColor)
-      }
-      .accessibilityLabel("media_servers_title".localized)
-    }
   }
 
   static func connectionDetailsSheetView(
