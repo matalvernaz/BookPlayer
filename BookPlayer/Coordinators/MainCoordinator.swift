@@ -79,6 +79,7 @@ class MainCoordinator: NSObject {
     let sourceStore = MediaServerSourceStore()
     self.mediaServerSourceStore = sourceStore
     audiobookshelfService.mediaServerSourceStore = sourceStore
+    jellyfinService.mediaServerSourceStore = sourceStore
     self.mediaServerSourceTracker = MediaServerSourceTracker(
       store: sourceStore,
       downloadService: self.singleFileDownloadService
@@ -87,7 +88,8 @@ class MainCoordinator: NSObject {
       playerManager: self.playerManager,
       sourceStore: sourceStore,
       reporters: [
-        AudiobookShelfProgressReporter(connectionService: audiobookshelfService)
+        AudiobookShelfProgressReporter(connectionService: audiobookshelfService),
+        JellyfinProgressReporter(connectionService: jellyfinService)
       ],
       accountService: coreServices.accountService
     )
