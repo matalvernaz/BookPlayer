@@ -31,7 +31,7 @@ struct ThemesView: View {
         if item == ThemeManager.shared.currentTheme {
           Image(systemName: "checkmark")
             .foregroundColor(theme.linkColor)
-        } else if item.locked && accountService.accessLevel == .free {
+        } else if item.locked && accountService.accessLevel == .free && !AppEnvironment.isTestFlight {
           Image(.premiumFeature)
             .foregroundColor(theme.linkColor)
         }
@@ -39,7 +39,7 @@ struct ThemesView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .disabledWithOpacity(item.locked && accountService.accessLevel == .free, opacity: 0.99)
+    .disabledWithOpacity(item.locked && accountService.accessLevel == .free && !AppEnvironment.isTestFlight, opacity: 0.99)
   }
 }
 
