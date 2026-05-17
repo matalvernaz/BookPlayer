@@ -152,6 +152,10 @@ class JellyfinConnectionService: BPLogger {
     }
 
     let result = try await client.signIn(quickConnectSecret: secret)
+    // Bail out before persisting if the caller (the Quick Connect VM) cancelled while
+    // the auth round-trip was in flight. Without this the user can hit Cancel during
+    // the `.authenticating` window and still end up with a saved connection.
+    try Task.checkCancellation()
 
     guard
       let accessToken = result.accessToken,

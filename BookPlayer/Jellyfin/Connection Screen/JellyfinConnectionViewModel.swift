@@ -40,6 +40,12 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// ends (success, failure, or cancellation) without disturbing other long-lived ones.
   private var quickConnectStateSubscription: AnyCancellable?
 
+  /// The in-flight `completeQuickConnectSignIn` task, retained so `handleCancelQuickConnect()`
+  /// can cancel it. Without this, a user who taps Cancel during the brief `.authenticated` →
+  /// `.connected` window still ends up with a persisted connection because the unstructured
+  /// Task continues past the cancel and calls `signInWithQuickConnect`.
+  private var quickConnectCompletionTask: Task<Void, Never>?
+
   private var disposeBag = Set<AnyCancellable>()
 
   var servers: [IntegrationServerInfo] {
@@ -201,6 +207,8 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// Safe to call when no flow is running.
   @MainActor
   func handleCancelQuickConnect() {
+    quickConnectCompletionTask?.cancel()
+    quickConnectCompletionTask = nil
     activeQuickConnect?.stop()
     activeQuickConnect = nil
     quickConnectStateSubscription?.cancel()
@@ -223,8 +231,8 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       quickConnectStatus = .awaitingCode(code)
     case .authenticated(let secret):
       quickConnectStatus = .authenticating
-      Task { @MainActor in
-        await self.completeQuickConnectSignIn(secret: secret)
+      quickConnectCompletionTask = Task { @MainActor [weak self] in
+        await self?.completeQuickConnectSignIn(secret: secret)
       }
     case .error(let qcError):
       Self.logger.error("Quick Connect failed: \(qcError.localizedDescription)")
@@ -238,6 +246,10 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// Exchanges the authorized Quick Connect secret for an access token via the connection
   /// service, then transitions the form/state to look the same as a successful
   /// username/password sign-in. Errors are surfaced via `quickConnectStatus = .failed(...)`.
+  ///
+  /// Honors task cancellation: `handleCancelQuickConnect()` cancels the wrapping Task, and the
+  /// `checkCancellation()` right after the network call returns prevents persisting a
+  /// connection the user explicitly tried to abort.
   @MainActor
   private func completeQuickConnectSignIn(secret: String) async {
     do {
@@ -246,6 +258,7 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
         serverName: form.serverName,
         customHeaders: form.customHeadersDictionary()
       )
+      try Task.checkCancellation()
 
       if isAddingServer {
         isAddingServer = false
@@ -265,12 +278,17 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       activeQuickConnect = nil
       quickConnectStateSubscription?.cancel()
       quickConnectStateSubscription = nil
+      quickConnectCompletionTask = nil
+    } catch is CancellationError {
+      // User tapped Cancel; handleCancelQuickConnect already cleared the UI state.
+      return
     } catch {
       Self.logger.error("Quick Connect sign-in failed: \(error.localizedDescription)")
       quickConnectStatus = .failed(error.localizedDescription)
       activeQuickConnect = nil
       quickConnectStateSubscription?.cancel()
       quickConnectStateSubscription = nil
+      quickConnectCompletionTask = nil
     }
   }
 
