@@ -121,7 +121,7 @@ struct IntegrationQuickConnectSheetView: View {
       VStack(spacing: Self.headerSpacing) {
         Image(systemName: "exclamationmark.triangle")
           .font(.system(size: Self.errorIconSize, weight: .semibold))
-          .foregroundStyle(.red)
+          .foregroundStyle(theme.errorColor)
           .accessibilityHidden(true)
         Text(message)
           .multilineTextAlignment(.center)

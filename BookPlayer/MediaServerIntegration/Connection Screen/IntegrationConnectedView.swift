@@ -32,7 +32,7 @@ struct IntegrationConnectedView<VM: IntegrationConnectionViewModelProtocol>: Vie
           viewModel.handleSignOutAction()
         }
         .frame(maxWidth: .infinity)
-        .foregroundStyle(.red)
+        .foregroundStyle(theme.destructiveColor)
       }
     } else {
       // Multiple servers: show all servers with per-server actions
@@ -58,7 +58,7 @@ struct IntegrationConnectedView<VM: IntegrationConnectionViewModelProtocol>: Vie
               viewModel.handleSignOutAction(id: server.id)
             }
             .font(.caption)
-            .foregroundStyle(.red)
+            .foregroundStyle(theme.destructiveColor)
           }
           .padding(.vertical, 4)
         }

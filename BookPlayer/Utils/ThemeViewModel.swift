@@ -83,4 +83,19 @@ class ThemeViewModel: ObservableObject, Themeable {
   var quaternarySystemFillColor: Color {
     return Color(theme.quaternarySystemFillColor)
   }
+
+  /// Semantic color for destructive actions (sign-out, delete). Wired through the theme so
+  /// future high-contrast / brand-color themes can override it without us having to hunt down
+  /// hardcoded `.red` literals. Defaults to `systemRed`, which already adapts to dark mode and
+  /// satisfies WCAG AA contrast against both system backgrounds.
+  var destructiveColor: Color {
+    return Color(uiColor: .systemRed)
+  }
+
+  /// Semantic color for error glyphs (e.g. the warning triangle in the Quick Connect failure
+  /// state). Same rationale as `destructiveColor`; kept distinct so themes can differentiate
+  /// "this action will delete data" red from "something went wrong" orange/red.
+  var errorColor: Color {
+    return Color(uiColor: .systemRed)
+  }
 }

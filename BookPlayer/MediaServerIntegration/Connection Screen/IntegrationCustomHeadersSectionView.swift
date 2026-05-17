@@ -84,7 +84,7 @@ struct IntegrationCustomHeadersSectionView: View {
             onCommit?()
           } label: {
             Image(systemName: "trash")
-              .foregroundStyle(.red)
+              .foregroundStyle(theme.destructiveColor)
               .padding(.horizontal, 4)
               .contentShape(Rectangle())
           }
