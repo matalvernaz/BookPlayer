@@ -273,6 +273,7 @@
 		41F1A20D254B0A0C0043FCF3 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 41F1A20C254B0A0C0043FCF3 /* Sentry */; };
 		41F1A228254B0C6C0043FCF3 /* ZipArchive in Frameworks */ = {isa = PBXBuildFile; productRef = 41F1A227254B0C6C0043FCF3 /* ZipArchive */; };
 		442889846DCC4E8EACD91A84 /* MediaServerProgressReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD1FA3C7CDF3D8D7CE84043 /* MediaServerProgressReporter.swift */; };
+		6A91D2C3E04F1B8A7E62C803 /* ShareImportFailureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A91D2C3E04F1B8A7E62C804 /* ShareImportFailureStore.swift */; };
 		4645F9FD2D1E46AC00A04257 /* SwipeInlineTip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4645F9FC2D1E46AC00A04257 /* SwipeInlineTip.swift */; };
 		465D87522D3195D600A4AA47 /* BookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 465D87512D3195D600A4AA47 /* BookmarksView.swift */; };
 		465D87542D31965100A4AA47 /* BookmarksViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 465D87532D31965100A4AA47 /* BookmarksViewModel.swift */; };
@@ -1790,6 +1791,7 @@
 		D6BA8F152A4CA94800C2BD9A /* StorageRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageRowView.swift; sourceTree = "<group>"; };
 		D6BA8F172A4D66CD00C2BD9A /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
 		DAD1FA3C7CDF3D8D7CE84043 /* MediaServerProgressReporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MediaServerProgressReporter.swift; sourceTree = "<group>"; };
+		6A91D2C3E04F1B8A7E62C804 /* ShareImportFailureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareImportFailureStore.swift; sourceTree = "<group>"; };
 		E1FDA0B60D7BE4CFE100A612 /* IntegrationDisconnectedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationDisconnectedView.swift; sourceTree = "<group>"; };
 		E4D25EF2A5FFF30CF12F2C21 /* PreferencesSyncService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreferencesSyncService.swift; sourceTree = "<group>"; };
 		E55F466D61AE62A69DE4D371 /* BPNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BPNavigation.swift; sourceTree = "<group>"; };
@@ -2584,6 +2586,7 @@
 				9FDDD2E0289BFCE20020C428 /* LibraryService+Sync.swift */,
 				41EB071A2752FA6B00EFEE13 /* PlaybackService.swift */,
 				63344C012EA7097D00B90DF7 /* DatabaseBackupService.swift */,
+				6A91D2C3E04F1B8A7E62C804 /* ShareImportFailureStore.swift */,
 				63125D102C36D96800D35533 /* Events */,
 				9FC1E4612814F68F00522FA8 /* Account */,
 				9FD8FE4C286566FF00EB2C3D /* Sync */,
@@ -4954,6 +4957,7 @@
 				729E18B17F8D11D281503FD5 /* MediaServerSourceInfo.swift in Sources */,
 				ECE287A864D71749ECE47FF1 /* MediaServerSourceStore.swift in Sources */,
 				442889846DCC4E8EACD91A84 /* MediaServerProgressReporter.swift in Sources */,
+				6A91D2C3E04F1B8A7E62C803 /* ShareImportFailureStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
