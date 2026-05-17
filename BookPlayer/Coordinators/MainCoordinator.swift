@@ -31,6 +31,11 @@ class MainCoordinator: NSObject {
   let audiobookshelfConnectionService: AudiobookShelfConnectionService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
+  let mediaServerSourceStore: MediaServerSourceStore
+  /// Holds strong refs to the source tracker and progress dispatcher so they stay alive for the
+  /// lifetime of the main coordinator. Neither is referenced outside this class.
+  private let mediaServerSourceTracker: MediaServerSourceTracker
+  private let mediaServerProgressDispatcher: MediaServerProgressDispatcher
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -70,6 +75,22 @@ class MainCoordinator: NSObject {
 
     self.hardcoverService = coreServices.hardcoverService
     self.preferencesService = coreServices.preferencesService
+
+    let sourceStore = MediaServerSourceStore()
+    self.mediaServerSourceStore = sourceStore
+    audiobookshelfService.mediaServerSourceStore = sourceStore
+    self.mediaServerSourceTracker = MediaServerSourceTracker(
+      store: sourceStore,
+      downloadService: self.singleFileDownloadService
+    )
+    self.mediaServerProgressDispatcher = MediaServerProgressDispatcher(
+      playerManager: self.playerManager,
+      sourceStore: sourceStore,
+      reporters: [
+        AudiobookShelfProgressReporter(connectionService: audiobookshelfService)
+      ],
+      accountService: coreServices.accountService
+    )
 
     ThemeManager.shared.libraryService = libraryService
 

@@ -30,6 +30,11 @@ class AudiobookShelfConnectionService: BPLogger {
     set { UserDefaults.standard.set(newValue, forKey: Self.activeConnectionIDKey) }
   }
 
+  /// Optional source-tracking store wired in by the main coordinator. When present, every call to
+  /// `createItemDownloadRequest` records the (connection, item) pair so that the eventual local
+  /// library item can be linked back to its server origin for progress reporting.
+  var mediaServerSourceStore: MediaServerSourceStore?
+
   init(keychainService: KeychainServiceProtocol = KeychainService()) {
     self.keychainService = keychainService
     let configuration = URLSessionConfiguration.default
@@ -541,11 +546,22 @@ class AudiobookShelfConnectionService: BPLogger {
 
   /// Returns a URLRequest for downloading a library item, carrying the user-defined
   /// custom HTTP headers (needed for servers behind Cloudflare Access etc.).
+  ///
+  /// Also registers the item's origin with `mediaServerSourceStore` (if wired) so that playback
+  /// progress for the resulting local copy can be reported back to this ABS server.
   public func createItemDownloadRequest(_ item: AudiobookShelfLibraryItem) throws -> URLRequest {
-    guard connection != nil else {
+    guard let connection else {
       throw URLError(.userAuthenticationRequired)
     }
     let url = try createItemDownloadUrl(item)
+    mediaServerSourceStore?.registerPendingDownload(
+      url,
+      info: MediaServerSourceInfo(
+        kind: .audiobookshelf,
+        connectionId: connection.id,
+        itemId: item.id
+      )
+    )
     return wrapWithCustomHeaders(url)
   }
 
