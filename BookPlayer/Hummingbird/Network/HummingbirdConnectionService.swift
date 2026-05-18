@@ -100,15 +100,17 @@ class HummingbirdConnectionService: BPLogger {
       throw IntegrationError.urlMalformed(nil)
     }
 
-    let loginURL = url
-      .appendingPathComponent("protocols/hummingbird/v1/login")
-      .appending(queryItems: [
-        URLQueryItem(name: "username", value: username),
-        URLQueryItem(name: "password", value: password),
-      ])
+    // Credentials go in the request body, NOT the URL query string.
+    // hummingbird@0.3.1 dropped the ?username=&password= shape because
+    // it leaked plaintext credentials to every access log along the
+    // path (uvicorn, Traefik, any CDN, the device's Console.app).
+    let loginURL = url.appendingPathComponent("protocols/hummingbird/v1/login")
     var request = URLRequest(url: loginURL)
     request.httpMethod = "POST"
     applyCustomHeaders(to: &request, headers: customHeaders)
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let body: [String: Any] = ["username": username, "password": password]
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
     let (data, response) = try await urlSession.data(for: request)
     try Task.checkCancellation()
