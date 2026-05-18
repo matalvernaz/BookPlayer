@@ -10,6 +10,7 @@
 		07416E5AD384927D90BFB6EE /* PasskeyCreatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C084D4BC05BF6B413C86C6F0 /* PasskeyCreatingView.swift */; };
 		0CEC6B48350FC9C0A0B7D1C0 /* SyncTasksStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700DFD61111AC10253D6EBAA /* SyncTasksStorageTests.swift */; };
 		0EF52614EF6770D09CA81CE4 /* IntegrationConnectedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C564A7BDE3A2D98E02BF8B /* IntegrationConnectedView.swift */; };
+		10BD4973AE7F04F8FBE7603A /* HummingbirdBoundBookCompleter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420C40C0B39D095F6BEB5273 /* HummingbirdBoundBookCompleter.swift */; };
 		11A972EC3C4426DD4D02867E /* TagsFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AADE0F4BFEC0640FC687FA /* TagsFlowLayout.swift */; };
 		14124A42A42854F32A9A5F8C /* HummingbirdLibraryListItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93824950B3F733E27694776B /* HummingbirdLibraryListItemView.swift */; };
 		17239057BBE31E405AFFBBCD /* IntegrationServerFoundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3511F737DCDEE7A12B713AE /* IntegrationServerFoundView.swift */; };
@@ -1285,6 +1286,7 @@
 		41EB071A2752FA6B00EFEE13 /* PlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackService.swift; sourceTree = "<group>"; };
 		41F898AE2402080C00F58B8A /* ZipArchive.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ZipArchive.framework; path = Carthage/Build/iOS/ZipArchive.framework; sourceTree = "<group>"; };
 		41FCA32625E87EC600BFB9E6 /* Audiobook Player 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Audiobook Player 4.xcdatamodel"; sourceTree = "<group>"; };
+		420C40C0B39D095F6BEB5273 /* HummingbirdBoundBookCompleter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdBoundBookCompleter.swift; path = BookPlayer/Hummingbird/Network/HummingbirdBoundBookCompleter.swift; sourceTree = SOURCE_ROOT; };
 		424AE6DFF6B641DB69DF3D78 /* IntegrationAudiobookDetailsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationAudiobookDetailsView.swift; sourceTree = "<group>"; };
 		43D61F68F0A174C7CA44FE8A /* IntegrationConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationConnectionView.swift; sourceTree = "<group>"; };
 		4645F9FC2D1E46AC00A04257 /* SwipeInlineTip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeInlineTip.swift; sourceTree = "<group>"; };
@@ -3523,6 +3525,7 @@
 				C5604DE58FAB94807CE6167D /* HummingbirdLibraryItem.swift */,
 				91C24E31A50E50D8503E5AE3 /* HummingbirdProgressReporter.swift */,
 				A5F3403998B9EA1B974097DC /* HummingbirdLoanExpiryScanner.swift */,
+				420C40C0B39D095F6BEB5273 /* HummingbirdBoundBookCompleter.swift */,
 			);
 			name = Network;
 			path = Network;
@@ -4880,6 +4883,7 @@
 				AAB14C089310DFD689BCB468 /* HummingbirdLibraryView.swift in Sources */,
 				14124A42A42854F32A9A5F8C /* HummingbirdLibraryListItemView.swift in Sources */,
 				319D4C79875823F3236E6D5C /* HummingbirdLoanExpiryScanner.swift in Sources */,
+				10BD4973AE7F04F8FBE7603A /* HummingbirdBoundBookCompleter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

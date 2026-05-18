@@ -41,6 +41,10 @@ class MainCoordinator: NSObject {
   /// usually a cheap no-op; kept alive across the coordinator's lifetime so
   /// the `scenePhase = .active` observer can fire repeatedly.
   private let hummingbirdLoanExpiryScanner: HummingbirdLoanExpiryScanner
+  /// Promotes multi-file Hummingbird folders to bound-books once their
+  /// downloads finish. Resilient to mid-batch app termination via the
+  /// foreground-transition + launch sweeps.
+  private let hummingbirdBoundBookCompleter: HummingbirdBoundBookCompleter
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -108,6 +112,11 @@ class MainCoordinator: NSObject {
       connectionService: hummingbirdService,
       sourceStore: sourceStore,
       libraryService: libraryService
+    )
+    self.hummingbirdBoundBookCompleter = HummingbirdBoundBookCompleter(
+      sourceStore: sourceStore,
+      libraryService: libraryService,
+      downloadService: self.singleFileDownloadService
     )
 
     ThemeManager.shared.libraryService = libraryService
