@@ -301,7 +301,14 @@ class HummingbirdConnectionService: BPLogger {
         dueDate: item.dueDate
       )
     )
-    return wrapWithCustomHeaders(item.downloadURL)
+    // /download is auth-gated since hummingbird@21e3dd7 (user is needed
+    // so the NNELS plugin can fetch under the right Playwright session).
+    // Without this header iOS sees 401 + WWW-Authenticate: Basic and the
+    // URLSession retries silently in the background, which the user
+    // perceives as an indefinite hang.
+    var request = URLRequest(url: item.downloadURL)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    return request
   }
 
   /// Wraps any URL in a URLRequest carrying the current connection's custom headers.
