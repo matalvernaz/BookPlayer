@@ -10,6 +10,7 @@ import BookPlayerKit
 import Combine
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Backs the Hummingbird library view. Owns the bookshelf list, the active search
 /// query, and the download dispatch into BookPlayer's `SingleFileDownloadService`.
@@ -37,7 +38,18 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
   /// "Preparing download…" -> "Downloading N files…" so the user gets
   /// SOMETHING visible after a tap, instead of the previous behavior
   /// where the tap returned no UI feedback at all.
-  @Published var downloadStatus: String?
+  ///
+  /// `didSet` mirrors every change into a VoiceOver announcement.
+  /// Without it the banner appears but VO focus stays on the download
+  /// button, so a blind user has no idea the tap registered. Posting
+  /// an ``.announcement`` makes the screen reader speak the new status
+  /// without moving focus.
+  @Published var downloadStatus: String? {
+    didSet {
+      guard let status = downloadStatus, status != oldValue else { return }
+      UIAccessibility.post(notification: .announcement, argument: status)
+    }
+  }
 
   let connectionService: HummingbirdConnectionService
   let singleFileDownloadService: SingleFileDownloadService
