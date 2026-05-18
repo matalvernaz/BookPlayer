@@ -32,6 +32,8 @@ public enum KeychainKeys: String {
   case jellyfinConnection = "jellyfin_connection"
   /// Stores the AudiobookShelf connection information (AudiobookShelfConnectionData)
   case audiobookshelfConnection = "audiobookshelf_connection"
+  /// Stores the Hummingbird connection information ([HummingbirdConnectionData])
+  case hummingbirdConnection = "hummingbird_connection"
   /// Stores Hardcover API access token
   case hardcoverToken = "hardcover_token"
 }

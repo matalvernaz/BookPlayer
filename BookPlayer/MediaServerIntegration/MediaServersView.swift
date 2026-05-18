@@ -17,6 +17,7 @@ import SwiftUI
 struct MediaServersView: View {
   let jellyfinService: JellyfinConnectionService
   let audiobookshelfService: AudiobookShelfConnectionService
+  let hummingbirdService: HummingbirdConnectionService
 
   @Environment(\.listState) private var listState
   @EnvironmentObject var theme: ThemeViewModel
@@ -28,6 +29,7 @@ struct MediaServersView: View {
   /// One per integration — flips true to open the matching add-server sheet.
   @State private var addingJellyfin = false
   @State private var addingAudiobookshelf = false
+  @State private var addingHummingbird = false
 
   /// Which server's library browser is currently presented (nil = none).
   @State private var presentedServer: ServerRoute?
@@ -38,18 +40,31 @@ struct MediaServersView: View {
   enum ServerType {
     case jellyfin
     case audiobookshelf
+    case hummingbird
 
     var displayName: String {
       switch self {
       case .jellyfin: "Jellyfin"
       case .audiobookshelf: "AudiobookShelf"
+      case .hummingbird: "Hummingbird"
       }
     }
 
-    var icon: ImageResource {
+    /// Brand image asset for ABS/Jellyfin; nil for Hummingbird (uses an SF Symbol
+    /// in the row since there's no bundled brand icon).
+    var iconAsset: ImageResource? {
       switch self {
       case .jellyfin: .jellyfinIcon
       case .audiobookshelf: .audiobookshelfIcon
+      case .hummingbird: nil
+      }
+    }
+
+    /// SF Symbol fallback when there's no brand asset.
+    var iconSystemName: String {
+      switch self {
+      case .hummingbird: "bird.fill"
+      default: "questionmark.square.dashed"
       }
     }
   }
@@ -69,6 +84,7 @@ struct MediaServersView: View {
   enum ServerRoute: String, Identifiable, Hashable {
     case jellyfin
     case audiobookshelf
+    case hummingbird
     var id: String { rawValue }
   }
 
@@ -94,7 +110,16 @@ struct MediaServersView: View {
         type: .audiobookshelf
       )
     }
-    return jellyfinServers + absServers
+    let hummingbirdServers = hummingbirdService.connections.map { data in
+      ServerItem(
+        id: data.id,
+        serverName: data.serverName,
+        serverUrl: data.url.absoluteString,
+        userName: data.userName,
+        type: .hummingbird
+      )
+    }
+    return jellyfinServers + absServers + hummingbirdServers
   }
 
   // MARK: - Body
@@ -142,6 +167,11 @@ struct MediaServersView: View {
       case .audiobookshelf:
         AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
           .environmentObject(theme)
+      case .hummingbird:
+        // Same wrap pattern as ABS — sit inside a sheet from MediaServersView so
+        // the root view's `dismiss()` lands back on the server list.
+        HummingbirdRootViewWrapper(service: hummingbirdService)
+          .environmentObject(theme)
       }
     }
     // "Which type?" dialog when the user taps Add Server with at least one
@@ -153,6 +183,7 @@ struct MediaServersView: View {
     ) {
       Button(ServerType.jellyfin.displayName) { handleAddServer(type: .jellyfin) }
       Button(ServerType.audiobookshelf.displayName) { handleAddServer(type: .audiobookshelf) }
+      Button(ServerType.hummingbird.displayName) { handleAddServer(type: .hummingbird) }
     }
     // Add-server sheets, one per integration. Each builds a fresh connection
     // VM in "adding" mode so existing servers aren't disturbed.
@@ -162,6 +193,10 @@ struct MediaServersView: View {
     }
     .sheet(isPresented: $addingAudiobookshelf) {
       AddAudiobookShelfServerSheet(service: audiobookshelfService)
+        .environmentObject(theme)
+    }
+    .sheet(isPresented: $addingHummingbird) {
+      AddHummingbirdServerSheet(service: hummingbirdService)
         .environmentObject(theme)
     }
   }
@@ -175,6 +210,7 @@ struct MediaServersView: View {
     ThemedSection {
       addTypeRow(.jellyfin)
       addTypeRow(.audiobookshelf)
+      addTypeRow(.hummingbird)
     } header: {
       Text("media_servers_add_prompt".localized)
         .foregroundStyle(theme.secondaryColor)
@@ -190,10 +226,7 @@ struct MediaServersView: View {
       handleAddServer(type: type)
     } label: {
       HStack(spacing: 12) {
-        Image(type.icon)
-          .resizable()
-          .aspectRatio(contentMode: .fit)
-          .frame(width: 28, height: 28)
+        serverTypeIcon(type)
         Text(type.displayName)
           .foregroundStyle(theme.primaryColor)
         Spacer()
@@ -203,6 +236,25 @@ struct MediaServersView: View {
       }
     }
     .accessibilityLabel(type.displayName)
+  }
+
+  /// Renders the brand icon for ABS/Jellyfin or a themed SF Symbol for
+  /// integrations without a bundled brand asset (Hummingbird).
+  @ViewBuilder
+  private func serverTypeIcon(_ type: ServerType) -> some View {
+    if let asset = type.iconAsset {
+      Image(asset)
+        .resizable()
+        .aspectRatio(contentMode: .fit)
+        .frame(width: 28, height: 28)
+    } else {
+      Image(systemName: type.iconSystemName)
+        .resizable()
+        .aspectRatio(contentMode: .fit)
+        .foregroundStyle(theme.linkColor)
+        .frame(width: 24, height: 24)
+        .padding(.horizontal, 2)
+    }
   }
 
   // MARK: - Server List
@@ -217,10 +269,7 @@ struct MediaServersView: View {
           selectServer(server)
         } label: {
           HStack(spacing: 12) {
-            Image(server.type.icon)
-              .resizable()
-              .aspectRatio(contentMode: .fit)
-              .frame(width: 28, height: 28)
+            serverTypeIcon(server.type)
             VStack(alignment: .leading, spacing: 2) {
               Text(server.serverName)
                 .foregroundStyle(theme.primaryColor)
@@ -270,6 +319,9 @@ struct MediaServersView: View {
     case .audiobookshelf:
       audiobookshelfService.activateConnection(id: server.id)
       presentedServer = .audiobookshelf
+    case .hummingbird:
+      hummingbirdService.activateConnection(id: server.id)
+      presentedServer = .hummingbird
     }
   }
 
@@ -282,6 +334,8 @@ struct MediaServersView: View {
       addingJellyfin = true
     case .audiobookshelf:
       addingAudiobookshelf = true
+    case .hummingbird:
+      addingHummingbird = true
     }
   }
 }
@@ -346,5 +400,48 @@ private struct AddAudiobookShelfServerSheet: View {
     .onChange(of: viewModel.isAddingServer) { _, isAdding in
       if !isAdding { dismiss() }
     }
+  }
+}
+
+/// Sheet for adding a new Hummingbird server. Same pattern as the others.
+private struct AddHummingbirdServerSheet: View {
+  let service: HummingbirdConnectionService
+
+  @StateObject private var viewModel: HummingbirdConnectionViewModel
+  @EnvironmentObject var theme: ThemeViewModel
+  @Environment(\.dismiss) var dismiss
+
+  init(service: HummingbirdConnectionService) {
+    self.service = service
+    let vm = HummingbirdConnectionViewModel(connectionService: service)
+    vm.handleAddServerAction()
+    self._viewModel = .init(wrappedValue: vm)
+  }
+
+  var body: some View {
+    NavigationStack {
+      IntegrationConnectionView(viewModel: viewModel, integrationName: "Hummingbird")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+    .onChange(of: viewModel.isAddingServer) { _, isAdding in
+      if !isAdding { dismiss() }
+    }
+  }
+}
+
+/// HummingbirdRootView needs SingleFileDownloadService at init time, but
+/// MediaServersView gets it from the environment. Thin wrapper bridges the two.
+private struct HummingbirdRootViewWrapper: View {
+  let service: HummingbirdConnectionService
+  @EnvironmentObject var singleFileDownloadService: SingleFileDownloadService
+
+  var body: some View {
+    HummingbirdRootView(
+      connectionService: service,
+      singleFileDownloadService: singleFileDownloadService,
+      skipServerPicker: true
+    )
   }
 }

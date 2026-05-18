@@ -29,6 +29,7 @@ class MainCoordinator: NSObject {
   let watchConnectivityService: PhoneWatchConnectivityService
   let jellyfinConnectionService: JellyfinConnectionService
   let audiobookshelfConnectionService: AudiobookShelfConnectionService
+  let hummingbirdConnectionService: HummingbirdConnectionService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
   let mediaServerSourceStore: MediaServerSourceStore
@@ -73,6 +74,10 @@ class MainCoordinator: NSObject {
     audiobookshelfService.setup()
     self.audiobookshelfConnectionService = audiobookshelfService
 
+    let hummingbirdService = HummingbirdConnectionService()
+    hummingbirdService.setup()
+    self.hummingbirdConnectionService = hummingbirdService
+
     self.hardcoverService = coreServices.hardcoverService
     self.preferencesService = coreServices.preferencesService
 
@@ -80,6 +85,7 @@ class MainCoordinator: NSObject {
     self.mediaServerSourceStore = sourceStore
     audiobookshelfService.mediaServerSourceStore = sourceStore
     jellyfinService.mediaServerSourceStore = sourceStore
+    hummingbirdService.mediaServerSourceStore = sourceStore
     self.mediaServerSourceTracker = MediaServerSourceTracker(
       store: sourceStore,
       downloadService: self.singleFileDownloadService
@@ -89,7 +95,8 @@ class MainCoordinator: NSObject {
       sourceStore: sourceStore,
       reporters: [
         AudiobookShelfProgressReporter(connectionService: audiobookshelfService),
-        JellyfinProgressReporter(connectionService: jellyfinService)
+        JellyfinProgressReporter(connectionService: jellyfinService),
+        HummingbirdProgressReporter(connectionService: hummingbirdService),
       ],
       accountService: coreServices.accountService
     )
@@ -126,6 +133,7 @@ class MainCoordinator: NSObject {
       .environment(\.syncService, syncService)
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
+      .environment(\.hummingbirdService, hummingbirdConnectionService)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)
       .environment(\.playerLoaderService, playerLoaderService)

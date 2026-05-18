@@ -12,6 +12,7 @@ import Foundation
 public enum MediaServerKind: String, Codable, Hashable {
   case audiobookshelf
   case jellyfin
+  case hummingbird
 }
 
 /// Provenance for a library item that originated from a media server integration. Persisted by
