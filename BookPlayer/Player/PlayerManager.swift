@@ -60,6 +60,22 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   /// Reference to the ongoing play task
   private var playTask: Task<(), Error>?
   private var playerItem: AVPlayerItem?
+
+  /// Asset-creation options for the URL's file type. We pass
+  /// `AVURLAssetPreferPreciseDurationAndTimingKey: true` for the formats where
+  /// AVFoundation can produce precise duration cheaply (MP4/M4A/M4B from atoms,
+  /// MP3 from the Xing header). For FLAC/Ogg/Opus the only way to get precise
+  /// duration is a full-file decode scan, which on iOS blocks playback start
+  /// for many seconds on a multi-hour audiobook track and produces the gap
+  /// users see between tracks. For those formats we drop the flag and accept
+  /// the approximate-then-precise duration AVFoundation provides.
+  static func assetOptions(for url: URL) -> [String: Any] {
+    let ext = url.pathExtension.lowercased()
+    let slowToScan: Set<String> = ["flac", "ogg", "opus", "wav"]
+    return [
+      AVURLAssetPreferPreciseDurationAndTimingKey: !slowToScan.contains(ext)
+    ]
+  }
   private var loadChapterTask: Task<(), Never>?
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
@@ -234,7 +250,7 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
       isFetchingRemoteURL = false
     }
 
-    let asset = AVURLAsset(url: fileURL, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+    let asset = AVURLAsset(url: fileURL, options: Self.assetOptions(for: fileURL))
 
     // TODO: Check if there's a way to reduce the time this operation takes
     // it's currently a bottleneck when streaming playback
@@ -294,7 +310,7 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
     {
       asset = try await loadRemoteURLAsset(for: chapter, forceRefresh: forceRefreshURL)
     } else {
-      asset = AVURLAsset(url: fileURL, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+      asset = AVURLAsset(url: fileURL, options: Self.assetOptions(for: fileURL))
     }
 
     // Clean just in case

@@ -120,10 +120,16 @@ struct IntegrationLibraryView<
   var layoutPreferences: some View {
     if viewModel.showsLayoutPreferences {
       ThemedSection {
+        // ``.inline`` flattens the picker into the surrounding menu so the
+        // Grid/List choices appear as siblings of Select/Download instead of
+        // collapsed behind a "Layout options >" submenu. Without this on
+        // iOS 17+ the user taps "..." -> sees what looks like another "more"
+        // button -> has to tap that to reveal the actual options.
         Picker(selection: $viewModel.layout, label: Text("Layout options".localized)) {
           Label("Grid".localized, systemImage: "square.grid.2x2").tag(IntegrationLayout.Options.grid)
           Label("List".localized, systemImage: "list.bullet").tag(IntegrationLayout.Options.list)
         }
+        .pickerStyle(.inline)
       }
     }
     if viewModel.showsSortPreferences {

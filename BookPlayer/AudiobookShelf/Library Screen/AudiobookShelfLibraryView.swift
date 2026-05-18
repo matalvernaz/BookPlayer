@@ -36,6 +36,9 @@ where Model.Item == AudiobookShelfLibraryItem {
   @ViewBuilder
   private var sortPickerContent: some View {
     if let vm = viewModel as? AudiobookShelfLibraryViewModel {
+      // Inline so the sort choices render as siblings of the layout choices
+      // inside the "..." menu instead of behind a "Sort by >" submenu (which
+      // looks like another "more" button to the user).
       Picker(selection: Binding(
         get: { vm.sortBy },
         set: { vm.sortBy = $0 }
@@ -43,6 +46,7 @@ where Model.Item == AudiobookShelfLibraryItem {
         Label("sort_most_recent_button", systemImage: "clock").tag(AudiobookShelfLayout.SortBy.recent)
         Label("Title".localized, systemImage: "textformat.abc").tag(AudiobookShelfLayout.SortBy.title)
       }
+      .pickerStyle(.inline)
     }
   }
 }

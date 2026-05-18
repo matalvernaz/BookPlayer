@@ -45,6 +45,9 @@ where Model.Item == JellyfinLibraryItem {
   @ViewBuilder
   private var sortPickerContent: some View {
     if let vm = viewModel as? JellyfinLibraryViewModel {
+      // Inline so the sort choices render as siblings of the layout choices
+      // inside the "..." menu instead of behind a "Sort by >" submenu (which
+      // looks like another "more" button to the user).
       Picker(selection: Binding(
         get: { vm.sortBy },
         set: { vm.sortBy = $0 }
@@ -53,6 +56,7 @@ where Model.Item == JellyfinLibraryItem {
         Label("sort_most_recent_button", systemImage: "clock").tag(JellyfinLayout.SortBy.recent)
         Label("Name".localized, systemImage: "textformat.abc").tag(JellyfinLayout.SortBy.name)
       }
+      .pickerStyle(.inline)
     }
   }
 }

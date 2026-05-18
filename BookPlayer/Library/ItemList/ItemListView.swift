@@ -27,6 +27,12 @@ struct ItemListView: View {
   @Namespace private var customRotorNamespace
   @AccessibilityFocusState private var focus: FocusTarget?
 
+  /// Total file count for the current download batch. Frozen on the first
+  /// `.starting` event of a batch and reset to 0 when the queue drains. Keeps
+  /// the "Downloading N files" title stable across the batch and lets us show
+  /// aggregate progress instead of per-file progress.
+  @State private var batchTotalFiles: Int = 0
+
   @Environment(\.libraryService) var libraryService
   @Environment(\.accountService) private var accountService
   @Environment(\.syncService) var syncService
@@ -192,49 +198,88 @@ struct ItemListView: View {
       }
     }
     .onReceive(
-      model.singleFileDownloadService.eventsPublisher
-        .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
+      // .starting / .finished / .error MUST NOT be throttled, otherwise small
+      // (or cached) downloads that complete in <1s never produce a visible
+      // dialog at all -- the throttle window swallows the .starting event and
+      // only the trailing .finished gets delivered, so the user sees nothing.
+      // .progress / .bytesWritten stay throttled because they fire fast enough
+      // to dominate the main run loop otherwise.
+      Publishers.Merge(
+        model.singleFileDownloadService.eventsPublisher
+          .filter { event in
+            switch event {
+            case .starting, .finished, .error: return true
+            default: return false
+            }
+          },
+        model.singleFileDownloadService.eventsPublisher
+          .filter { event in
+            switch event {
+            case .progress, .bytesWritten: return true
+            default: return false
+            }
+          }
+          .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
+      )
     ) { event in
+      let remaining = model.singleFileDownloadService.downloadQueue.count
+      // Freeze the batch total on the first .starting of a new batch. Without
+      // this the title decrements as files complete (the old code derived
+      // total = downloadQueue.count + 1 on every event), which both looks
+      // wrong and makes aggregate progress impossible to compute.
+      if case .starting = event, batchTotalFiles == 0 {
+        batchTotalFiles = remaining + 1
+      }
+      let total = batchTotalFiles > 0 ? batchTotalFiles : (remaining + 1)
+      // Files done so far in this batch. At .starting/.progress the current
+      // file is in flight (not yet counted as done); at .finished the current
+      // file has finished but currentTask is still set, so the math is the
+      // same -- the +1 in (remaining+1) accounts for it.
+      let filesCompleted = max(0, total - remaining - 1)
+      let title = String.localizedStringWithFormat("downloading_file_title".localized, total)
+
       switch event {
       case .starting:
-        let totalFiles = model.singleFileDownloadService.downloadQueue.count + 1
-        let title = String.localizedStringWithFormat("downloading_file_title".localized, totalFiles)
         let subtitle = "\("progress_title".localized) 0%"
-
         importOperationState.isOperationActive = true
         importOperationState.processingTitle = "\(title)\n\(subtitle)"
       case .progress(_, let progress):
-        let percentage = String(format: "%.2f", progress * 100)
-        let totalFiles = model.singleFileDownloadService.downloadQueue.count + 1
-        let title = String.localizedStringWithFormat("downloading_file_title".localized, totalFiles)
+        // Aggregate = files already done + fractional progress on current
+        // file, divided by the batch total. So a 5-file batch with 2 done
+        // and the 3rd at 50% reads 50% overall, not 50% (of file 3).
+        let aggregate = total > 0
+          ? (Double(filesCompleted) + progress) / Double(total)
+          : progress
+        let percentage = String(format: "%.0f", aggregate * 100)
         let subtitle = "\("progress_title".localized) \(percentage)%"
-
         importOperationState.isOperationActive = true
         importOperationState.processingTitle = "\(title)\n\(subtitle)"
       case .bytesWritten(_, let bytesWritten):
-        let totalFiles = model.singleFileDownloadService.downloadQueue.count + 1
-        let title = String.localizedStringWithFormat("downloading_file_title".localized, totalFiles)
         let sizeDownloaded = ByteCountFormatter.string(
           fromByteCount: bytesWritten,
           countStyle: ByteCountFormatter.CountStyle.file
         )
         let subtitle = "\("progress_title".localized) \(sizeDownloaded)"
-
         importOperationState.isOperationActive = true
         importOperationState.processingTitle = "\(title)\n\(subtitle)"
       case .finished:
-        importOperationState.isOperationActive = false
-        importOperationState.processingTitle = ""
+        // Only tear down the dialog when this was the last file in the batch;
+        // otherwise leave it visible so the user sees continuous progress.
+        if remaining == 0 {
+          importOperationState.isOperationActive = false
+          importOperationState.processingTitle = ""
+          batchTotalFiles = 0
+        }
       case .error(let errorKind, let task, let underlyingError):
         model.handleSingleFileDownloadError(
           errorKind,
           task: task,
           underlyingError: underlyingError
         )
-
-        if model.singleFileDownloadService.downloadQueue.count == 0 {
+        if remaining == 0 {
           importOperationState.isOperationActive = false
           importOperationState.processingTitle = ""
+          batchTotalFiles = 0
         }
       }
     }
