@@ -15,6 +15,19 @@ struct HummingbirdLibraryListItemView: View {
 
   @EnvironmentObject var theme: ThemeViewModel
 
+  /// Pretty-printed due-date string for the subtitle, or nil when the book
+  /// is from a library without a loan period (NNELS).
+  private var dueDateLabel: String? {
+    guard let dueDate = item.dueDate else { return nil }
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return String.localizedStringWithFormat(
+      "due_date_subtitle_format".localized,
+      formatter.string(from: dueDate)
+    )
+  }
+
   var body: some View {
     HStack(spacing: 12) {
       Image(systemName: "book.closed.fill")
@@ -25,6 +38,11 @@ struct HummingbirdLibraryListItemView: View {
         Text(item.title)
           .bpFont(.titleRegular)
           .foregroundStyle(theme.primaryColor)
+        if let dueDateLabel {
+          Text(dueDateLabel)
+            .bpFont(.caption)
+            .foregroundStyle(theme.secondaryColor)
+        }
       }
       Spacer()
       Button {

@@ -37,6 +37,10 @@ class MainCoordinator: NSObject {
   /// lifetime of the main coordinator. Neither is referenced outside this class.
   private let mediaServerSourceTracker: MediaServerSourceTracker
   private let mediaServerProgressDispatcher: MediaServerProgressDispatcher
+  /// Sweeps expired Hummingbird loans. NNELS never has a due date so this is
+  /// usually a cheap no-op; kept alive across the coordinator's lifetime so
+  /// the `scenePhase = .active` observer can fire repeatedly.
+  private let hummingbirdLoanExpiryScanner: HummingbirdLoanExpiryScanner
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -100,12 +104,20 @@ class MainCoordinator: NSObject {
       ],
       accountService: coreServices.accountService
     )
+    self.hummingbirdLoanExpiryScanner = HummingbirdLoanExpiryScanner(
+      connectionService: hummingbirdService,
+      sourceStore: sourceStore,
+      libraryService: libraryService
+    )
 
     ThemeManager.shared.libraryService = libraryService
 
     super.init()
 
     setUpTheming()
+    // Sweep once on launch. Subsequent sweeps are driven by the
+    // foreground-transition notification inside the scanner itself.
+    Task { [scanner = hummingbirdLoanExpiryScanner] in await scanner.scan() }
   }
 
   func start() {

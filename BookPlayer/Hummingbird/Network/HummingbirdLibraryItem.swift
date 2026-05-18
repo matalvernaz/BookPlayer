@@ -26,13 +26,24 @@ struct HummingbirdLibraryItem: Identifiable, Hashable {
   /// Absolute URL the server suggests for download. Already includes the format
   /// + node_id + trailing-slash path.
   let downloadURL: URL
+  /// Server-side loan expiry, or nil for libraries without a loan period
+  /// (NNELS). When set, BookPlayer auto-deletes + auto-returns the book once
+  /// the date passes.
+  let dueDate: Date?
 
-  init(bookId: Int, format: Int, title: String, downloadURL: URL) {
+  init(
+    bookId: Int,
+    format: Int,
+    title: String,
+    downloadURL: URL,
+    dueDate: Date? = nil
+  ) {
     self.id = "\(bookId)-\(format)"
     self.bookId = bookId
     self.format = format
     self.title = title
     self.downloadURL = downloadURL
+    self.dueDate = dueDate
   }
 }
 
@@ -45,5 +56,13 @@ extension HummingbirdLibraryItem {
     let id: Int
     let title: String
     let url: String
+    /// ISO-8601 due date when the library has a loan period, otherwise nil.
+    /// CodingKey maps the server's snake_case to a Swift-friendly name.
+    let dueDate: String?
+
+    enum CodingKeys: String, CodingKey {
+      case id, title, url
+      case dueDate = "due_date"
+    }
   }
 }

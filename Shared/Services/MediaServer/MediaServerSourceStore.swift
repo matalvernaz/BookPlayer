@@ -47,6 +47,13 @@ public final class MediaServerSourceStore {
     }
   }
 
+  /// Snapshot of every imported integration item's source info, keyed by relativePath. Used by
+  /// the loan-expiry scanner (and similar maintenance sweeps) so they don't have to iterate
+  /// `LibraryService` and re-check provenance per item.
+  public var allResolved: [String: MediaServerSourceInfo] {
+    queue.sync { readResolved() }
+  }
+
   /// Drops the source mapping for a library item. Called when the user deletes an item so we
   /// don't keep reporting progress for something that no longer exists locally.
   public func removeSource(for relativePath: String) {

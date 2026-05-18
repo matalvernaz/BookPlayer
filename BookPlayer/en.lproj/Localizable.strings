@@ -479,3 +479,4 @@ We're working hard on providing a seamless experience, if possible, please conta
 "Series" = "Series";
 "Collections" = "Collections";
 "Narrators" = "Narrators";
+"due_date_subtitle_format" = "Due %@";

@@ -16,6 +16,7 @@
 		18D0AD99D1AAA10976F75C11 /* BPNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55F466D61AE62A69DE4D371 /* BPNavigation.swift */; };
 		271813879FD076D0A57842A1 /* JellyfinProgressReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE50D3707019467E7FF8900 /* JellyfinProgressReporter.swift */; };
 		2D7D5973F598D517CBCCE0ED /* PreferencesSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D25EF2A5FFF30CF12F2C21 /* PreferencesSyncService.swift */; };
+		319D4C79875823F3236E6D5C /* HummingbirdLoanExpiryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F3403998B9EA1B974097DC /* HummingbirdLoanExpiryScanner.swift */; };
 		394344CE90D1FAF63B2493D2 /* HummingbirdConnectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1BB42488648EAEF8D70339A /* HummingbirdConnectionViewModel.swift */; };
 		3F66408A2E162ABF00356522 /* AudioMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6640892E162ABF00356522 /* AudioMetadataService.swift */; };
 		3F66408B2E162ABF00356522 /* AudioMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6640892E162ABF00356522 /* AudioMetadataService.swift */; };
@@ -1780,6 +1781,7 @@
 		A3324A46BF519DEB8FAFF280 /* HummingbirdConnectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdConnectionService.swift; path = BookPlayer/Hummingbird/Network/HummingbirdConnectionService.swift; sourceTree = SOURCE_ROOT; };
 		A3511F737DCDEE7A12B713AE /* IntegrationServerFoundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationServerFoundView.swift; sourceTree = "<group>"; };
 		A4D9C8B6E5F1D2A7C4E9B81B /* IntegrationImageSizing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationImageSizing.swift; sourceTree = "<group>"; };
+		A5F3403998B9EA1B974097DC /* HummingbirdLoanExpiryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdLoanExpiryScanner.swift; path = BookPlayer/Hummingbird/Network/HummingbirdLoanExpiryScanner.swift; sourceTree = SOURCE_ROOT; };
 		A5F919ABFCEF9B58EFE9D82E /* IntegrationServerInformationSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationServerInformationSectionView.swift; sourceTree = "<group>"; };
 		B04BE5CC428577199315A6CB /* AudiobookShelfProgressReporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudiobookShelfProgressReporter.swift; sourceTree = "<group>"; };
 		B0D0FA9BA32EDF5F367C757B /* IntegrationError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationError.swift; sourceTree = "<group>"; };
@@ -3520,6 +3522,7 @@
 				A3324A46BF519DEB8FAFF280 /* HummingbirdConnectionService.swift */,
 				C5604DE58FAB94807CE6167D /* HummingbirdLibraryItem.swift */,
 				91C24E31A50E50D8503E5AE3 /* HummingbirdProgressReporter.swift */,
+				A5F3403998B9EA1B974097DC /* HummingbirdLoanExpiryScanner.swift */,
 			);
 			name = Network;
 			path = Network;
@@ -4876,6 +4879,7 @@
 				B69B48A8B871E4AC91D3B316 /* HummingbirdLibraryViewModel.swift in Sources */,
 				AAB14C089310DFD689BCB468 /* HummingbirdLibraryView.swift in Sources */,
 				14124A42A42854F32A9A5F8C /* HummingbirdLibraryListItemView.swift in Sources */,
+				319D4C79875823F3236E6D5C /* HummingbirdLoanExpiryScanner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

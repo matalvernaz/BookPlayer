@@ -206,6 +206,28 @@ class HummingbirdConnectionService: BPLogger {
     return envelope.items.compactMap(makeItem(from:))
   }
 
+  /// Returns the book to the server (server-side equivalent of removing it
+  /// from the user's bookshelf). Called by the loan-expiry scanner when a
+  /// borrowed item's dueDate has passed, and could also be wired to a
+  /// user-initiated "return book" affordance.
+  ///
+  /// ``bookId`` is the Hummingbird node_id (a stringified integer in our
+  /// source-info representation).
+  public func returnBook(bookId: String) async throws {
+    guard let connection else { throw URLError(.userAuthenticationRequired) }
+    guard let id = Int(bookId) else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+    let url = connection.url
+      .appendingPathComponent("protocols/hummingbird/v1/bookshelf/remove")
+      .appendingPathComponent("\(id)")
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    let (_, response) = try await urlSession.data(for: request)
+    _ = try validateAuthenticatedResponse(response)
+  }
+
   public func search(query: String, page: Int = 0) async throws -> [HummingbirdLibraryItem] {
     guard let connection else { throw URLError(.userAuthenticationRequired) }
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -238,14 +260,34 @@ class HummingbirdConnectionService: BPLogger {
     guard trimmed.count >= 2 else { return nil }
     let bookId = trimmed[0]
     let format = trimmed[1]
-    return HummingbirdLibraryItem(bookId: bookId, format: format, title: api.title, downloadURL: downloadURL)
+    return HummingbirdLibraryItem(
+      bookId: bookId,
+      format: format,
+      title: api.title,
+      downloadURL: downloadURL,
+      dueDate: api.dueDate.flatMap(Self.parseISO8601),
+    )
+  }
+
+  /// Permissive ISO-8601 parser. Hummingbird emits dates in
+  /// "2026-06-01T00:00:00+00:00" form; tolerate fractional seconds and
+  /// trailing-Z variants too so plugins that lean on the stdlib's default
+  /// `datetime.isoformat()` don't trip us up.
+  static func parseISO8601(_ raw: String) -> Date? {
+    let withFraction = ISO8601DateFormatter()
+    withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let d = withFraction.date(from: raw) { return d }
+    let plain = ISO8601DateFormatter()
+    plain.formatOptions = [.withInternetDateTime]
+    return plain.date(from: raw)
   }
 
   // MARK: - Download
 
   /// Returns a URLRequest for downloading the bookshelf item, registering the
   /// source mapping so the progress dispatcher can route bookmarks back to this
-  /// server once the file is imported.
+  /// server once the file is imported. ``dueDate`` (if set on the item) is
+  /// persisted so the loan-expiry scanner can later auto-return the book.
   public func createItemDownloadRequest(_ item: HummingbirdLibraryItem) throws -> URLRequest {
     guard let connection else { throw URLError(.userAuthenticationRequired) }
     mediaServerSourceStore?.registerPendingDownload(
@@ -255,7 +297,8 @@ class HummingbirdConnectionService: BPLogger {
         connectionId: connection.id,
         // We sync progress against the book id (which is what Hummingbird's
         // bookmark endpoint keys on); format is implicit.
-        itemId: "\(item.bookId)"
+        itemId: "\(item.bookId)",
+        dueDate: item.dueDate
       )
     )
     return wrapWithCustomHeaders(item.downloadURL)
