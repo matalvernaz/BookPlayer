@@ -297,17 +297,36 @@ class HummingbirdConnectionService: BPLogger {
       .appendingPathComponent("protocols/hummingbird/v1/resources")
       .appendingPathComponent("\(item.format)")
       .appendingPathComponent("\(item.bookId)")
-    var request = URLRequest(url: url)
-    applyAuthenticatedHeaders(to: &request, connection: connection)
-    // /resources may have to warm the server-side cache by pulling a
-    // multi-hundred-MB DAISY zip from S3 before returning the manifest.
-    // The 15s default kills that every time; give it real headroom.
-    // Long-term fix is server-side 503 + Retry-After auto-prefetch
-    // (Hummingbird phase B-2); until then we just wait synchronously.
-    request.timeoutInterval = 180
-    let (data, response) = try await urlSession.data(for: request)
-    _ = try validateAuthenticatedResponse(response)
-    return try JSONDecoder().decode(ResourcesResponse.self, from: data).resources
+
+    // DODP-clean async pattern (hummingbird >= 0.4.1): cold-cache
+    // requests get 503 + Retry-After while the server-side prefetch
+    // task warms the cache. We poll until READY (200), MISSING (404),
+    // or we hit the budget. Each request is short (just a status
+    // check); the slow work happens server-side in a background task.
+    let pollBudget: Date = Date().addingTimeInterval(300)  // 5 minute cap
+    while true {
+      var request = URLRequest(url: url)
+      applyAuthenticatedHeaders(to: &request, connection: connection)
+      request.timeoutInterval = 30
+      let (data, response) = try await urlSession.data(for: request)
+      guard let http = response as? HTTPURLResponse else {
+        throw IntegrationError.unexpectedResponse(code: nil)
+      }
+      if http.statusCode == 503 {
+        // Server is preparing the cache. Wait per Retry-After and
+        // poll again. Caller (HummingbirdLibraryViewModel) keeps the
+        // "Preparing download..." banner visible across these polls.
+        if Date() > pollBudget {
+          throw IntegrationError.unexpectedResponse(code: 503)
+        }
+        let retryAfter = Int(http.value(forHTTPHeaderField: "Retry-After") ?? "10") ?? 10
+        try await Task.sleep(nanoseconds: UInt64(retryAfter) * 1_000_000_000)
+        try Task.checkCancellation()
+        continue
+      }
+      _ = try validateAuthenticatedResponse(response)
+      return try JSONDecoder().decode(ResourcesResponse.self, from: data).resources
+    }
   }
 
   /// Builds an authenticated URLRequest for a single DODP resource (one
