@@ -146,6 +146,7 @@ class MainCoordinator: NSObject {
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
       .environment(\.hummingbirdService, hummingbirdConnectionService)
+      .environment(\.mediaServerSourceStore, mediaServerSourceStore)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)
       .environment(\.playerLoaderService, playerLoaderService)

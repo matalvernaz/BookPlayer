@@ -20,6 +20,16 @@ final class ItemListViewModel: ObservableObject {
   private let loadingState: LoadingOverlayState
   private let listState: ListStateManager
   let singleFileDownloadService: SingleFileDownloadService
+  /// Source-of-truth for which library items came from a media-server
+  /// integration. Used on delete to (a) clear the per-item mapping so we
+  /// don't keep reporting progress for something that no longer exists,
+  /// and (b) for Hummingbird-sourced items, post a server-side bookshelf
+  /// remove so the user's NNELS shelf doesn't keep a stale entry.
+  private let mediaServerSourceStore: MediaServerSourceStore
+  /// Needed for the Hummingbird-specific "return book" hook on delete.
+  /// ABS and Jellyfin have no checkout concept, so deleting locally there
+  /// is intentionally local-only -- no equivalent service ref needed.
+  private let hummingbirdService: HummingbirdConnectionService
 
   /// Reference to ongoing library fetch task
   var contentsFetchTask: Task<(), Error>?
@@ -104,7 +114,9 @@ final class ItemListViewModel: ObservableObject {
     listSyncRefreshService: ListSyncRefreshService,
     loadingState: LoadingOverlayState,
     listState: ListStateManager,
-    singleFileDownloadService: SingleFileDownloadService
+    singleFileDownloadService: SingleFileDownloadService,
+    mediaServerSourceStore: MediaServerSourceStore,
+    hummingbirdService: HummingbirdConnectionService
   ) {
     self.libraryNode = libraryNode
     self.libraryService = libraryService
@@ -115,6 +127,8 @@ final class ItemListViewModel: ObservableObject {
     self.loadingState = loadingState
     self.listState = listState
     self.singleFileDownloadService = singleFileDownloadService
+    self.mediaServerSourceStore = mediaServerSourceStore
+    self.hummingbirdService = hummingbirdService
 
     if libraryNode == .root {
       playerManager.syncProgressDelegate = self
@@ -449,6 +463,16 @@ extension ItemListViewModel {
 
     let parentFolder = items.first?.parentFolder
 
+    // Collect media-server-sourced items BEFORE delete so we can fire the
+    // appropriate cleanup hook with valid relativePaths. Hummingbird-sourced
+    // items get a server-side "remove from bookshelf" (which is a return,
+    // not a delete -- the book itself stays available on NNELS); ABS /
+    // Jellyfin entries just lose their source mapping.
+    let mediaServerHits: [(SimpleLibraryItem, MediaServerSourceInfo)] = items.compactMap { item in
+      guard let info = mediaServerSourceStore.source(for: item.relativePath) else { return nil }
+      return (item, info)
+    }
+
     do {
       try libraryService.delete(items, mode: mode)
 
@@ -461,8 +485,38 @@ extension ItemListViewModel {
       loadingState.error = error
     }
 
+    for (item, info) in mediaServerHits {
+      handleMediaServerCleanup(item: item, info: info)
+    }
+
     listState.reloadAll()
     editMode = .inactive
+  }
+
+  /// Local delete is the trigger; the actual server-side call (if any)
+  /// is fire-and-forget. We always drop the local source mapping
+  /// unconditionally so the progress dispatcher stops trying to report on
+  /// a deleted relativePath; the per-kind branch only decides whether
+  /// the originating server also gets a notification.
+  private func handleMediaServerCleanup(
+    item: SimpleLibraryItem,
+    info: MediaServerSourceInfo
+  ) {
+    mediaServerSourceStore.removeSource(for: item.relativePath)
+    switch info.kind {
+    case .hummingbird:
+      // POST /bookshelf/remove/{id} so the user's NNELS shelf doesn't
+      // keep a stale entry pointing at a book they no longer have a
+      // local copy of. Fire-and-forget; the LoanExpiryScanner would
+      // eventually catch up if this round-trip fails.
+      Task { [hummingbirdService, itemId = info.itemId] in
+        try? await hummingbirdService.returnBook(bookId: itemId)
+      }
+    case .audiobookshelf, .jellyfin:
+      // No checkout concept upstream -- local delete is local-only by
+      // design. The book stays on the server's library.
+      break
+    }
   }
 
   func deleteActionDetails() -> (title: String, message: String?)? {
