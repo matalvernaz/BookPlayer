@@ -178,7 +178,13 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
           kind: .hummingbird,
           connectionId: connection.id,
           itemId: "\(item.bookId)",
-          dueDate: item.dueDate
+          dueDate: item.dueDate,
+          // Explicit intent: this folder represents a DAISY archive
+          // that should become a bound book once all chapters land.
+          // The bound-book completer's sweep keys off this flag --
+          // future code paths can register Hummingbird-sourced folders
+          // *without* setting this and they'll stay as folders.
+          shouldBindFolder: true
         ),
         for: folderName
       )

@@ -78,6 +78,12 @@ final class HummingbirdBoundBookCompleter: BPLogger {
   func sweep() async {
     for (relativePath, info) in sourceStore.allResolved {
       guard info.kind == .hummingbird else { continue }
+      // Only promote folders the dispatcher explicitly marked as
+      // bind-on-complete (the multi-file DAISY archive flow). A
+      // future code path that registers a Hummingbird-sourced folder
+      // *without* this flag (e.g. a multi-book collection or a
+      // nested structure) won't be touched here.
+      guard info.shouldBindFolder == true else { continue }
       guard let item = libraryService.getSimpleItem(with: relativePath) else { continue }
       // Skip per-file source mappings (those have ``.book`` type) and
       // anything already bound. Only ``.folder`` items need promotion.

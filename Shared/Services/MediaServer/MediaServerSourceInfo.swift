@@ -35,16 +35,24 @@ public struct MediaServerSourceInfo: Codable, Hashable {
   /// ISO-8601 wall-clock instant at which the server-side loan expires, or `nil` for libraries
   /// with no loan period.
   public let dueDate: Date?
+  /// When `true`, the folder at this entry's `relativePath` should be auto-promoted to a bound
+  /// book once all its multi-file downloads land. Set explicitly by the dispatcher at
+  /// `singleFileDownloadService.handleDownload(_:folderName:)` time so a hypothetical future
+  /// "folder collection" or "subfolder" media-server flow doesn't get auto-bound by mistake.
+  /// `nil` decodes from older persisted entries that pre-date the field; treat as `false`.
+  public let shouldBindFolder: Bool?
 
   public init(
     kind: MediaServerKind,
     connectionId: String,
     itemId: String,
-    dueDate: Date? = nil
+    dueDate: Date? = nil,
+    shouldBindFolder: Bool? = nil
   ) {
     self.kind = kind
     self.connectionId = connectionId
     self.itemId = itemId
     self.dueDate = dueDate
+    self.shouldBindFolder = shouldBindFolder
   }
 }
