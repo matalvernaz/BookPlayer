@@ -98,15 +98,117 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     }
   }
 
-  /// One-tap download into BookPlayer's library. Source-tracking is registered
-  /// inside `createItemDownloadRequest` so the eventual progress reports route
-  /// back to this server.
+  /// One-tap download into BookPlayer's library. Fetches the DODP-shaped
+  /// resource manifest first, then either does a single-file download (for
+  /// libraries that ship single MP3s) or fans out into a multi-file
+  /// download landing into a bound-book folder (for DAISY 2.02 archives).
+  ///
+  /// The two paths converge: bound-book folder with audio + .m3u, or single
+  /// audio file at library root. BookPlayer's existing library import picks
+  /// up either shape.
   func downloadItem(_ item: HummingbirdLibraryItem) {
+    Task { [weak self] in await self?._downloadItem(item) }
+  }
+
+  private func _downloadItem(_ item: HummingbirdLibraryItem) async {
     do {
-      let request = try connectionService.createItemDownloadRequest(item)
-      singleFileDownloadService.handleDownload(request)
+      let resources = try await connectionService.fetchResources(item)
+      // Audio-only filter -- BookPlayer doesn't navigate SMIL or NCC, and
+      // dragging those files into the library just clutters it. The
+      // server emits the full list so DAISY-aware clients (eg. a future
+      // BookPlayer-with-SMIL or Dolphin EasyReader hitting our KADOS
+      // surface) can still build full navigation; we just don't use it.
+      let audio = resources.filter { $0.mimeType.hasPrefix("audio/") }
+
+      if audio.count == 1 {
+        // Single-file flow: drop the one file at the library root.
+        let request = try connectionService.createResourceDownloadRequest(
+          audio[0], bookId: item.bookId, folderName: "", dueDate: item.dueDate
+        )
+        singleFileDownloadService.handleDownload(request)
+        return
+      }
+
+      // Bound-book flow: fan out into a folder named after the book.
+      // Folder name is the book title sanitised to filesystem-safe.
+      let folderName = Self.sanitisedBookFolderName(item.title)
+      let requests = try audio.map { res in
+        try connectionService.createResourceDownloadRequest(
+          res, bookId: item.bookId, folderName: folderName, dueDate: item.dueDate
+        )
+      }
+      singleFileDownloadService.handleDownload(requests, folderName: folderName)
+
+      // Write a .m3u playlist into the folder so BookPlayer (or anything
+      // else inspecting the folder) has an explicit playback order.
+      // Audio resources arrive over time; the playlist references them
+      // by the local filenames that SingleFileDownloadService will use
+      // when each task completes (lastPathComponent of the URL).
+      Self.writePlaylist(
+        folderName: folderName,
+        bookTitle: item.title,
+        audioResources: audio
+      )
+
+      // Register the bound folder as a media-server source so the
+      // progress dispatcher can route bookmarks back to the server when
+      // BookPlayer plays this bound book. The per-file source mappings
+      // registered inside createResourceDownloadRequest cover progress
+      // on individual chapters; this one covers the bound book itself.
+      guard let connection = connectionService.connection,
+            let sourceStore = connectionService.mediaServerSourceStore else { return }
+      sourceStore.setSource(
+        MediaServerSourceInfo(
+          kind: .hummingbird,
+          connectionId: connection.id,
+          itemId: "\(item.bookId)",
+          dueDate: item.dueDate
+        ),
+        for: folderName
+      )
     } catch {
       Self.logger.warning("Hummingbird download dispatch failed: \(error.localizedDescription)")
     }
+  }
+
+  // MARK: - Bound-book helpers
+
+  /// Strips characters that filesystems and BookPlayer's import pipeline
+  /// dislike, caps the length, and falls back to a stable default if the
+  /// title sanitises to empty. Doesn't try to deduplicate across existing
+  /// folders -- BookPlayer's library importer handles renaming on collision.
+  private static func sanitisedBookFolderName(_ title: String) -> String {
+    let stripped = title
+      .components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|\n\r"))
+      .joined(separator: " ")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let capped = String(stripped.prefix(120))
+    return capped.isEmpty ? "Hummingbird Book" : capped
+  }
+
+  /// Writes a simple m3u playlist into the bound-book folder listing the
+  /// expected audio filenames in their server-provided order. Fire-and-
+  /// forget: best-effort so a failure here doesn't block the downloads.
+  private static func writePlaylist(
+    folderName: String,
+    bookTitle: String,
+    audioResources: [DODPResource]
+  ) {
+    let folderURL = DataManager.getDocumentsFolderURL().appendingPathComponent(folderName)
+    do {
+      try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+    } catch {
+      return
+    }
+    var lines = ["#EXTM3U", "#PLAYLIST:\(bookTitle)"]
+    for res in audioResources {
+      // SingleFileDownloadService strips paths and keeps only
+      // lastPathComponent when saving (eg. "audio/01.mp3" -> "01.mp3").
+      let filename = (res.localURI as NSString).lastPathComponent
+      lines.append(filename)
+    }
+    let content = lines.joined(separator: "\n") + "\n"
+    let playlistURL = folderURL.appendingPathComponent("playlist.m3u")
+    try? content.write(to: playlistURL, atomically: true, encoding: .utf8)
   }
 }

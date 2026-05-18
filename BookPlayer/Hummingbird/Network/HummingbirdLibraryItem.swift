@@ -66,3 +66,27 @@ extension HummingbirdLibraryItem {
     }
   }
 }
+
+// MARK: - DODP resource manifest (/resources/{fmt}/{node_id})
+
+/// One DODP resource (a single file the client needs to fetch to assemble a
+/// content item locally). Matches the shape KADOS ``getContentResources``
+/// returns and the Hummingbird REST ``/resources`` endpoint emits. When
+/// BookPlayer eventually targets non-Hummingbird DODP libraries, this same
+/// struct will decode their responses too -- the shape is the spec.
+struct DODPResource: Codable, Hashable {
+  let uri: String
+  let mimeType: String
+  let size: Int
+  /// Where this file should land inside the book's local folder. Preserves
+  /// DAISY directory structure (eg. "audio/01.mp3") for clients that care;
+  /// BookPlayer flattens it for the bound-book layout.
+  let localURI: String
+}
+
+/// Envelope returned by ``/protocols/hummingbird/v1/resources/{fmt}/{node_id}``.
+struct ResourcesResponse: Codable {
+  let contentId: String
+  let format: Int
+  let resources: [DODPResource]
+}

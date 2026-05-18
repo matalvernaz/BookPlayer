@@ -286,6 +286,52 @@ class HummingbirdConnectionService: BPLogger {
 
   // MARK: - Download
 
+  /// DODP-shaped resource manifest for a book: list of files (with mimeType,
+  /// size, and the URL to fetch each). Hits Hummingbird's REST
+  /// ``/resources/{fmt}/{node_id}`` endpoint, which is the same shape the
+  /// KADOS ``getContentResources`` method returns; the request envelope
+  /// differs (REST vs JSON-RPC) but the parser carries over.
+  public func fetchResources(_ item: HummingbirdLibraryItem) async throws -> [DODPResource] {
+    guard let connection else { throw URLError(.userAuthenticationRequired) }
+    let url = connection.url
+      .appendingPathComponent("protocols/hummingbird/v1/resources")
+      .appendingPathComponent("\(item.format)")
+      .appendingPathComponent("\(item.bookId)")
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    let (data, response) = try await urlSession.data(for: request)
+    _ = try validateAuthenticatedResponse(response)
+    return try JSONDecoder().decode(ResourcesResponse.self, from: data).resources
+  }
+
+  /// Builds an authenticated URLRequest for a single DODP resource (one
+  /// audio file inside a DAISY archive, typically). The view model uses
+  /// these in bulk with ``SingleFileDownloadService.handleDownload(_:folderName:)``
+  /// to land them all into one bound-book folder.
+  public func createResourceDownloadRequest(
+    _ resource: DODPResource,
+    bookId: Int,
+    folderName: String,
+    dueDate: Date?
+  ) throws -> URLRequest {
+    guard let connection,
+          let url = URL(string: resource.uri) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+    mediaServerSourceStore?.registerPendingDownload(
+      url,
+      info: MediaServerSourceInfo(
+        kind: .hummingbird,
+        connectionId: connection.id,
+        itemId: "\(bookId)",
+        dueDate: dueDate
+      )
+    )
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    return request
+  }
+
   /// Returns a URLRequest for downloading the bookshelf item, registering the
   /// source mapping so the progress dispatcher can route bookmarks back to this
   /// server once the file is imported. ``dueDate`` (if set on the item) is
