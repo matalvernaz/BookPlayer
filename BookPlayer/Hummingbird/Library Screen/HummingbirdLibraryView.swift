@@ -14,7 +14,53 @@ struct HummingbirdLibraryView: View {
   @EnvironmentObject var theme: ThemeViewModel
 
   var body: some View {
-    Group {
+    bodyContent
+      .alert(
+        "error_title".localized,
+        isPresented: .init(
+          get: { viewModel.downloadError != nil },
+          set: { if !$0 { viewModel.downloadError = nil } }
+        ),
+        actions: {
+          Button("ok_button".localized) { viewModel.downloadError = nil }
+        },
+        message: { Text(viewModel.downloadError ?? "") }
+      )
+  }
+
+  @ViewBuilder
+  private var bodyContent: some View {
+    VStack(spacing: 0) {
+      if let status = viewModel.downloadStatus {
+        // Visible banner while a Hummingbird download is in flight, so
+        // the user gets feedback after tapping the download arrow.
+        // ItemListView's `Downloading N files` toast also fires on the
+        // shared SingleFileDownloadService events, but that one only
+        // shows on the main library screen -- this banner lives in
+        // the Hummingbird browse screen where the tap originated.
+        HStack(spacing: 8) {
+          ProgressView()
+            .progressViewStyle(.circular)
+            .scaleEffect(0.7)
+          Text(status)
+            .bpFont(.caption)
+            .foregroundStyle(theme.primaryColor)
+          Spacer()
+          Button {
+            viewModel.dismissDownloadStatus()
+          } label: {
+            Image(systemName: "xmark")
+              .foregroundStyle(theme.secondaryColor)
+          }
+          .accessibilityLabel("dismiss_button".localized)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(theme.secondarySystemBackgroundColor)
+        .accessibilityElement(children: .combine)
+      }
+
+      Group {
       switch viewModel.loadState {
       case .idle, .loading where viewModel.items.isEmpty:
         ProgressView()
@@ -46,6 +92,7 @@ struct HummingbirdLibraryView: View {
           await viewModel.loadBookshelf()
         }
       }
+      }  // end Group
     }
     .scrollContentBackground(.hidden)
     .background(theme.systemBackgroundColor)

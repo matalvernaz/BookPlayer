@@ -480,3 +480,5 @@ We're working hard on providing a seamless experience, if possible, please conta
 "Collections" = "Collections";
 "Narrators" = "Narrators";
 "due_date_subtitle_format" = "Due %@";
+"preparing_download_status" = "Preparing download…";
+"dismiss_button" = "Dismiss";

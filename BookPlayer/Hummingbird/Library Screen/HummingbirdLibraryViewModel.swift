@@ -29,6 +29,15 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
   @Published var searchQuery: String = ""
   @Published var loadState: LoadState = .idle
   @Published var sessionExpiredError: IntegrationError?
+  /// Surface to the user when a tap-to-download fails for any reason
+  /// (network, malformed manifest, plugin error, etc). Cleared when
+  /// the user dismisses the alert. Replaces a silent
+  /// ``Self.logger.warning`` that the user could never see.
+  @Published var downloadError: String?
+  /// "Preparing download…" -> "Downloading N files…" so the user gets
+  /// SOMETHING visible after a tap, instead of the previous behavior
+  /// where the tap returned no UI feedback at all.
+  @Published var downloadStatus: String?
 
   let connectionService: HummingbirdConnectionService
   let singleFileDownloadService: SingleFileDownloadService
@@ -111,6 +120,7 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
   }
 
   private func _downloadItem(_ item: HummingbirdLibraryItem) async {
+    downloadStatus = "preparing_download_status".localized
     do {
       let resources = try await connectionService.fetchResources(item)
       // Audio-only filter -- BookPlayer doesn't navigate SMIL or NCC, and
@@ -126,6 +136,9 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
           audio[0], bookId: item.bookId, folderName: "", dueDate: item.dueDate
         )
         singleFileDownloadService.handleDownload(request)
+        downloadStatus = String.localizedStringWithFormat(
+          "downloading_file_title".localized, 1
+        )
         return
       }
 
@@ -138,6 +151,9 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
         )
       }
       singleFileDownloadService.handleDownload(requests, folderName: folderName)
+      downloadStatus = String.localizedStringWithFormat(
+        "downloading_file_title".localized, audio.count
+      )
 
       // Write a .m3u playlist into the folder so BookPlayer (or anything
       // else inspecting the folder) has an explicit playback order.
@@ -166,9 +182,25 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
         ),
         for: folderName
       )
+    } catch let error as IntegrationError where error.isSessionExpired {
+      sessionExpiredError = error
+      downloadStatus = nil
     } catch {
+      // Surface the real failure to the user instead of dropping it
+      // into oslog where they'd never see it. Previous behavior: a
+      // silent ``Self.logger.warning`` with no visible feedback.
       Self.logger.warning("Hummingbird download dispatch failed: \(error.localizedDescription)")
+      downloadError = error.localizedDescription
+      downloadStatus = nil
     }
+  }
+
+  /// Called when the user dismisses an in-progress download status (the
+  /// "Downloading N files" banner). Doesn't actually cancel the
+  /// downloads -- they keep running via the background URLSession --
+  /// just hides the banner.
+  func dismissDownloadStatus() {
+    downloadStatus = nil
   }
 
   // MARK: - Bound-book helpers
