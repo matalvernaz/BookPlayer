@@ -299,6 +299,12 @@ class HummingbirdConnectionService: BPLogger {
       .appendingPathComponent("\(item.bookId)")
     var request = URLRequest(url: url)
     applyAuthenticatedHeaders(to: &request, connection: connection)
+    // /resources may have to warm the server-side cache by pulling a
+    // multi-hundred-MB DAISY zip from S3 before returning the manifest.
+    // The 15s default kills that every time; give it real headroom.
+    // Long-term fix is server-side 503 + Retry-After auto-prefetch
+    // (Hummingbird phase B-2); until then we just wait synchronously.
+    request.timeoutInterval = 180
     let (data, response) = try await urlSession.data(for: request)
     _ = try validateAuthenticatedResponse(response)
     return try JSONDecoder().decode(ResourcesResponse.self, from: data).resources
