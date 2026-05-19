@@ -128,6 +128,36 @@ struct LibraryRootView: View {
 
         showImport()
       }
+      .onReceive(singleFileDownloadService.eventsPublisher) { event in
+        // Re-trigger the import flow when a download queue drains.
+        //
+        // `observeFiles` short-circuits while `isDownloading` is
+        // true, and `CurrentValueSubject` doesn't re-fire when a
+        // download merely finishes -- only when the set of pending
+        // import URLs changes. For Hummingbird's multi-file flow
+        // that's a real problem: the folder URL gets added to the
+        // import set the moment the directory is created (first
+        // file's move), `observeFiles` fires once and is blocked by
+        // `isDownloading=true`, the rest of the files land in the
+        // same folder (no new URLs added -> no new events), and
+        // after the LAST file finishes the queue has drained but
+        // nothing prods the import flow. Result: files sit in
+        // `documents/folderName/*` and never get imported. Without
+        // this prod the user sees "100% downloaded" with no books
+        // appearing in the library.
+        guard case .finished = event else { return }
+        // Defer one tick so SingleFileDownloadService's
+        // `currentTask = nil` cleanup (dispatched as a separate
+        // @MainActor Task right after `.finished` is sent) runs
+        // first; otherwise `isDownloading` still reports true.
+        Task { @MainActor in
+          guard
+            !singleFileDownloadService.isDownloading,
+            importManager.hasPendingFiles()
+          else { return }
+          showImport()
+        }
+      }
       .onReceive(documentFolderWatcher.newFilesPublisher) { files in
         files.forEach { importManager.process($0) }
       }
