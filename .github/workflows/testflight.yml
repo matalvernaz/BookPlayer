@@ -1,0 +1,125 @@
+name: Deploy to TestFlight
+
+# Auto-ship every push to the deploy branch. Concurrency cancels an in-flight
+# build when a newer commit lands, so rapid commits don't pile up beta-review
+# requests -- only the latest commit ends up uploaded.
+on:
+  push:
+    branches: [test/all-changes]
+  workflow_dispatch:
+
+concurrency:
+  group: testflight-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Self-hosted macOS runner on matt's Apple Silicon Mac (192.168.31.216).
+    # All signing material, the ASC .p8 key, and the keychain password live
+    # on that Mac -- nothing sensitive crosses GitHub Secrets.
+    runs-on: [self-hosted, macos, bookplayer]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Create Debug.xcconfig
+        run: cp ./BuildConfiguration/Debug.template.xcconfig ./BuildConfiguration/Debug.xcconfig
+
+      - name: Resolve SPM dependencies
+        run: xcodebuild -resolvePackageDependencies
+
+      # Build, archive, export, and upload in one shell step so the keychain
+      # stays unlocked across `xcodebuild archive` and `xcodebuild
+      # -exportArchive`. The login keychain re-locks between separate shell
+      # sessions even with no idle auto-lock, and codesign then fails with
+      # errSecInternalComponent (see deploy.sh for the original incident).
+      - name: Archive, export, and upload to App Store Connect
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1090
+          source ~/.config/bookplayer-deploy/secrets.env
+          # Mask the keychain password in any log output that follows; the
+          # `security` invocations below pass it on the command line, which
+          # GitHub's masker only redacts when told about the value.
+          echo "::add-mask::${MAC_KEYCHAIN_PASSWORD}"
+
+          BUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"
+          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> "${GITHUB_ENV}"
+          echo "::notice::Building CFBundleVersion=${BUILD_NUMBER}"
+
+          BUILD_DIR="${RUNNER_TEMP}/bookplayer-ci"
+          rm -rf "${BUILD_DIR}"
+          mkdir -p "${BUILD_DIR}"
+
+          echo "Unlocking login keychain..."
+          security unlock-keychain -p "${MAC_KEYCHAIN_PASSWORD}" \
+            ~/Library/Keychains/login.keychain-db
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "${MAC_KEYCHAIN_PASSWORD}" \
+            ~/Library/Keychains/login.keychain-db >/dev/null
+
+          echo "Archiving..."
+          xcodebuild archive \
+            -project BookPlayer.xcodeproj \
+            -scheme BookPlayer \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
+            -allowProvisioningUpdates \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+            CURRENT_PROJECT_VERSION="${BUILD_NUMBER}"
+
+          cat > "${BUILD_DIR}/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadBitcode</key><false/>
+            <key>uploadSymbols</key><true/>
+            <key>destination</key><string>upload</string>
+          </dict></plist>
+          PLIST
+
+          echo "Exporting + uploading..."
+          xcodebuild -exportArchive \
+            -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
+            -exportOptionsPlist "${BUILD_DIR}/ExportOptions.plist" \
+            -exportPath "${BUILD_DIR}/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${ASC_KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}"
+
+      # Wait for processing, set release notes, submit for beta review, and
+      # attach the build to the External Testers group. Reuses the helper
+      # that the local deploy.sh flow ships -- mirrored onto the Mac at
+      # ~/bookplayer-deploy/ during runner setup.
+      - name: Attach to External Testers group
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1090
+          source ~/.config/bookplayer-deploy/secrets.env
+          # Use the commit subject as the What-to-Test notes so testers see
+          # what changed in this build. First line of the commit message; falls
+          # back to a generic string if the commit had no message.
+          notes=$(printf '%s' "${COMMIT_MSG}" | head -n1)
+          if [[ -z "${notes}" ]]; then
+            notes="New build available."
+          fi
+          python3 ~/bookplayer-deploy/testflight-add-to-group.py \
+            --build-number "${BUILD_NUMBER}" \
+            --bundle-id "${ASC_BUNDLE_ID}" \
+            --group-id "${ASC_BETA_GROUP_ID}" \
+            --notes "${notes}" \
+            --key-id "${ASC_KEY_ID}" \
+            --issuer-id "${ASC_ISSUER_ID}" \
+            --key-path "${ASC_KEY_PATH}"
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
