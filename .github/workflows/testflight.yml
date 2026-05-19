@@ -25,8 +25,13 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Create Debug.xcconfig
-        run: cp ./BuildConfiguration/Debug.template.xcconfig ./BuildConfiguration/Debug.xcconfig
+      - name: Install Debug.xcconfig with real bundle IDs
+        # The canonical Debug.xcconfig (real DEVELOPMENT_TEAM + bundle id) is
+        # NOT in git -- it sits beside the deploy secrets on the Mac at
+        # ~/.config/bookplayer-deploy/. Without this the checkout's
+        # Debug.template.xcconfig leaves bundle ids as `com.replace.me*` and
+        # provisioning registration fails.
+        run: cp ~/.config/bookplayer-deploy/Debug.xcconfig ./BuildConfiguration/Debug.xcconfig
 
       - name: Resolve SPM dependencies
         run: xcodebuild -resolvePackageDependencies
