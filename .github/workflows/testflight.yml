@@ -3,6 +3,12 @@ name: Deploy to TestFlight
 # Auto-ship every push to the deploy branch. Concurrency cancels an in-flight
 # build when a newer commit lands, so rapid commits don't pile up beta-review
 # requests -- only the latest commit ends up uploaded.
+#
+# Tester notes (the "What to Test" field testers see in TestFlight) come from,
+# in priority order: a manual `notes` input on workflow_dispatch, a
+# `Release-Notes:` trailer in the commit body (multi-line supported), the
+# first line of the commit subject, then a generic fallback. Not enforced --
+# casual commits work fine; add a trailer when you want richer notes.
 on:
   push:
     branches: [test/all-changes]

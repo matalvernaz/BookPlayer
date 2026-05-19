@@ -1,0 +1,101 @@
+# Fork architecture notes
+
+The upstream TortugaPower BookPlayer is a local-files audiobook player.
+This fork adds three media-server clients and a share-extension web-URL
+importer on top of that base. Don't assume "local files only" when
+reading the code.
+
+## Media-server integrations
+
+All three speak through a shared `MediaServerKind` enum
+(`.jellyfin / .audiobookshelf / .hummingbird`) and a shared progress
+dispatcher that routes bookmarks back to whichever server an imported
+book came from. A fourth `.dodp` kind is planned — see
+[dodp-direction.md](dodp-direction.md).
+
+### Jellyfin (`BookPlayer/Jellyfin/`)
+
+Connection screen, library browser, audiobook details, server-side
+download. Browses audiobook collections drilling Library → Folder →
+Audiobook, plus dedicated Author and Narrator views.
+
+Filters items by `BaseItemDto.type == .audioBook`, which means it
+expects Jellyfin **Books**-type libraries with audiobooks enabled.
+Music-type libraries return `.audio`, not `.audioBook`, and won't
+surface.
+
+Quick Connect support for passwordless sign-in.
+
+### Audiobookshelf (`BookPlayer/AudiobookShelf/`)
+
+Connection screen, library browser, audiobook details, download.
+**Password-only** — no OIDC support. ABS servers that fork users want to
+connect to must keep both `local` and `openid` in `authActiveAuthMethods`;
+OIDC-only setups will block this fork. Users auto-registered via OIDC
+have no local password and can't sign in here until an admin sets one.
+
+### Hummingbird (`BookPlayer/Hummingbird/`)
+
+Talks to a self-hosted Hummingbird server
+(`cobdfamily/hummingbird` docker image) which fronts NNELS via a
+Playwright-based scraper plugin. REST surface for browse + search;
+DODP-shaped `/resources` endpoint for multi-file DAISY downloads with
+503+Retry-After auto-prefetch.
+
+**Audio-format filter:** `HummingbirdLibraryItem.audioFormatIds` keeps
+only format ids 1, 2, 4, 10, 11, 13 (DAISY 2.02 / DAISY 3 / MP3 / EPUB 3
+Full-Text+Audio / DAISY 2.02 Audio / DAISY 3 Audio). EPUB, BRF, PDF,
+AZW3, text-only DAISY, and braille editions are dropped at the client
+boundary because BookPlayer can't play them. Server stays
+format-agnostic so future DODP-aware clients can still see the full
+catalog.
+
+**Bound-book completion:** DAISY 2.02 / 3 archives arrive as multiple
+audio files plus an `.m3u`. A bound-book completer waits for the queue
+to drain then binds the folder into a single audiobook entry. Opt-in
+via `MediaServerSourceInfo.shouldBindFolder = true` (only the
+Hummingbird dispatcher sets it; Jellyfin / ABS folder imports stay
+folder-shaped).
+
+## Share-extension web-URL imports
+
+The share extension accepts plain URLs (not just local files). When the
+host app comes back to the foreground, a `ShareImportFailureStore` (file
+in App Group, NOT UserDefaults — cross-process sync there is unreliable)
+gets drained and any failures surface as a persistent alert with a
+VoiceOver announcement.
+
+Cross-process state between the share extension and the host app uses
+file-backed JSON at `containerURL(forSecurityApplicationGroupIdentifier:)`,
+not `UserDefaults(suiteName:)`. Existing stores: `ShareImportFailureStore`,
+`ShareCancelStore`.
+
+MIME validation on downloads is layered: hard-reject
+`text/html|text/plain|application/json|application/xml|application/problem+json`;
+accept `audio/*` and the zip/m3u family; fall back to filename
+extension for `application/octet-stream` or `application/download` or
+missing types.
+
+## Session-expired vs sign-in 401
+
+Sign-in 401 = wrong credentials (different UX path). A mid-session
+401/403 from a saved connection = `IntegrationError.sessionExpired`,
+which only fires when `connection != nil`. The RootView alerts
+special-case via `IntegrationError.isSessionExpired`.
+
+## Task cancellation pattern
+
+View-level `actionTask?.cancel()` on `onDisappear` AND
+`try Task.checkCancellation()` inside the service immediately before
+`connections.append` / `saveConnections` — both halves are required.
+The inner check is load-bearing; without it, the in-flight sign-in
+completes against a torn-down view and persists state for a connection
+the user already cancelled.
+
+## Pro-feature bypass policy
+
+TestFlight bypasses are only for local/fork-owned features (icons,
+themes, the fork's media-server progress sync). Tortuga's paid-backend
+features (cloud sync, data-usage section) stay gated — bypassing would
+be theft of service AND the server validates entitlement independently
+anyway.
