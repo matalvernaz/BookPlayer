@@ -292,13 +292,17 @@ class HummingbirdConnectionService: BPLogger {
     guard trimmed.count >= 2 else { return nil }
     let bookId = trimmed[0]
     let format = trimmed[1]
-    return HummingbirdLibraryItem(
+    let item = HummingbirdLibraryItem(
       bookId: bookId,
       format: format,
       title: api.title,
       downloadURL: downloadURL,
       dueDate: api.dueDate.flatMap(Self.parseISO8601),
     )
+    // BookPlayer can't open EPUB / BRF / PDF / RTF / text-only DAISY, so drop
+    // non-audio editions at the client boundary -- the server still exposes
+    // them for any DODP-compliant client that does support text/braille.
+    return item.isAudioFormat ? item : nil
   }
 
   /// Permissive ISO-8601 parser. Hummingbird emits dates in

@@ -45,6 +45,20 @@ struct HummingbirdLibraryItem: Identifiable, Hashable {
     self.downloadURL = downloadURL
     self.dueDate = dueDate
   }
+
+  /// Format ids that BookPlayer can actually play. Mirrors hummingbird's
+  /// `formats.yaml` -- text/braille/PDF formats are filtered out at the
+  /// client boundary so the bookshelf/search list only shows audio editions
+  /// the app can open. Server stays format-agnostic so future DODP clients
+  /// (a text reader, a braille display app) still see the full catalog.
+  ///
+  /// Audio ids: 1 DAISY-202-FT+A, 2 DAISY-3-FT+A, 4 MP3,
+  /// 10 EPUB-3-FT+A, 11 DAISY-202-Audio, 13 DAISY-3-Audio.
+  static let audioFormatIds: Set<Int> = [1, 2, 4, 10, 11, 13]
+
+  var isAudioFormat: Bool {
+    Self.audioFormatIds.contains(format)
+  }
 }
 
 // MARK: - Decoding from /bookshelf/list and /search
