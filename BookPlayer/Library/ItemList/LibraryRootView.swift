@@ -145,12 +145,35 @@ struct LibraryRootView: View {
         // `documents/folderName/*` and never get imported. Without
         // this prod the user sees "100% downloaded" with no books
         // appearing in the library.
+        //
+        // Reported follow-up: even when the dialog DID appear (via
+        // the folder watcher firing `observeFiles` mid-download
+        // during the brief `processNextDownload` window when
+        // `isDownloading` is momentarily false), the user could
+        // interact with it for a split second before it dismissed.
+        // That's almost certainly a UIKit presentation-conflict
+        // flash: showImport() runs while another modal (the
+        // Hummingbird library sheet, the connection sheet, etc.)
+        // is mid-animation. So this handler also waits ~750ms
+        // before presenting so any in-flight UIKit transition has
+        // a chance to settle.
         guard case .finished = event else { return }
-        // Defer one tick so SingleFileDownloadService's
-        // `currentTask = nil` cleanup (dispatched as a separate
-        // @MainActor Task right after `.finished` is sent) runs
-        // first; otherwise `isDownloading` still reports true.
         Task { @MainActor in
+          // 1. Yield once so SingleFileDownloadService's own
+          //    `currentTask = nil` cleanup (a separate @MainActor
+          //    Task scheduled inside the SAME sink closure, AFTER
+          //    this one) actually runs first. Without the yield,
+          //    our Task is FIFO-first and sees the stale
+          //    `currentTask` -- `isDownloading` reads true and the
+          //    guard below short-circuits exactly when we'd want it
+          //    to fire (the last file in a batch).
+          await Task.yield()
+          // 2. Settle delay. Any concurrent modal animation (sheet
+          //    presentation, dismissal, navigation pop) needs time
+          //    to complete before we layer another modal on top --
+          //    otherwise UIKit can drop the presentation and the
+          //    dialog flashes briefly before disappearing.
+          try? await Task.sleep(nanoseconds: 750_000_000)
           guard
             !singleFileDownloadService.isDownloading,
             importManager.hasPendingFiles()

@@ -214,6 +214,21 @@ class MainCoordinator: NSObject {
       let topVC = WindowHelper.activeWindow?.rootViewController?.getTopVisibleViewController()
     else { return }
 
+    // Defend against the "dialog flashes and dismisses" symptom
+    // reported when the Hummingbird library sheet is in the middle
+    // of being dismissed (or any other modal transition is in
+    // flight). Presenting on a VC that's being-presented or
+    // being-dismissed causes UIKit to either drop the present or
+    // tear the new modal down with the parent's transition. The
+    // import set sticks around in `importManager`, so any later
+    // observeFiles event or scenePhase=.active trigger will pick
+    // this up cleanly when UIKit isn't busy.
+    guard
+      !topVC.isBeingPresented,
+      !topVC.isBeingDismissed,
+      topVC.presentedViewController == nil
+    else { return }
+
     let coordinator = ImportCoordinator(
       flow: .modalFlow(presentingController: topVC),
       importManager: self.importManager
