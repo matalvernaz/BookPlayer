@@ -58,6 +58,12 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
   /// search bar can be cleared without a network round-trip.
   private var bookshelfItems: [HummingbirdLibraryItem] = []
   private var inflightSearch: Task<Void, Never>?
+  /// Tracks the in-flight "prepare download" task (the 503 /
+  /// Retry-After polling loop). Stored so the dismiss button on the
+  /// "Preparing download..." banner can cancel it -- previously the
+  /// banner only hid itself while the polling kept running for up to
+  /// the 5-minute budget.
+  private var inflightDownloadPrep: Task<Void, Never>?
 
   init(
     connectionService: HummingbirdConnectionService,
@@ -128,7 +134,12 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
   /// audio file at library root. BookPlayer's existing library import picks
   /// up either shape.
   func downloadItem(_ item: HummingbirdLibraryItem) {
-    Task { [weak self] in await self?._downloadItem(item) }
+    // Replace any prior prep task. A second tap before the first
+    // completes is treated as "cancel that one, start this one."
+    inflightDownloadPrep?.cancel()
+    inflightDownloadPrep = Task { [weak self] in
+      await self?._downloadItem(item)
+    }
   }
 
   private func _downloadItem(_ item: HummingbirdLibraryItem) async {
@@ -155,8 +166,12 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
       }
 
       // Bound-book flow: fan out into a folder named after the book.
-      // Folder name is the book title sanitised to filesystem-safe.
-      let folderName = Self.sanitisedBookFolderName(item.title)
+      // Folder name is the book title sanitised to filesystem-safe,
+      // then suffixed with the book id so two books that happen to
+      // share a title (or both sanitise to "Hummingbird Book"
+      // because the title was entirely punctuation) don't collide
+      // on the same MediaServerSourceStore key.
+      let folderName = Self.sanitisedBookFolderName(item.title, bookId: item.bookId)
       let requests = try audio.map { res in
         try connectionService.createResourceDownloadRequest(
           res, bookId: item.bookId, folderName: folderName, dueDate: item.dueDate
@@ -203,6 +218,10 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       downloadStatus = nil
+    } catch is CancellationError {
+      // User dismissed the "Preparing download..." banner mid-prep.
+      // Hide the banner; no error toast -- the cancel was deliberate.
+      downloadStatus = nil
     } catch {
       // Surface the real failure to the user instead of dropping it
       // into oslog where they'd never see it. Previous behavior: a
@@ -213,32 +232,62 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     }
   }
 
-  /// Called when the user dismisses an in-progress download status (the
-  /// "Downloading N files" banner). Doesn't actually cancel the
-  /// downloads -- they keep running via the background URLSession --
-  /// just hides the banner.
+  /// Called when the user dismisses the download status banner.
+  ///
+  /// Two phases the banner straddles:
+  /// 1. "Preparing download..." -- the connection service is polling
+  ///    the server's 503/Retry-After loop. Cancelling the tracked
+  ///    Task aborts the loop (the inner ``Task.checkCancellation``
+  ///    propagates), the catch in ``_downloadItem`` handles
+  ///    CancellationError, and the banner hides cleanly.
+  /// 2. "Downloading N files..." -- the URLSession dataTask is in
+  ///    flight via SingleFileDownloadService. Cancellation here only
+  ///    hides the banner; the dataTask runs to completion in the
+  ///    background and the file lands in the library as usual. (A
+  ///    full cancel-during-download would need to thread through
+  ///    SingleFileDownloadService, which is out of scope.)
   func dismissDownloadStatus() {
+    inflightDownloadPrep?.cancel()
+    inflightDownloadPrep = nil
     downloadStatus = nil
   }
 
   // MARK: - Bound-book helpers
 
-  /// Strips characters that filesystems and BookPlayer's import pipeline
-  /// dislike, caps the length, and falls back to a stable default if the
-  /// title sanitises to empty. Doesn't try to deduplicate across existing
-  /// folders -- BookPlayer's library importer handles renaming on collision.
-  private static func sanitisedBookFolderName(_ title: String) -> String {
+  /// Strips characters that filesystems and BookPlayer's import
+  /// pipeline dislike, caps the length, and suffixes the Hummingbird
+  /// book id so two downloads with the same (or empty) title don't
+  /// collide on the same folder name. Without the suffix, two
+  /// distinct NNELS books that share a title would both register the
+  /// same key in `MediaServerSourceStore`, and the second download
+  /// would overwrite the first's progress-sync mapping.
+  private static func sanitisedBookFolderName(_ title: String, bookId: Int) -> String {
     let stripped = title
       .components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|\n\r"))
       .joined(separator: " ")
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    let capped = String(stripped.prefix(120))
-    return capped.isEmpty ? "Hummingbird Book" : capped
+    // Cap to leave room for the " (id)" suffix without blowing past 120 chars.
+    let suffix = " (\(bookId))"
+    let titleBudget = max(0, 120 - suffix.count)
+    let base = stripped.isEmpty
+      ? "Hummingbird Book"
+      : String(stripped.prefix(titleBudget))
+    return base + suffix
   }
 
-  /// Writes a simple m3u playlist into the bound-book folder listing the
-  /// expected audio filenames in their server-provided order. Fire-and-
-  /// forget: best-effort so a failure here doesn't block the downloads.
+  /// Writes a simple m3u playlist into the bound-book folder listing
+  /// the audio filenames in deterministic order. Fire-and-forget:
+  /// best-effort so a failure here doesn't block the downloads.
+  ///
+  /// Sort order is the localised case-insensitive lex of ``localURI``
+  /// (the path the file would have inside the original DAISY zip).
+  /// The server emits resources in zip storage order, which for most
+  /// real-world DAISY archives is also lexicographic -- but the spec
+  /// does NOT guarantee that, and we've seen archives where the
+  /// natural order produced ``[12.mp3, 1.mp3, 2.mp3, ...]``. Sorting
+  /// the playlist locks playback order to something predictable;
+  /// DAISY-aware navigation through NCC is a separate concern that
+  /// BookPlayer doesn't use today.
   private static func writePlaylist(
     folderName: String,
     bookTitle: String,
@@ -250,8 +299,11 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     } catch {
       return
     }
+    let ordered = audioResources.sorted { lhs, rhs in
+      lhs.localURI.localizedStandardCompare(rhs.localURI) == .orderedAscending
+    }
     var lines = ["#EXTM3U", "#PLAYLIST:\(bookTitle)"]
-    for res in audioResources {
+    for res in ordered {
       // SingleFileDownloadService strips paths and keeps only
       // lastPathComponent when saving (eg. "audio/01.mp3" -> "01.mp3").
       let filename = (res.localURI as NSString).lastPathComponent

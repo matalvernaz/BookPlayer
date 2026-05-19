@@ -82,14 +82,38 @@ struct HummingbirdLibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       default:
-        List(viewModel.items) { item in
-          HummingbirdLibraryListItemView(item: item) {
-            viewModel.downloadItem(item)
+        if viewModel.items.isEmpty {
+          // Distinguish "loaded, nothing here" from "still loading" so
+          // the user doesn't stare at an empty List wondering whether
+          // their search failed silently. Different copy depending on
+          // whether a search is active or the bookshelf is just empty.
+          let activeSearch = !viewModel.searchQuery
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+          VStack(spacing: 12) {
+            Image(systemName: activeSearch ? "magnifyingglass" : "books.vertical")
+              .font(.largeTitle)
+              .foregroundStyle(theme.secondaryColor)
+              .accessibilityHidden(true)
+            Text(activeSearch
+                 ? "search_no_results_title".localized
+                 : "library_empty_title".localized)
+              .multilineTextAlignment(.center)
+              .foregroundStyle(theme.secondaryColor)
+              .padding(.horizontal)
           }
-        }
-        .listStyle(.plain)
-        .refreshable {
-          await viewModel.loadBookshelf()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .accessibilityElement(children: .combine)
+        } else {
+          List(viewModel.items) { item in
+            HummingbirdLibraryListItemView(item: item) {
+              viewModel.downloadItem(item)
+            }
+          }
+          .listStyle(.plain)
+          .refreshable {
+            await viewModel.loadBookshelf()
+          }
         }
       }
       }  // end Group

@@ -16,10 +16,13 @@ import Foundation
 /// Bookshare/RNIB/etc.). One BookPlayer integration is therefore a client of N
 /// libraries simultaneously, depending on which plugin the server is running.
 ///
-/// Auth model: every authenticated endpoint takes `?username=` as a query param.
-/// `/login` validates credentials. We keep the password in the connection data so
-/// we can re-validate without forcing the user to sign in every cold start --
-/// Hummingbird itself doesn't issue session tokens at the REST surface.
+/// Auth model: HTTP Basic on every authenticated endpoint. `/login` validates
+/// the credentials and the server caches the validation for ~15 min so per-
+/// request plugin checks aren't repeated. We keep the password in the
+/// connection data so we can attach the Basic header on every call without
+/// forcing the user to sign in every cold start -- Hummingbird itself
+/// doesn't issue session tokens at the REST surface (that's the KADOS
+/// surface's job, which DAISY-Online clients use).
 @Observable
 class HummingbirdConnectionService: BPLogger {
   private static let activeConnectionIDKey = "hummingbird_active_connection_id"
@@ -230,6 +233,33 @@ class HummingbirdConnectionService: BPLogger {
     _ = try validateAuthenticatedResponse(response)
   }
 
+  /// GET the server-side bookmark for ``bookId`` (the Hummingbird
+  /// node_id). Returns the opaque bookmark dict the storage layer
+  /// round-tripped, or `nil` if no bookmark has been set yet.
+  ///
+  /// HummingbirdProgressReporter pushes the BookPlayer-flavored shape
+  /// `{currentTime, duration, progress, isFinished}` on every tick;
+  /// this is the symmetric pull so a fresh download on a second
+  /// device picks up the resume position from the first.
+  public func fetchBookmark(bookId: String) async throws -> [String: Any]? {
+    guard let connection else { throw URLError(.userAuthenticationRequired) }
+    let url = connection.url
+      .appendingPathComponent("protocols/hummingbird/v1/bookshelf/bookmark")
+      .appendingPathComponent(bookId)
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    let (data, response) = try await urlSession.data(for: request)
+    _ = try validateAuthenticatedResponse(response)
+    guard
+      let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      let bookmark = envelope["bookmark"] as? [String: Any],
+      !bookmark.isEmpty
+    else {
+      return nil
+    }
+    return bookmark
+  }
+
   public func search(query: String, page: Int = 0) async throws -> [HummingbirdLibraryItem] {
     guard let connection else { throw URLError(.userAuthenticationRequired) }
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -301,10 +331,22 @@ class HummingbirdConnectionService: BPLogger {
     // DODP-clean async pattern (hummingbird >= 0.4.1): cold-cache
     // requests get 503 + Retry-After while the server-side prefetch
     // task warms the cache. We poll until READY (200), MISSING (404),
-    // or we hit the budget. Each request is short (just a status
-    // check); the slow work happens server-side in a background task.
-    let pollBudget: Date = Date().addingTimeInterval(300)  // 5 minute cap
+    // user-cancelled, or we hit the budget. Each request is short
+    // (just a status check); the slow work happens server-side in a
+    // background task.
+    //
+    // 20 minutes is the hard upper bound. NNELS multi-GB DAISY
+    // archives over a slow link have been seen to take 8+ minutes
+    // server-side; the previous 5-minute cap aborted mid-prepare and
+    // the user got a generic error right when the file was about to
+    // land. Users who want to bail before the budget can tap the
+    // dismiss button on the "Preparing download..." banner --
+    // HummingbirdLibraryViewModel cancels the surrounding Task, the
+    // Task.checkCancellation below propagates the cancel, and this
+    // function throws CancellationError.
+    let pollBudget: Date = Date().addingTimeInterval(20 * 60)
     while true {
+      try Task.checkCancellation()
       var request = URLRequest(url: url)
       applyAuthenticatedHeaders(to: &request, connection: connection)
       request.timeoutInterval = 30
@@ -313,9 +355,6 @@ class HummingbirdConnectionService: BPLogger {
         throw IntegrationError.unexpectedResponse(code: nil)
       }
       if http.statusCode == 503 {
-        // Server is preparing the cache. Wait per Retry-After and
-        // poll again. Caller (HummingbirdLibraryViewModel) keeps the
-        // "Preparing download..." banner visible across these polls.
         if Date() > pollBudget {
           throw IntegrationError.unexpectedResponse(code: 503)
         }
@@ -450,10 +489,10 @@ class HummingbirdConnectionService: BPLogger {
     connection: HummingbirdConnectionData
   ) {
     applyCustomHeaders(to: &request, headers: connection.customHeaders)
-    // Hummingbird's REST surface doesn't actually verify credentials per-request --
-    // it gates on the username being valid. We still send Basic auth so reverse
-    // proxies in front of Hummingbird (cobd's homelab uses Traefik + SSO) can
-    // optionally enforce on it.
+    // Hummingbird >= 0.2.0 validates Basic credentials per-request
+    // (with a 15-min TTL cache to avoid Playwright per hit on NNELS).
+    // The header also covers reverse proxies in front of Hummingbird
+    // (cobd's homelab uses Traefik + SSO).
     let basic = "\(connection.userName):\(connection.password)"
     if let encoded = basic.data(using: .utf8)?.base64EncodedString() {
       request.setValue("Basic \(encoded)", forHTTPHeaderField: "Authorization")

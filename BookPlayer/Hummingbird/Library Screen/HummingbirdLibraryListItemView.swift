@@ -17,14 +17,40 @@ struct HummingbirdLibraryListItemView: View {
 
   /// Pretty-printed due-date string for the subtitle, or nil when the book
   /// is from a library without a loan period (NNELS).
+  ///
+  /// Uses ``RelativeDateTimeFormatter`` so the subtitle reads as a
+  /// countdown ("Due in 3 days", "Due today", "Overdue 2 days") rather
+  /// than a flat date stamp. Localised strings supply the wrapper copy
+  /// in three buckets: overdue / today / future; the formatter fills
+  /// in the unit-aware fragment ("3 days", "in 1 hour", etc.).
   private var dueDateLabel: String? {
     guard let dueDate = item.dueDate else { return nil }
-    let formatter = DateFormatter()
-    formatter.dateStyle = .medium
-    formatter.timeStyle = .none
+
+    let calendar = Calendar.current
+    let now = Date()
+    let dayDiff = calendar.dateComponents(
+      [.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: dueDate)
+    ).day ?? 0
+
+    // Same-calendar-day -> "Due today." Distinct from "in a few hours"
+    // because users care whether they can still listen tonight, not
+    // the exact hour.
+    if dayDiff == 0 {
+      return "due_date_today".localized
+    }
+
+    let relative = RelativeDateTimeFormatter()
+    relative.unitsStyle = .full
+    relative.dateTimeStyle = .named
+    let fragment = relative.localizedString(for: dueDate, relativeTo: now)
+
+    if dueDate < now {
+      return String.localizedStringWithFormat(
+        "due_date_overdue_format".localized, fragment
+      )
+    }
     return String.localizedStringWithFormat(
-      "due_date_subtitle_format".localized,
-      formatter.string(from: dueDate)
+      "due_date_subtitle_format".localized, fragment
     )
   }
 

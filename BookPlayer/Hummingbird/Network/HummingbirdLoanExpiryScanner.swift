@@ -47,7 +47,9 @@ final class HummingbirdLoanExpiryScanner: BPLogger {
     self.now = now
     // Re-sweep on every foreground transition. A user can borrow a book on
     // another device, listen on this one until the loan expires, and we
-    // want it gone the next time they open the app.
+    // want it gone the next time they open the app. The launch-time
+    // sweep is triggered from MainCoordinator after this init returns
+    // (see MainCoordinator's super.init follow-up Task).
     self.foregroundObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.willEnterForegroundNotification,
       object: nil,

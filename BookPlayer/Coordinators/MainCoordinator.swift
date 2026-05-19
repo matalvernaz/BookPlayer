@@ -45,6 +45,11 @@ class MainCoordinator: NSObject {
   /// downloads finish. Resilient to mid-batch app termination via the
   /// foreground-transition + launch sweeps.
   private let hummingbirdBoundBookCompleter: HummingbirdBoundBookCompleter
+  /// Pulls server-side bookmarks for freshly-imported Hummingbird
+  /// books so a resume position set on device A surfaces on device B.
+  /// Pairs with HummingbirdProgressReporter (which pushes the same
+  /// shape upward) to give two-way bookmark sync.
+  private let hummingbirdBookmarkPuller: HummingbirdBookmarkPuller
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -114,6 +119,12 @@ class MainCoordinator: NSObject {
       libraryService: libraryService
     )
     self.hummingbirdBoundBookCompleter = HummingbirdBoundBookCompleter(
+      sourceStore: sourceStore,
+      libraryService: libraryService,
+      downloadService: self.singleFileDownloadService
+    )
+    self.hummingbirdBookmarkPuller = HummingbirdBookmarkPuller(
+      connectionService: hummingbirdService,
       sourceStore: sourceStore,
       libraryService: libraryService,
       downloadService: self.singleFileDownloadService

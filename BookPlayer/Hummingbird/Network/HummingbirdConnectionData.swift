@@ -8,11 +8,11 @@
 
 import Foundation
 
-/// Persisted credentials for one Hummingbird server. Hummingbird's REST surface uses
-/// the username as both the identity AND the per-request auth (every authenticated
-/// endpoint takes a `?username=` query param), so we keep the password in the
-/// keychain alongside it -- the connection is a long-lived "I am this user" handle,
-/// not a short-lived bearer token like ABS's.
+/// Persisted credentials for one Hummingbird server. Hummingbird's REST surface
+/// validates HTTP Basic on every request (with a 15-min server-side cache), so
+/// we keep the password in the keychain to rebuild the header on every call --
+/// the connection is a long-lived "I am this user" handle, not a short-lived
+/// bearer token like ABS's.
 struct HummingbirdConnectionData: Codable, Identifiable {
   let id: String
   let url: URL
