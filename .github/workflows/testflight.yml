@@ -7,6 +7,11 @@ on:
   push:
     branches: [test/all-changes]
   workflow_dispatch:
+    inputs:
+      notes:
+        description: "What-to-Test notes (overrides commit message)."
+        required: false
+        default: ""
 
 concurrency:
   group: testflight-deploy
@@ -115,17 +120,45 @@ jobs:
       # that the local deploy.sh flow ships -- mirrored onto the Mac at
       # ~/bookplayer-deploy/ during runner setup.
       - name: Attach to External Testers group
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          MANUAL_NOTES: ${{ github.event.inputs.notes }}
         run: |
           set -euo pipefail
           # shellcheck disable=SC1090
           source ~/.config/bookplayer-deploy/secrets.env
-          # Use the commit subject as the What-to-Test notes so testers see
-          # what changed in this build. First line of the commit message; falls
-          # back to a generic string if the commit had no message.
-          notes=$(printf '%s' "${COMMIT_MSG}" | head -n1)
+
+          # Resolve What-to-Test notes in priority order:
+          #   1. Manual workflow_dispatch input (explicit override).
+          #   2. `Release-Notes:` trailer in the commit body. Everything
+          #      after the colon on that line through the next blank line
+          #      becomes the notes, so multi-line notes are supported.
+          #   3. First line of the commit message (the subject).
+          #   4. Generic fallback so the field is never empty.
+          notes=""
+          if [[ -n "${MANUAL_NOTES:-}" ]]; then
+            notes="${MANUAL_NOTES}"
+          fi
+          if [[ -z "${notes}" && -n "${COMMIT_MSG:-}" ]]; then
+            notes=$(printf '%s' "${COMMIT_MSG}" | awk '
+              /^[Rr]elease-[Nn]otes:/ {
+                sub(/^[Rr]elease-[Nn]otes:[[:space:]]*/, "")
+                found = 1
+                print
+                next
+              }
+              found && /^$/ { exit }
+              found { print }
+            ')
+          fi
+          if [[ -z "${notes}" ]]; then
+            notes=$(printf '%s' "${COMMIT_MSG}" | head -n1)
+          fi
           if [[ -z "${notes}" ]]; then
             notes="New build available."
           fi
+          echo "::notice::Tester notes: ${notes}"
+
           python3 ~/bookplayer-deploy/testflight-add-to-group.py \
             --build-number "${BUILD_NUMBER}" \
             --bundle-id "${ASC_BUNDLE_ID}" \
@@ -134,5 +167,3 @@ jobs:
             --key-id "${ASC_KEY_ID}" \
             --issuer-id "${ASC_ISSUER_ID}" \
             --key-path "${ASC_KEY_PATH}"
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
