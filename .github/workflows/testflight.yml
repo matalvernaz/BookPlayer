@@ -63,6 +63,11 @@ jobs:
             ~/Library/Keychains/login.keychain-db >/dev/null
 
           echo "Archiving..."
+          # Pass ASC API credentials so -allowProvisioningUpdates can refresh
+          # the team's provisioning profile via App Store Connect instead of
+          # via Xcode's GUI-keychain "Accounts" mechanism. The latter isn't
+          # reachable from a launchd-spawned process and fails with
+          # "No Accounts: Add a new account in Accounts settings."
           xcodebuild archive \
             -project BookPlayer.xcodeproj \
             -scheme BookPlayer \
@@ -70,6 +75,9 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
             -allowProvisioningUpdates \
+            -authenticationKeyPath "${ASC_KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}" \
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
             CURRENT_PROJECT_VERSION="${BUILD_NUMBER}"
