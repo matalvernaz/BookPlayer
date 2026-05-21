@@ -789,7 +789,17 @@ extension PlayerManager {
       currentItem.isBoundBook
       ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
       : boundedTime
-    self.audioPlayer.seek(to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
+    // Sample-accurate seek. FLAC/Ogg/Opus/WAV assets are loaded without
+    // AVURLAssetPreferPreciseDurationAndTimingKey for fast startup, which
+    // means AVPlayer has no seek index — default tolerances of
+    // kCMTimePositiveInfinity let it land at any frame boundary, often
+    // many seconds earlier than the requested time. Zero tolerances force
+    // AVFoundation to decode to the exact target.
+    self.audioPlayer.seek(
+      to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
+      toleranceBefore: .zero,
+      toleranceAfter: .zero
+    )
   }
 
   func jumpTo(_ time: Double, recordBookmark: Bool = true) {
@@ -826,7 +836,11 @@ extension PlayerManager {
       currentItem.isBoundBook
       ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
       : boundedTime
-    self.audioPlayer.seek(to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
+    self.audioPlayer.seek(
+      to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
+      toleranceBefore: .zero,
+      toleranceAfter: .zero
+    )
   }
 
   func forward() {
@@ -1022,9 +1036,21 @@ extension PlayerManager {
       let timeInChapter = item.currentTime - item.currentChapter.start
       let rewindTimeLimited = min(rewindTimeMin, timeInChapter, timePassed)
 
+      // Skip the seek entirely when the rewind is effectively a no-op
+      // (instant pause/play). On precisely-timed assets that seek is
+      // harmless, but on FLAC/Ogg/Opus/WAV — loaded without a precise
+      // seek index for fast startup — AVPlayer's default tolerances
+      // can snap to a frame boundary seconds before the requested
+      // position, surfacing as an unexpected rewind on play.
+      guard rewindTimeLimited >= 0.5 else { return }
+
       let newPlayerTime = max(CMTimeGetSeconds(self.audioPlayer.currentTime()) - rewindTimeLimited, 0)
 
-      self.audioPlayer.seek(to: CMTime(seconds: newPlayerTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
+      self.audioPlayer.seek(
+        to: CMTime(seconds: newPlayerTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
+        toleranceBefore: .zero,
+        toleranceAfter: .zero
+      )
     }
 
     func getMaxInterval() -> TimeInterval {
