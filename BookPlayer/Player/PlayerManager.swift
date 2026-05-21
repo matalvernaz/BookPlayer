@@ -41,6 +41,17 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   private var canFetchRemoteURL = true
   /// Pending audio-session retry task scheduled when activation fails (TestFlight builds only).
   private var audioSessionRetryTask: Task<Void, Never>?
+  /// Tracks an in-flight initial seek issued from `loadChapterOperation`.
+  /// AVPlayer.seek is async; if autoplay was queued and the item reaches
+  /// `.readyToPlay` before the seek completes, playback would start at
+  /// the pre-seek position. While this is true we hold off autoplay and
+  /// let the seek completion handler kick it off instead.
+  private var initialSeekInProgress = false
+  /// Generation counter bumped on each `load(_:)` so stacked loads can
+  /// tell their seek completions apart. A late completion from a
+  /// cancelled earlier load must not clear `initialSeekInProgress` or
+  /// trigger autoplay for the newer load.
+  private var loadGeneration: Int = 0
   private var hasObserverRegistered = false
   private var observeStatus: Bool = false {
     didSet {
@@ -369,6 +380,11 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
     playTask?.cancel()
     loadChapterTask?.cancel()
 
+    // Bump generation so any in-flight seek completion from a previous
+    // load is ignored when it fires.
+    loadGeneration &+= 1
+    initialSeekInProgress = false
+
     // Recover in case of failure
     if audioPlayer.status == .failed {
       setupPlayerInstance()
@@ -491,7 +507,7 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
           // add 1 second as a finished threshold
           if currentItem.currentTime > 0.0 {
             let time = (currentItem.currentTime + 1) >= currentItem.duration ? 0 : currentItem.currentTime
-            self.initializeChapterTime(time)
+            self.beginInitialSeek(to: time)
           }
         }
 
@@ -608,11 +624,21 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
     self.isPlayingSubscription =
       timeControlPassthroughPublisher
       .delay(for: .seconds(0.1), scheduler: RunLoop.main, options: .none)
-      .sink { timeControlStatus in
-        if timeControlStatus == .paused {
-          try? AVAudioSession.sharedInstance().setActive(false)
+      .sink { [weak self] timeControlStatus in
+        guard let self else { return }
+        // `delay` buffers the value — if the user tapped play within
+        // the 100ms window, the session is already active again and
+        // we must NOT deactivate it. Re-check the live player state
+        // before tearing the session down.
+        guard timeControlStatus == .paused,
+          self.audioPlayer.timeControlStatus == .paused,
+          self.playbackQueued != true
+        else {
           self.isPlayingSubscription?.cancel()
+          return
         }
+        try? AVAudioSession.sharedInstance().setActive(false)
+        self.isPlayingSubscription?.cancel()
       }
   }
 
@@ -800,6 +826,47 @@ extension PlayerManager {
       toleranceBefore: .zero,
       toleranceAfter: .zero
     )
+  }
+
+  /// Initial seek used by `loadChapterOperation` when the loaded item has
+  /// a non-zero resume position. Differs from `initializeChapterTime` in
+  /// that it holds back queued autoplay until the seek completes — without
+  /// this gate, `playImmediately` can fire from the `.readyToPlay` observer
+  /// while the seek is still in flight, and playback starts from the
+  /// pre-seek position (most visible on unindexed FLAC where seeks are
+  /// slower).
+  func beginInitialSeek(to time: Double) {
+    guard let currentItem = self.currentItem else { return }
+
+    let boundedTime = min(max(time, 0), currentItem.duration)
+    let newTime =
+      currentItem.isBoundBook
+      ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
+      : boundedTime
+
+    initialSeekInProgress = true
+    let seekGeneration = loadGeneration
+    audioPlayer.seek(
+      to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
+      toleranceBefore: .zero,
+      toleranceAfter: .zero
+    ) { [weak self] _ in
+      DispatchQueue.main.async {
+        guard let self else { return }
+        // Stale completion from a load that was superseded — ignore.
+        guard self.loadGeneration == seekGeneration else { return }
+        self.initialSeekInProgress = false
+        // If autoplay was queued and the item is already ready, the
+        // `.readyToPlay` observer skipped firing playback because the
+        // seek was still pending — pick it up now.
+        if self.playbackQueued == true,
+          self.playerItem?.status == .readyToPlay
+        {
+          self.play(autoPlayed: true)
+          self.playbackQueued = nil
+        }
+      }
+    }
   }
 
   func jumpTo(_ time: Double, recordBookmark: Bool = true) {
@@ -1106,10 +1173,17 @@ extension PlayerManager {
       self.observeStatus = false
 
       if self.playbackQueued == true {
-        self.play(autoPlayed: true)
+        if !self.initialSeekInProgress {
+          self.play(autoPlayed: true)
+          self.playbackQueued = nil
+        }
+        // If an initial seek is still in flight, leave `playbackQueued = true`
+        // so its completion handler kicks off playback after the seek lands —
+        // otherwise `playImmediately` would render from the pre-seek position.
+      } else {
+        // Clean up flag
+        self.playbackQueued = nil
       }
-      // Clean up flag
-      self.playbackQueued = nil
     case .failed:
       if canFetchRemoteURL,
         let nsError = item.error as? NSError,
