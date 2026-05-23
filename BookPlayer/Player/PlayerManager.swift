@@ -850,12 +850,21 @@ extension PlayerManager {
       to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
       toleranceBefore: .zero,
       toleranceAfter: .zero
-    ) { [weak self] _ in
+    ) { [weak self] finished in
       DispatchQueue.main.async {
         guard let self else { return }
         // Stale completion from a load that was superseded — ignore.
         guard self.loadGeneration == seekGeneration else { return }
         self.initialSeekInProgress = false
+        // Persist the *landed* time, not the requested time. On unindexed
+        // FLAC AVFoundation can snap to a frame boundary near (but not at)
+        // the target; saving the requested time would cause cumulative
+        // drift on the next pause/resume cycle. Skip on finished=false
+        // because that means another seek superseded this one before it
+        // landed — let the newer seek's completion be authoritative.
+        if finished, let currentItem = self.currentItem {
+          self.snapshotPlayerPosition(into: currentItem)
+        }
         // If autoplay was queued and the item is already ready, the
         // `.readyToPlay` observer skipped firing playback because the
         // seek was still pending — pick it up now.
@@ -884,16 +893,20 @@ extension PlayerManager {
     let boundedTime = min(max(time, 0), currentItem.duration)
 
     let chapterBeforeSkip = currentItem.currentChapter
-    updatePlaybackTime(item: currentItem, time: boundedTime)
     if let chapterAfterSkip = currentItem.getChapter(at: boundedTime),
       chapterBeforeSkip != chapterAfterSkip
     {
       currentItem.currentChapter = chapterAfterSkip
       // If chapters are different, and it's a bound book,
-      // load the new chapter
+      // load the new chapter. Persist `boundedTime` here so the new
+      // chapter's `beginInitialSeek` reads the user's intended resume
+      // position; that seek's completion will reconcile to the landed
+      // value, so a brief stale write is acceptable in exchange for the
+      // new chapter loading at the right place.
       if currentItem.isBoundBook,
         chapterBeforeSkip?.relativePath != chapterAfterSkip.relativePath
       {
+        updatePlaybackTime(item: currentItem, time: boundedTime)
         loadChapterMetadata(chapterAfterSkip)
         return
       }
@@ -903,11 +916,28 @@ extension PlayerManager {
       currentItem.isBoundBook
       ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
       : boundedTime
+    // Defer persistence to the seek completion. AVFoundation honours
+    // zero-tolerance seeks exactly only when the asset has a precise
+    // timing index — unindexed FLAC lands "near" the target. Writing
+    // `boundedTime` up front would lock the model to a position the
+    // player isn't actually at; persisting from the completion writes
+    // the value the next `currentTime()` will return. `loadGeneration`
+    // gates against load-switches superseding the seek mid-flight.
+    let seekGeneration = loadGeneration
     self.audioPlayer.seek(
       to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
       toleranceBefore: .zero,
       toleranceAfter: .zero
-    )
+    ) { [weak self] finished in
+      guard finished else { return }
+      DispatchQueue.main.async {
+        guard let self,
+              self.loadGeneration == seekGeneration,
+              let currentItem = self.currentItem
+        else { return }
+        self.snapshotPlayerPosition(into: currentItem)
+      }
+    }
   }
 
   func forward() {
@@ -1113,11 +1143,23 @@ extension PlayerManager {
 
       let newPlayerTime = max(CMTimeGetSeconds(self.audioPlayer.currentTime()) - rewindTimeLimited, 0)
 
+      let seekGeneration = loadGeneration
       self.audioPlayer.seek(
         to: CMTime(seconds: newPlayerTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
         toleranceBefore: .zero,
         toleranceAfter: .zero
-      )
+      ) { [weak self] finished in
+        guard finished else { return }
+        DispatchQueue.main.async {
+          guard let self,
+                self.loadGeneration == seekGeneration,
+                let currentItem = self.currentItem
+          else { return }
+          // Persist the landed time so model state matches the
+          // post-rewind player position, not the computed target.
+          self.snapshotPlayerPosition(into: currentItem)
+        }
+      }
     }
 
     func getMaxInterval() -> TimeInterval {
@@ -1226,6 +1268,28 @@ extension PlayerManager {
   }
   // swiftlint:enable block_based_kvo
 
+  /// Persist the AVPlayer's current position into Core Data, converting
+  /// player-relative time into book-global time when the item is a bound
+  /// book. Closes the gap where the 1Hz `updateTime` timer was the only
+  /// persistence path: pausing or pausing-then-resuming between ticks
+  /// could lose up to a second of position, and on unindexed FLAC the
+  /// gap was wider because `updateTime` bails out when `playerItem.status`
+  /// transiently drops below `.readyToPlay` around pause/resume cycles.
+  /// Also used inside seek completions to persist the *landed* time
+  /// (which on unindexed FLAC can differ from the requested target) so
+  /// model state never holds an idealised position the player isn't
+  /// actually at.
+  private func snapshotPlayerPosition(into item: PlayableItem) {
+    let playerSeconds = CMTimeGetSeconds(audioPlayer.currentTime())
+    guard playerSeconds.isFinite, playerSeconds >= 0 else { return }
+
+    var bookTime = playerSeconds
+    if item.isBoundBook {
+      bookTime += (item.currentChapter.start - item.currentChapter.chapterOffset)
+    }
+    updatePlaybackTime(item: item, time: bookTime)
+  }
+
   func pause() {
     pause(removeInterruptObserver: true)
   }
@@ -1242,6 +1306,9 @@ extension PlayerManager {
     bindPauseObserver()
     // Set pause state on player and control center
     audioPlayer.pause()
+    if let currentItem = self.currentItem {
+      snapshotPlayerPosition(into: currentItem)
+    }
     playbackQueued = nil
     playTask?.cancel()
     loadChapterTask?.cancel()
