@@ -145,6 +145,11 @@ struct AudiobookShelfRootView: View {
         if (loadError as? IntegrationError)?.isSessionExpired == true {
           Button("integration_sign_in_button".localized) {
             loadError = nil
+            // See JellyfinRootView for the rationale -- the VM's init
+            // locks in `.connected` for a saved connection, which renders
+            // a Sign-Out-only dead end. Force `.foundServer` so the
+            // password field appears.
+            connectionViewModel.prepareForReauth()
             showConnectionForm = true
           }
           Button("cancel_button".localized, role: .cancel) {

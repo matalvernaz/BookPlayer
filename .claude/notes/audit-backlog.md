@@ -111,6 +111,15 @@ security-critical Python surfaces.
 
 ## SHIPPED in this audit
 
+- **C6 (session-expired re-auth dead-end)**: `prepareForReauth()` added
+  to `IntegrationConnectionViewModelProtocol` as a default-impl
+  extension. Each root view (Jellyfin / ABS / Hummingbird) now calls
+  it before presenting the connection sheet from the session-expired
+  alert, forcing the VM out of its init-locked `.connected` state into
+  `.foundServer` so the existing `IntegrationServerFoundView` renders
+  the password field. CustomHeaders / selectedLibraryId / serverName
+  / URL are preserved. Applied to all three integrations because the
+  same trap existed in all three. Audit had this as Jellyfin-specific.
 - **C7 (ABS token in URL query)**: `AudiobookShelfConnectionService.createItemDownloadUrl`
   no longer appends `?token=<apiToken>`. The bearer is now carried by
   `applyAuthenticatedHeaders` (`Authorization: Bearer`) on the request

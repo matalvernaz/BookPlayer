@@ -111,4 +111,21 @@ extension IntegrationConnectionViewModelProtocol {
   var quickConnectStatus: QuickConnectStatus? { nil }
   func handleStartQuickConnect() async throws {}
   func handleCancelQuickConnect() {}
+
+  /// Force the connection sheet into the password-entry posture for a saved
+  /// server whose session has gone stale. Called by each root view before
+  /// presenting the form in response to the session-expired alert's "Sign
+  /// In" action.
+  ///
+  /// Without this, the `@StateObject` VM init sees `connectionService.connection
+  /// != nil` and locks in `connectionState = .connected`, which renders the
+  /// `IntegrationConnectedView` (Sign Out only) -- a dead-end trap where the
+  /// only way out is to delete the connection and re-add it from scratch,
+  /// losing customHeaders and selectedLibraryId. `.foundServer` preserves the
+  /// existing serverName/URL/headers/username (already populated by the VM's
+  /// init) and shows the password field.
+  func prepareForReauth() {
+    connectionState = .foundServer
+    form.password = ""
+  }
 }

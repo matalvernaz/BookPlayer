@@ -108,6 +108,10 @@ struct JellyfinRootView: View {
         if (loadError as? IntegrationError)?.isSessionExpired == true {
           Button("integration_sign_in_button".localized) {
             loadError = nil
+            // Force the VM out of its init-locked `.connected` state into
+            // `.foundServer` so the sheet shows the password field. Without
+            // this, "Sign In" lands the user in a Sign-Out-only dead end.
+            connectionViewModel.prepareForReauth()
             showConnectionForm = true
           }
           Button("cancel_button".localized, role: .cancel) {
