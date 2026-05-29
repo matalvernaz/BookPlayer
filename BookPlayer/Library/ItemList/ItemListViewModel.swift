@@ -482,7 +482,15 @@ extension ItemListViewModel {
 
       syncService.scheduleDelete(items, mode: mode)
     } catch {
+      // Local delete failed -- bail out BEFORE media-server cleanup
+      // runs. The cleanup loop would otherwise drop the source mapping
+      // and (for Hummingbird) fire-and-forget `returnBook` to NNELS,
+      // leaving the user with a still-present local copy that no
+      // longer routes progress AND no longer appears on their NNELS
+      // shelf. Worst-case data-loss combination of the audit.
       loadingState.error = error
+      editMode = .inactive
+      return
     }
 
     for (item, info) in mediaServerHits {

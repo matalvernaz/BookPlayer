@@ -85,3 +85,117 @@ ground truth.
 Pick items from the open list when you want a focused improvement
 session, but verify line numbers and current code shape first — these
 references are starting points, not authoritative locations.
+
+---
+
+# 2026-05-29 audit (Claude Opus 4.7 + Gemini Pro + GPT-5)
+
+Eleven parallel deep-readers covering both previously-audited surfaces
+(Jellyfin/ABS/share-ext at `c6ebcb75`+11 days of drift) and previously-
+unaudited surfaces (Hummingbird/DODP client, FLAC + import races,
+Hummingbird Python server, NNELS plugin, openapis.ca-dodp plugin, watch,
+sync/CoreData/SwiftData, widgets/intents, player/library/coordinators).
+Then a two-round roundtable with Gemini 2.5 Pro + GPT-5 on the
+security-critical Python surfaces.
+
+## Architectural meta-findings
+
+- **META-1**: `MediaServerSourceStore` should disappear; provenance moves
+  onto `LibraryItem` as `originAuthority: MediaOrigin` + `externalId:
+  String?`. Both AIs converged independently. Fixes the structural cause
+  of 5 Criticals plus several Highs.
+- **META-2**: VoiceOver silence is architectural — replace per-screen
+  `UIAccessibility.post` patches with one `.announceStateChanges(of:)`
+  modifier hooked into `.onChange(of: viewModel.state)`. Collapses ~8
+  separate findings.
+
+## SHIPPED in this audit
+
+- **C1 (tracker collision)**: `MediaServerSourceTracker.finalize` was
+  promoting per-file pending entries with bare `suggestedFilename` as
+  the relativePath key, while library items use `<folderName>/<file>`.
+  Two DAISY books with overlapping chapter filenames collided. Fix:
+  `HummingbirdConnectionService.createResourceDownloadRequest` no
+  longer calls `registerPendingDownload` — folder-level provenance from
+  `setSource` is the only Hummingbird mapping. `BookmarkPuller` /
+  `LoanExpiryScanner` lookups now resolve correctly.
+- **C2 (Retry-After)**: `HummingbirdConnectionService` 503-poll Sleep
+  clamped to `[1, 30]` seconds. Negative `Retry-After` no longer traps
+  `UInt64`; huge value no longer pins the Task ~11 days.
+- **C3 (player autoplay-finished)**: `PlayerManager.beginInitialSeek`
+  completion now gates BOTH snapshot and queued-autoplay on `finished`.
+  Superseded seeks no longer fire `play(autoPlayed:)` from the
+  pre-supersession position (most audible on FLAC).
+- **C10 (SwiftData try!)**: `SyncJobScheduler.handleFinishedTask`
+  catches the persistence error, logs, and continues the queue rather
+  than crashing the app.
+- **C12 (delete cleanup return-on-error)**: `ItemListViewModel.handleDelete`
+  bails before media-server cleanup runs when the local delete throws.
+  Was the only Critical with real data-loss semantics: Hummingbird's
+  `returnBook` would POST to NNELS (removing the loan) while the book
+  still existed locally and lost its source mapping.
+
+## OPEN — Critical
+
+- **C4 (KADOS unbounded sessions)** — `hummingbird/protocols/kados/router.py:40`.
+  Plain dict, no TTL/cap/reaper. Fix: `cachetools.TTLCache(maxsize=1024,
+  ttl=86400)` + refresh on access. Same shape in `auth._VALIDATED`.
+- **C5 (NNELS SessionExpired)** — `nnels/src/nnels/fetcher.py`. Centralize
+  Drupal login-form detection in `Fetcher.get_raw`; raise `SessionExpired`
+  rather than letting parser-returns-empty propagate. Remove catch-all
+  `except Exception` at `metadata.py:172`.
+- **C6 (Jellyfin re-auth dead-end)** — `JellyfinRootView.swift:108-116`
+  + `IntegrationConnectionView.swift:107-117, 176-178`. Session-expired
+  alert routes user to a `.connected` view with no password field, no
+  sign-in button. Fix: introduce `.reauthRequired` state or split "has
+  saved connection" from "currently authenticated."
+- **C7 (ABS token in URL query)** — `AudiobookShelfConnectionService.swift:495-506`.
+  Bearer token leaks into background URLSession task descriptions
+  (on-disk), `MediaServerSourceStore` plist key (on-disk), every proxy
+  log on the user's path. Fix: switch to `Authorization: Bearer` on
+  download; re-key store by `(connectionId, itemId)`.
+- **C9 (Watch KVO main-thread)** — `BookPlayerWatch/.../PlayerManager.swift:983-1015`.
+  Mirror phone-side `DispatchQueue.main.async` wrap. Removes the
+  `AVPlayerItem was deallocated while KVO still registered` crash.
+- **C11 / SY-H4 (Tortuga vs media-server)** — `SyncService.swift:194-202, 312`
+  + `ItemListViewModel.swift:483`. Tortuga delete/metadata-update fires
+  for media-server items. Gate every Tortuga enqueue on
+  `mediaServerSourceStore.source(for:) == nil` until META-1 lands.
+- **DODP-C1 (log_on fail-open)** — `openapis_ca_dodp/client.py:_unwrap_body`
+  first-child fallback + `_result_bool` default-True combine to
+  authenticate against any 200 SOAP body with no Fault. For auth-shaped
+  methods (`log_on`, `issue_content`, etc.), require the exact namespaced
+  `<method>Response>` wrapper and the exact `<method>Result>` element.
+- **WC-C1 / WC-C2 (Watch connectivity silent drops)** — GPT-5 disputes
+  Critical → High; user-visible "I tapped pause but it kept playing" is
+  trust-breaking. Fix: `WCSession.isReachable` guard + error handlers
+  on every send; mutate watch UI only on reply/ack.
+
+## OPEN — High
+
+Approximately 30+ High findings across the eleven surfaces. See the
+synthesized audit conversation for the full punch list; major themes:
+- DODP/Hummingbird Python server hardening: defusedxml, KADOS rate
+  limit on anonymous `authenticate`, `hmac.compare_digest` on API key,
+  generic 500 instead of `str(e)`, JSON-body size cap, split-timeout
+  `httpx.Timeout(connect/read/write/pool)`, concurrency semaphore.
+- DODP plugin auth-fault classification fragility (substring matching on
+  English `faultstring`; ignores HTTP 401/403 and `faultcode`).
+- Bookmark sync last-writer-wins with no `updatedAt`.
+- Multiple VoiceOver gaps (Jellyfin Quick Connect status, ABS module,
+  watch loading overlays, widget BarView accessibility) — all subsumed
+  by META-2.
+- Jellyfin sortBy race + missing URL normalization + Quick Connect
+  subscription survives sheet dismiss.
+- Sync: `pruneStalePending` never implemented; SwiftData V1→V2 migration
+  not crash-safe; `TasksDataManager.updateTaskModel` silently drops
+  speed updates (Float/Double cast mismatch).
+- Player: `initialSeekInProgress` stuck-true after `mediaServicesWereReset`;
+  audio-session recovery has no global retry cap.
+
+## OPEN — Medium / Low
+
+Captured in the per-agent reports. Bulk are:
+- defensive-symmetry items from the prior audit downgraded backlog
+- VoiceOver gaps absorbed by META-2
+- format/timeout/concurrency nits with no current user-visible impact

@@ -362,7 +362,13 @@ class HummingbirdConnectionService: BPLogger {
         if Date() > pollBudget {
           throw IntegrationError.unexpectedResponse(code: 503)
         }
-        let retryAfter = Int(http.value(forHTTPHeaderField: "Retry-After") ?? "10") ?? 10
+        // Clamp Retry-After to [1, 30] seconds. Without the clamp a
+        // hostile or misconfigured server could send `Retry-After: -1`
+        // (UInt64(-1) traps) or `Retry-After: 9999999` (sleeps the
+        // Task ~115 days before the outer pollBudget check fires).
+        // HTTP-date form is not honored; falls through to the default.
+        let raw = Int(http.value(forHTTPHeaderField: "Retry-After") ?? "10") ?? 10
+        let retryAfter = max(1, min(raw, 30))
         try await Task.sleep(nanoseconds: UInt64(retryAfter) * 1_000_000_000)
         try Task.checkCancellation()
         continue
@@ -386,15 +392,14 @@ class HummingbirdConnectionService: BPLogger {
           let url = URL(string: resource.uri) else {
       throw URLError(.userAuthenticationRequired)
     }
-    mediaServerSourceStore?.registerPendingDownload(
-      url,
-      info: MediaServerSourceInfo(
-        kind: .hummingbird,
-        connectionId: connection.id,
-        itemId: "\(bookId)",
-        dueDate: dueDate
-      )
-    )
+    // Intentionally NOT registering per-file pending downloads. The
+    // tracker's finalize() promotes pending entries using the task's
+    // `suggestedFilename` (a bare basename like "01.mp3"), but the
+    // actual library item path is "<folderName>/01.mp3" -- two DAISY
+    // books sharing chapter filenames would collide on the bare key
+    // and overwrite each other's source info. Folder-level provenance
+    // is registered by the view model in handleDownload (the bound
+    // book is the progress-tracking granularity).
     var request = URLRequest(url: url)
     applyAuthenticatedHeaders(to: &request, connection: connection)
     return request

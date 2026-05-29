@@ -862,7 +862,15 @@ extension PlayerManager {
         // drift on the next pause/resume cycle. Skip on finished=false
         // because that means another seek superseded this one before it
         // landed — let the newer seek's completion be authoritative.
-        if finished, let currentItem = self.currentItem {
+        // Gate BOTH snapshot and queued-autoplay on `finished`. A
+        // superseded seek (finished=false) means a newer seek is in
+        // flight whose completion is authoritative -- snapshotting
+        // here would record the wrong position, and firing play here
+        // would start playback from the pre-supersession position
+        // (most audible on unindexed FLAC where the new seek is slow
+        // to land).
+        guard finished else { return }
+        if let currentItem = self.currentItem {
           self.snapshotPlayerPosition(into: currentItem)
         }
         // If autoplay was queued and the item is already ready, the

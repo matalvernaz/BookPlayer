@@ -413,7 +413,16 @@ public class SyncJobScheduler: JobSchedulerProtocol, BPLogger {
     lockQueue.asyncAfter(deadline: .now() + .seconds(1)) {
       Task { @MainActor in
         _ = await self.initializeStoreTask?.result
-        try! await self.taskStore.finishedTask(id: task.id, jobType: task.jobType)
+        // Transient SwiftData errors (disk full, write conflict,
+        // context corruption) must not crash the app on a normal sync
+        // success path. Log and continue -- the queue advances either
+        // way so a subsequent flush picks the row back up via the
+        // existing task-ID idempotency.
+        do {
+          try await self.taskStore.finishedTask(id: task.id, jobType: task.jobType)
+        } catch {
+          Self.logger.error("Failed to persist finishedTask \(task.id): \(error)")
+        }
         self.queueNextTask()
         self.tasksProgress.removeValue(forKey: task.progressKey)
       }

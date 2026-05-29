@@ -195,9 +195,10 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
 
       // Register the bound folder as a media-server source so the
       // progress dispatcher can route bookmarks back to the server when
-      // BookPlayer plays this bound book. The per-file source mappings
-      // registered inside createResourceDownloadRequest cover progress
-      // on individual chapters; this one covers the bound book itself.
+      // BookPlayer plays this bound book. The bound book is the
+      // progress-tracking granularity -- per-file registrations are
+      // intentionally skipped (createResourceDownloadRequest) because
+      // task `suggestedFilename`s collide across DAISY archives.
       guard let connection = connectionService.connection,
             let sourceStore = connectionService.mediaServerSourceStore else { return }
       sourceStore.setSource(
