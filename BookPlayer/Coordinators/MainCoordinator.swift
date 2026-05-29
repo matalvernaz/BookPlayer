@@ -99,6 +99,10 @@ class MainCoordinator: NSObject {
     audiobookshelfService.mediaServerSourceStore = sourceStore
     jellyfinService.mediaServerSourceStore = sourceStore
     hummingbirdService.mediaServerSourceStore = sourceStore
+    // Gate Tortuga sync against media-server-sourced items so progress
+    // ticks / deletes / list-syncs don't cross-talk with the source
+    // server's authoritative record.
+    syncService.setMediaServerSourceStore(sourceStore)
     self.mediaServerSourceTracker = MediaServerSourceTracker(
       store: sourceStore,
       downloadService: self.singleFileDownloadService

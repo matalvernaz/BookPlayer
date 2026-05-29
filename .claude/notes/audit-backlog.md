@@ -111,6 +111,21 @@ security-critical Python surfaces.
 
 ## SHIPPED in this audit
 
+- **C11 + SY-H4 (Tortuga vs media-server)**: SyncService now holds an
+  optional `MediaServerSourceStore` reference, set via
+  `setMediaServerSourceStore` after `MainCoordinator` builds the store.
+  - `scheduleMetadataUpdate` returns early for media-server items so
+    progress ticks don't cross-talk Tortuga's record.
+  - `scheduleDelete` partitions and only queues Tortuga jobs for
+    locally-sourced items; media-server cleanup (e.g. Hummingbird's
+    `returnBook` to NNELS) is owned by `handleMediaServerCleanup`.
+  - `processContentsResponse`'s "remove items missing from Tortuga"
+    pass now unions the keep-set with `mediaServerSourceStore
+    .allResolved.keys` so a list-sync doesn't silently nuke every
+    Hummingbird/Jellyfin/ABS item the user owns.
+  Watch / previews / tests pass `nil` for the store and the gate
+  short-circuits to "treat everything as Tortuga-owned" -- their old
+  behavior.
 - **C6 (session-expired re-auth dead-end)**: `prepareForReauth()` added
   to `IntegrationConnectionViewModelProtocol` as a default-impl
   extension. Each root view (Jellyfin / ABS / Hummingbird) now calls

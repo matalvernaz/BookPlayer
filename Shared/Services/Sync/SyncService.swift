@@ -106,6 +106,17 @@ public final class SyncService: SyncServiceProtocol, BPLogger {
   private var client: NetworkClientProtocol!
   public var isActive: Bool = false
 
+  /// Optional MediaServerSourceStore used to gate Tortuga sync against
+  /// items whose authoritative origin is a third-party media server
+  /// (Jellyfin / AudiobookShelf / Hummingbird). Items present in this
+  /// store are skipped on metadata/progress update push, on delete push,
+  /// and on the "remove items missing from Tortuga reply" pass. Without
+  /// the gate, Tortuga's record diverges from the source server's --
+  /// progress ticks compete, deletes 404 (best case) or operate on
+  /// stale rows, and media-server items disappear from local library
+  /// on the next list-sync because Tortuga didn't know about them.
+  private var mediaServerSourceStore: MediaServerSourceStore?
+
   /// Dictionary holding the initiating item relative path as key and the download tasks as value
   private var downloadTasksDictionary = [String: [URLSessionTask]]()
   /// Reference to the initiating item path for the download tasks (relevant for bound books)
@@ -133,10 +144,12 @@ public final class SyncService: SyncServiceProtocol, BPLogger {
     isActive: Bool,
     libraryService: LibrarySyncProtocol,
     client: NetworkClientProtocol = NetworkClient(),
-    dataManager: DataManager
+    dataManager: DataManager,
+    mediaServerSourceStore: MediaServerSourceStore? = nil
   ) {
     self.isActive = isActive
     self.libraryService = libraryService
+    self.mediaServerSourceStore = mediaServerSourceStore
     let tasksDataManager = TasksDataManager()
     self.tasksCountService = SyncTasksCountService(tasksDataManager: tasksDataManager)
     self.jobManager = SyncJobScheduler(tasksDataManager: tasksDataManager, dataManager: dataManager)
@@ -145,6 +158,23 @@ public final class SyncService: SyncServiceProtocol, BPLogger {
 
     bindObservers()
     setupBackgroundDownloadSession()
+  }
+
+  /// Late-binding setter for the media-server source store. SyncService
+  /// is built in `AppServices` before `MainCoordinator` instantiates the
+  /// shared `MediaServerSourceStore`; this method plugs it in once the
+  /// store exists so the Tortuga gates start firing.
+  public func setMediaServerSourceStore(_ store: MediaServerSourceStore) {
+    self.mediaServerSourceStore = store
+  }
+
+  /// Items whose authoritative origin is a third-party media server
+  /// (Jellyfin / AudiobookShelf / Hummingbird) must not be pushed to
+  /// Tortuga -- the source server is authoritative for their progress,
+  /// metadata, and lifecycle. Returns false when the store wasn't
+  /// injected (preview / watch / tests).
+  func isMediaServerSourced(_ relativePath: String) -> Bool {
+    mediaServerSourceStore?.source(for: relativePath) != nil
   }
 
   func setupBackgroundDownloadSession() {
@@ -309,7 +339,17 @@ public final class SyncService: SyncServiceProtocol, BPLogger {
     await libraryService.storeNewItems(from: completeItemsDict, parentFolder: parentFolder)
 
     if canDelete {
-      await libraryService.removeItems(notIn: Array(completeItemsDict.keys), parentFolder: parentFolder)
+      // Items whose origin is a media server (Jellyfin / ABS /
+      // Hummingbird) won't appear in Tortuga's reply because Tortuga
+      // doesn't know about them -- the source server is authoritative.
+      // Without this augmentation, the next list-sync would silently
+      // nuke every media-server-sourced item the user owns, and the
+      // associated `MediaServerSourceStore` entries would orphan.
+      var keepPaths = Set(completeItemsDict.keys)
+      if let mediaServerPaths = mediaServerSourceStore?.allResolved.keys {
+        keepPaths.formUnion(mediaServerPaths)
+      }
+      await libraryService.removeItems(notIn: Array(keepPaths), parentFolder: parentFolder)
     }
 
     /// Only handle if the last item played is stored in the local library
@@ -507,6 +547,14 @@ extension SyncService {
       let relativePath = params["relativePath"] as? String
     else { return }
 
+    // The source server (Jellyfin / ABS / Hummingbird) is authoritative
+    // for media-server-sourced items. Pushing their progress / metadata
+    // to Tortuga makes Tortuga's record drift from the source's, and
+    // doubles the bandwidth/server load per tick.
+    if isMediaServerSourced(relativePath) {
+      return
+    }
+
     // Decision 9: drop `orderRank`-only updates when the item's parent location
     // has an automatic sticky sort. Other devices recompute ranks locally from
     // (item set + sort rule), so syncing the rank churn would be redundant.
@@ -587,8 +635,18 @@ extension SyncService {
   public func scheduleDelete(_ items: [SimpleLibraryItem], mode: DeleteMode) {
     guard isActive else { return }
 
+    // Partition out media-server-sourced items -- their lifecycle is
+    // owned by the source server (Jellyfin / ABS / Hummingbird). The
+    // per-service `handleMediaServerCleanup` (called from
+    // `ItemListViewModel.handleDelete`) takes care of the source-side
+    // dance (e.g. `returnBook` to NNELS for Hummingbird loans). Pushing
+    // them to Tortuga either 404s (best case) or operates on a stale
+    // row Tortuga happens to have.
+    let tortugaItems = items.filter { !isMediaServerSourced($0.relativePath) }
+    guard !tortugaItems.isEmpty else { return }
+
     Task {
-      for item in items {
+      for item in tortugaItems {
         await jobManager.scheduleDeleteJob(with: item.relativePath, mode: mode, for: item.uuid)
       }
     }
