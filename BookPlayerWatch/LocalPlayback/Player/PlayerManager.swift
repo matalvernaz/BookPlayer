@@ -980,44 +980,53 @@ extension PlayerManager {
       return
     }
 
-    switch item.status {
-    case .readyToPlay:
-      self.observeStatus = false
+    // AVPlayerItem KVO does NOT guarantee main-thread delivery. Mutating
+    // `observeStatus` (which triggers KVO-observer add/remove inside its
+    // didSet) or `playerItem` from an arbitrary queue races the main-
+    // thread setup paths and matches the "AVPlayerItem deallocated while
+    // KVO still registered" crash signature watchOS users see. Hop to
+    // main before touching any of it.
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      switch item.status {
+      case .readyToPlay:
+        self.observeStatus = false
 
-      if self.playbackQueued == true {
-        self.play(autoPlayed: true)
-      }
-      // Clean up flag
-      self.playbackQueued = nil
-    case .failed:
-      if canFetchRemoteURL,
-        let nsError = item.error as? NSError,
-        nsError.code == NSURLErrorResourceUnavailable
-          || nsError.code == NSURLErrorNoPermissionsToReadFile,
-        let currentItem
-      {
-        loadAndRefreshURL(item: currentItem)
-        canFetchRemoteURL = false
-      } else {
-        /// Avoid showing any alert if playback is not queued, this could be from the initial app launch
-        /// where we preload the player with the last played item
-        if playbackQueued == true {
-          if let nsError = item.error as? NSError {
-            showError(nsError)
-          } else if let itemError = item.error {
-            showError(itemError)
-          }
+        if self.playbackQueued == true {
+          self.play(autoPlayed: true)
         }
+        // Clean up flag
+        self.playbackQueued = nil
+      case .failed:
+        if self.canFetchRemoteURL,
+          let nsError = item.error as? NSError,
+          nsError.code == NSURLErrorResourceUnavailable
+            || nsError.code == NSURLErrorNoPermissionsToReadFile,
+          let currentItem = self.currentItem
+        {
+          self.loadAndRefreshURL(item: currentItem)
+          self.canFetchRemoteURL = false
+        } else {
+          /// Avoid showing any alert if playback is not queued, this could be from the initial app launch
+          /// where we preload the player with the last played item
+          if self.playbackQueued == true {
+            if let nsError = item.error as? NSError {
+              self.showError(nsError)
+            } else if let itemError = item.error {
+              self.showError(itemError)
+            }
+          }
 
-        playbackQueued = nil
-        observeStatus = false
-        playerItem = nil
+          self.playbackQueued = nil
+          self.observeStatus = false
+          self.playerItem = nil
+        }
+      case .unknown:
+        /// Do not handle .unknown states, as we're only interested in the success and failure states
+        fallthrough
+      @unknown default:
+        break
       }
-    case .unknown:
-      /// Do not handle .unknown states, as we're only interested in the success and failure states
-      fallthrough
-    @unknown default:
-      break
     }
   }
   // swiftlint:enable block_based_kvo

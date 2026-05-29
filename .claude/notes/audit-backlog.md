@@ -111,6 +111,18 @@ security-critical Python surfaces.
 
 ## SHIPPED in this audit
 
+- **C7 (ABS token in URL query)**: `AudiobookShelfConnectionService.createItemDownloadUrl`
+  no longer appends `?token=<apiToken>`. The bearer is now carried by
+  `applyAuthenticatedHeaders` (`Authorization: Bearer`) on the request
+  alongside the custom headers. `MediaServerSourceStore` keys, background
+  URLSession task descriptions, and proxy access logs no longer carry
+  the token.
+- **C9 (Watch KVO main-thread)**: `BookPlayerWatch/.../PlayerManager.swift`
+  `observeValue` body now dispatches to `DispatchQueue.main.async`
+  before mutating `observeStatus`/`playerItem`/`playbackQueued`. Closes
+  the "AVPlayerItem deallocated while KVO still registered" crash
+  signature. Phone-side has the same shape but no observed crashes —
+  left untouched.
 - **C1 (tracker collision)**: `MediaServerSourceTracker.finalize` was
   promoting per-file pending entries with bare `suggestedFilename` as
   the relativePath key, while library items use `<folderName>/<file>`.

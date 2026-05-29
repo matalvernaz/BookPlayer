@@ -497,15 +497,22 @@ class AudiobookShelfConnectionService: BPLogger {
       throw URLError(.userAuthenticationRequired)
     }
 
+    // Token is NOT appended as a query parameter. ABS accepts the
+    // bearer token via `Authorization: Bearer` on the download
+    // endpoint, and the URL is used as the MediaServerSourceStore
+    // pending key, the URLSessionTask description (serialized to disk
+    // by background URLSession), and shows up in every proxy/CDN
+    // access log on the user's path. Keeping the token out of the URL
+    // closes the disclosure channel.
     return connection.url
       .appendingPathComponent("api")
       .appendingPathComponent("items")
       .appendingPathComponent(item.id)
       .appendingPathComponent("download")
-      .appending(queryItems: [URLQueryItem(name: "token", value: connection.apiToken)])
   }
 
-  /// Returns a URLRequest for downloading a library item, carrying the user-defined
+  /// Returns a URLRequest for downloading a library item, carrying the bearer
+  /// token via the standard `Authorization: Bearer` header plus the user-defined
   /// custom HTTP headers (needed for servers behind Cloudflare Access etc.).
   ///
   /// Also registers the item's origin with `mediaServerSourceStore` (if wired) so that playback
@@ -523,7 +530,9 @@ class AudiobookShelfConnectionService: BPLogger {
         itemId: item.id
       )
     )
-    return wrapWithCustomHeaders(url)
+    var request = wrapWithCustomHeaders(url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    return request
   }
 
   /// Wraps an arbitrary URL (e.g. a cover image or stream URL) in a URLRequest that carries
