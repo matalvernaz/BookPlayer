@@ -9,11 +9,12 @@
 import BookPlayerKit
 import Foundation
 
+@MainActor
 @Observable
 class AudiobookShelfConnectionService: BPLogger {
   private static let activeConnectionIDKey = "audiobookshelf_active_connection_id"
 
-  private let keychainService: KeychainServiceProtocol
+  private nonisolated let keychainService: KeychainServiceProtocol
 
   var connections: [AudiobookShelfConnectionData] = []
   var connection: AudiobookShelfConnectionData? {
@@ -23,19 +24,14 @@ class AudiobookShelfConnectionService: BPLogger {
     }
     return connections.first
   }
-  private var urlSession: URLSession
+  private let urlSession: URLSession
 
   private(set) var activeConnectionID: String? {
     get { UserDefaults.standard.string(forKey: Self.activeConnectionIDKey) }
     set { UserDefaults.standard.set(newValue, forKey: Self.activeConnectionIDKey) }
   }
 
-  /// Optional source-tracking store wired in by the main coordinator. When present, every call to
-  /// `createItemDownloadRequest` records the (connection, item) pair so that the eventual local
-  /// library item can be linked back to its server origin for progress reporting.
-  var mediaServerSourceStore: MediaServerSourceStore?
-
-  init(keychainService: KeychainServiceProtocol = KeychainService()) {
+  nonisolated init(keychainService: KeychainServiceProtocol = KeychainService()) {
     self.keychainService = keychainService
     let configuration = URLSessionConfiguration.default
     configuration.timeoutIntervalForRequest = 15
@@ -64,7 +60,16 @@ class AudiobookShelfConnectionService: BPLogger {
 
     let (data, response) = try await urlSession.data(for: request)
 
-    _ = try validateAuthenticatedResponse(response)
+    // `pingServer` is an unauthenticated probe (typically for Add Server). Do NOT route
+    // its non-2xx responses through `validateAuthenticatedResponse`, which would mis-throw
+    // `.sessionExpired(serverName: <some-other-saved-server>)` and push the user toward
+    // re-authenticating an unrelated connection.
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+    guard (200...299).contains(httpResponse.statusCode) else {
+      throw IntegrationError.unexpectedResponse(code: httpResponse.statusCode)
+    }
 
     // Try to parse server info - /ping returns a simple success message
     // Return the server URL as the "name" since /ping doesn't return version info
@@ -151,11 +156,22 @@ class AudiobookShelfConnectionService: BPLogger {
     connections.append(connectionData)
     activeConnectionID = connectionData.id
     saveConnections()
+
+    // If we just replaced a previous token for this same logical server, revoke the old
+    // one server-side so it doesn't linger in ABS's token list.
+    if let stale = existing, stale.apiToken != apiToken {
+      revokeTokenInBackground(connection: stale)
+    }
   }
 
   func updateCustomHeaders(_ headers: [String: String]) {
-    guard let activeID = connection?.id,
-          let index = connections.firstIndex(where: { $0.id == activeID }) else { return }
+    guard let activeID = connection?.id else { return }
+    updateCustomHeaders(id: activeID, headers)
+  }
+
+  /// Persist `headers` to the connection with the given id, regardless of which is active.
+  func updateCustomHeaders(id: String, _ headers: [String: String]) {
+    guard let index = connections.firstIndex(where: { $0.id == id }) else { return }
     connections[index].customHeaders = headers
     saveConnections()
   }
@@ -168,10 +184,14 @@ class AudiobookShelfConnectionService: BPLogger {
   }
 
   func activateConnection(id: String) {
+    guard connections.contains(where: { $0.id == id }) else { return }
     activeConnectionID = id
   }
 
   func deleteConnection(id: String) {
+    // Capture the connection BEFORE removing so we can fire a server-side logout.
+    let removed = connections.first(where: { $0.id == id })
+
     connections.removeAll { $0.id == id }
 
     if activeConnectionID == id {
@@ -186,6 +206,10 @@ class AudiobookShelfConnectionService: BPLogger {
       }
     } else {
       saveConnections()
+    }
+
+    if let removed {
+      revokeTokenInBackground(connection: removed)
     }
   }
 
@@ -497,42 +521,22 @@ class AudiobookShelfConnectionService: BPLogger {
       throw URLError(.userAuthenticationRequired)
     }
 
-    // Token is NOT appended as a query parameter. ABS accepts the
-    // bearer token via `Authorization: Bearer` on the download
-    // endpoint, and the URL is used as the MediaServerSourceStore
-    // pending key, the URLSessionTask description (serialized to disk
-    // by background URLSession), and shows up in every proxy/CDN
-    // access log on the user's path. Keeping the token out of the URL
-    // closes the disclosure channel.
     return connection.url
       .appendingPathComponent("api")
       .appendingPathComponent("items")
       .appendingPathComponent(item.id)
       .appendingPathComponent("download")
+      .appending(queryItems: [URLQueryItem(name: "token", value: connection.apiToken)])
   }
 
-  /// Returns a URLRequest for downloading a library item, carrying the bearer
-  /// token via the standard `Authorization: Bearer` header plus the user-defined
+  /// Returns a URLRequest for downloading a library item, carrying the user-defined
   /// custom HTTP headers (needed for servers behind Cloudflare Access etc.).
-  ///
-  /// Also registers the item's origin with `mediaServerSourceStore` (if wired) so that playback
-  /// progress for the resulting local copy can be reported back to this ABS server.
   public func createItemDownloadRequest(_ item: AudiobookShelfLibraryItem) throws -> URLRequest {
-    guard let connection else {
+    guard connection != nil else {
       throw URLError(.userAuthenticationRequired)
     }
     let url = try createItemDownloadUrl(item)
-    mediaServerSourceStore?.registerPendingDownload(
-      url,
-      info: MediaServerSourceInfo(
-        kind: .audiobookshelf,
-        connectionId: connection.id,
-        itemId: item.id
-      )
-    )
-    var request = wrapWithCustomHeaders(url)
-    applyAuthenticatedHeaders(to: &request, connection: connection)
-    return request
+    return wrapWithCustomHeaders(url)
   }
 
   /// Wraps an arbitrary URL (e.g. a cover image or stream URL) in a URLRequest that carries
@@ -547,6 +551,9 @@ class AudiobookShelfConnectionService: BPLogger {
     // Try array format first
     if let storedConnections: [AudiobookShelfConnectionData] = try? keychainService.get(.audiobookshelfConnection) {
       connections = storedConnections.filter { isConnectionValid($0) }
+      if connections.count != storedConnections.count {
+        saveConnections()
+      }
     } else if let single: AudiobookShelfConnectionData = try? keychainService.get(.audiobookshelfConnection),
               isConnectionValid(single) {
       // Migrate from single-connection format
@@ -570,6 +577,25 @@ class AudiobookShelfConnectionService: BPLogger {
 
   private func saveConnections() {
     try? keychainService.set(connections, key: .audiobookshelfConnection)
+  }
+
+  /// Fire-and-forget POST to ABS's `/logout` to revoke a connection's apiToken server-side.
+  /// Called after we drop a connection locally (delete, or re-auth replacing a stale token)
+  /// so the server doesn't accumulate orphan tokens. Failures are intentionally swallowed —
+  /// the local state has already moved on and there's no UX-meaningful recovery.
+  private func revokeTokenInBackground(connection: AudiobookShelfConnectionData) {
+    let url = connection.url.appendingPathComponent("logout")
+    let apiToken = connection.apiToken
+    let headers = connection.customHeaders
+    Task { [urlSession] in
+      var request = URLRequest(url: url)
+      request.httpMethod = "POST"
+      request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+      for (key, value) in headers {
+        request.setValue(value, forHTTPHeaderField: key)
+      }
+      _ = try? await urlSession.data(for: request)
+    }
   }
 
   /// Validates the HTTP response from an authenticated data-fetch call.

@@ -647,6 +647,7 @@
 		729E18B17F8D11D281503FD5 /* MediaServerSourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134309B3C02452489688D14F /* MediaServerSourceInfo.swift */; };
 		760180C62F243705DE6B3224 /* IntegrationError.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0D0FA9BA32EDF5F367C757B /* IntegrationError.swift */; };
 		77B64BFB95F777D4B7EA4FF3 /* HummingbirdRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E34D2D95AF9319B1CDECF5 /* HummingbirdRootView.swift */; };
+		D5E6F7081A2B3C4D5E6F7081 /* MediaServersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7081A2B3C4D5E6F7080 /* MediaServersView.swift */; };
 		78D8C50324731BBDF9E9281E /* LibraryOptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FBF775DDE66D0AA08818D45 /* LibraryOptionsView.swift */; };
 		7B91D2C3E04F1B8A7E62C805 /* ShareDownloadSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B91D2C3E04F1B8A7E62C806 /* ShareDownloadSupport.swift */; };
 		7CAD4B67352939D0A1E54A21 /* IntegrationConnectionFormViewModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3724BB21B1B88177C60BE4D8 /* IntegrationConnectionFormViewModelProtocol.swift */; };
@@ -879,7 +880,6 @@
 		D6BA8F182A4D66CD00C2BD9A /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BA8F172A4D66CD00C2BD9A /* StorageView.swift */; };
 		DCFC79BEBAEA628FB13F33A1 /* BPFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ACFA02FA31A0CB0438C5228 /* BPFont.swift */; };
 		ECE287A864D71749ECE47FF1 /* MediaServerSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B8D1A3DE3BA81842B2A943 /* MediaServerSourceStore.swift */; };
-		F1A2B3C4D5E6F7089A1B2C3D /* MediaServersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* MediaServersView.swift */; };
 		F50163BEFB92FB6B1B778C5E /* WindowHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8BFBB9A63469069F0D44A /* WindowHelper.swift */; };
 		F7CB281CF765C468BFA9B0D8 /* IntegrationDetailsViewModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808E351A8B30ABCBA9EC00EF /* IntegrationDetailsViewModelProtocol.swift */; };
 		F906EF4FC85B1CCE138B230D /* PasskeyEmailInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3373A34FC2536111E50BF868 /* PasskeyEmailInputView.swift */; };
@@ -1291,6 +1291,7 @@
 		456F8D6DC3E54082A571A581 /* HummingbirdBookmarkPuller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdBookmarkPuller.swift; path = BookPlayer/Hummingbird/Network/HummingbirdBookmarkPuller.swift; sourceTree = SOURCE_ROOT; };
 		424AE6DFF6B641DB69DF3D78 /* IntegrationAudiobookDetailsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationAudiobookDetailsView.swift; sourceTree = "<group>"; };
 		43D61F68F0A174C7CA44FE8A /* IntegrationConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationConnectionView.swift; sourceTree = "<group>"; };
+		B14881000000000000000002 /* IntegrationCustomHeadersSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationCustomHeadersSectionView.swift; sourceTree = "<group>"; };
 		4645F9FC2D1E46AC00A04257 /* SwipeInlineTip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeInlineTip.swift; sourceTree = "<group>"; };
 		465D87512D3195D600A4AA47 /* BookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksView.swift; sourceTree = "<group>"; };
 		465D87532D31965100A4AA47 /* BookmarksViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksViewModel.swift; sourceTree = "<group>"; };
@@ -1781,7 +1782,6 @@
 		9FF710B82A213084006490E0 /* QueuedSyncTaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuedSyncTaskRowView.swift; sourceTree = "<group>"; };
 		9FF710BC2A215686006490E0 /* QueuedSyncTaskType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuedSyncTaskType.swift; sourceTree = "<group>"; };
 		9FFCC08E289418CA00F4952E /* SimpleChapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleChapter.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6A7B8C9D0E1F2 /* MediaServersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServersView.swift; sourceTree = "<group>"; };
 		A3324A46BF519DEB8FAFF280 /* HummingbirdConnectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdConnectionService.swift; path = BookPlayer/Hummingbird/Network/HummingbirdConnectionService.swift; sourceTree = SOURCE_ROOT; };
 		A3511F737DCDEE7A12B713AE /* IntegrationServerFoundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationServerFoundView.swift; sourceTree = "<group>"; };
 		A4D9C8B6E5F1D2A7C4E9B81B /* IntegrationImageSizing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationImageSizing.swift; sourceTree = "<group>"; };
@@ -1789,7 +1789,7 @@
 		A5F919ABFCEF9B58EFE9D82E /* IntegrationServerInformationSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationServerInformationSectionView.swift; sourceTree = "<group>"; };
 		B04BE5CC428577199315A6CB /* AudiobookShelfProgressReporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudiobookShelfProgressReporter.swift; sourceTree = "<group>"; };
 		B0D0FA9BA32EDF5F367C757B /* IntegrationError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationError.swift; sourceTree = "<group>"; };
-		B14881000000000000000002 /* IntegrationCustomHeadersSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationCustomHeadersSectionView.swift; sourceTree = "<group>"; };
+		D5E6F7081A2B3C4D5E6F7080 /* MediaServersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServersView.swift; sourceTree = "<group>"; };
 		B25063B02760AB32CB8F38E0 /* IntegrationLibraryGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationLibraryGridView.swift; sourceTree = "<group>"; };
 		C084D4BC05BF6B413C86C6F0 /* PasskeyCreatingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PasskeyCreatingView.swift; sourceTree = "<group>"; };
 		C1BB42488648EAEF8D70339A /* HummingbirdConnectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HummingbirdConnectionViewModel.swift; path = "BookPlayer/Hummingbird/Connection Screen/HummingbirdConnectionViewModel.swift"; sourceTree = SOURCE_ROOT; };
@@ -3253,7 +3253,7 @@
 				3724BB21B1B88177C60BE4D8 /* IntegrationConnectionFormViewModelProtocol.swift */,
 				4D91D6855100BD1823B2674F /* IntegrationConnectionViewModelProtocol.swift */,
 				B0D0FA9BA32EDF5F367C757B /* IntegrationError.swift */,
-				A1B2C3D4E5F6A7B8C9D0E1F2 /* MediaServersView.swift */,
+				D5E6F7081A2B3C4D5E6F7080 /* MediaServersView.swift */,
 				7A823609A5B7EFC6D2D5D120 /* IntegrationLibraryItemProtocol.swift */,
 				2E070421575334E1CD85C049 /* IntegrationLibraryViewModelProtocol.swift */,
 				A4D9C8B6E5F1D2A7C4E9B81B /* IntegrationImageSizing.swift */,
@@ -4855,10 +4855,10 @@
 				F906EF4FC85B1CCE138B230D /* PasskeyEmailInputView.swift in Sources */,
 				07416E5AD384927D90BFB6EE /* PasskeyCreatingView.swift in Sources */,
 				CA3B408256F8458669106CF9 /* IntegrationConnectionViewModelProtocol.swift in Sources */,
-				F1A2B3C4D5E6F7089A1B2C3D /* MediaServersView.swift in Sources */,
 				7CAD4B67352939D0A1E54A21 /* IntegrationConnectionFormViewModelProtocol.swift in Sources */,
 				C3C998E7EA2919BB438B337C /* IntegrationLibraryItemProtocol.swift in Sources */,
 				760180C62F243705DE6B3224 /* IntegrationError.swift in Sources */,
+				D5E6F7081A2B3C4D5E6F7081 /* MediaServersView.swift in Sources */,
 				18D0AD99D1AAA10976F75C11 /* BPNavigation.swift in Sources */,
 				9236C57F833C70652BDD1FA3 /* TabEditingEnvironmentKey.swift in Sources */,
 				11A972EC3C4426DD4D02867E /* TagsFlowLayout.swift in Sources */,

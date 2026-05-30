@@ -2,362 +2,319 @@
 //  MediaServersView.swift
 //  BookPlayer
 //
-//  Created by Matthew Alnaser on 2026-04-09.
+//  Created by Gianni Carlo on 5/26/26.
 //  Copyright © 2026 BookPlayer LLC. All rights reserved.
 //
 
 import SwiftUI
 
-/// One list of every saved Jellyfin and AudiobookShelf server, in place of the
-/// two separate "Download from …" menu items.
+/// Unified screen for media-server integrations. Has two presentation styles:
 ///
-/// - No servers yet: pick a type and go straight into its connection form.
-/// - One or more saved: tap a row to open that server's library browser, or
-///   "Add Server" to add another.
+/// - `.libraryEntry`: sheet presented from the Library tab. Tap a row to activate
+///   that server and open its library; `(i)` row accessory opens Connection Details
+///   without changing the active connection.
+/// - `.settings`: pushed into the Settings navigation stack. Row tap opens
+///   Connection Details directly (no library entry from here); `(i)` is hidden
+///   because the whole row is the same action.
+///
+/// In both styles: per-section `[+]` button to add a server, Edit mode + swipe-to-
+/// delete to remove servers.
 struct MediaServersView: View {
+  enum Style {
+    /// Sheet from Library tab. Row tap activates + opens library. `(i)` is visible.
+    case libraryEntry
+    /// Pushed into Settings nav stack. Row tap opens Connection Details. `(i)` hidden.
+    case settings
+  }
+
   let jellyfinService: JellyfinConnectionService
   let audiobookshelfService: AudiobookShelfConnectionService
-  let hummingbirdService: HummingbirdConnectionService
+  let style: Style
 
-  @Environment(\.listState) private var listState
-  @EnvironmentObject var theme: ThemeViewModel
-
-  /// Drives the "which integration?" confirmation dialog when the user already
-  /// has at least one server saved.
-  @State private var showingTypePicker = false
-
-  /// One per integration — flips true to open the matching add-server sheet.
-  @State private var addingJellyfin = false
-  @State private var addingAudiobookshelf = false
-  @State private var addingHummingbird = false
-
-  /// Which server's library browser is currently presented (nil = none).
-  @State private var presentedServer: ServerRoute?
-
-  // MARK: - Server Types
-
-  /// Identifies which integration back-end a server belongs to.
-  enum ServerType {
-    case jellyfin
-    case audiobookshelf
-    case hummingbird
-
-    var displayName: String {
-      switch self {
-      case .jellyfin: "Jellyfin"
-      case .audiobookshelf: "AudiobookShelf"
-      case .hummingbird: "Hummingbird"
-      }
-    }
-
-    /// Brand image asset for ABS/Jellyfin; nil for Hummingbird (uses an SF Symbol
-    /// in the row since there's no bundled brand icon).
-    var iconAsset: ImageResource? {
-      switch self {
-      case .jellyfin: .jellyfinIcon
-      case .audiobookshelf: .audiobookshelfIcon
-      case .hummingbird: nil
-      }
-    }
-
-    /// SF Symbol fallback when there's no brand asset.
-    var iconSystemName: String {
-      switch self {
-      case .hummingbird: "bird.fill"
-      default: "questionmark.square.dashed"
-      }
-    }
+  init(
+    jellyfinService: JellyfinConnectionService,
+    audiobookshelfService: AudiobookShelfConnectionService,
+    style: Style = .libraryEntry
+  ) {
+    self.jellyfinService = jellyfinService
+    self.audiobookshelfService = audiobookshelfService
+    self.style = style
   }
 
-  /// A single server entry for the unified list, abstracting over Jellyfin and ABS data models.
-  struct ServerItem: Identifiable {
-    let id: String
-    let serverName: String
-    let serverUrl: String
-    let userName: String
-    let type: ServerType
-  }
+  /// Single sheet-presentation state, driven by an enum so SwiftUI only ever sees
+  /// one `.sheet(item:)` modifier. Stacking multiple sibling `.sheet(item:)` lets
+  /// the second presentation drop silently when state changes happen back-to-back.
+  @State private var presentedSheet: SheetRoute?
+  @State private var editMode: EditMode = .inactive
 
-  /// Which integration's library browser to present as a sheet. The connection
-  /// is activated synchronously before this is set (see `selectServer`), so the
-  /// presented view picks up the right active connection.
-  enum ServerRoute: String, Identifiable, Hashable {
-    case jellyfin
-    case audiobookshelf
-    case hummingbird
-    var id: String { rawValue }
-  }
-
-  // MARK: - Computed Properties
-
-  /// Combines all saved servers from both services into one list.
-  private var allServers: [ServerItem] {
-    let jellyfinServers = jellyfinService.connections.map { data in
-      ServerItem(
-        id: data.id,
-        serverName: data.serverName,
-        serverUrl: data.url.absoluteString,
-        userName: data.userName,
-        type: .jellyfin
-      )
-    }
-    let absServers = audiobookshelfService.connections.map { data in
-      ServerItem(
-        id: data.id,
-        serverName: data.serverName,
-        serverUrl: data.url.absoluteString,
-        userName: data.userName,
-        type: .audiobookshelf
-      )
-    }
-    let hummingbirdServers = hummingbirdService.connections.map { data in
-      ServerItem(
-        id: data.id,
-        serverName: data.serverName,
-        serverUrl: data.url.absoluteString,
-        userName: data.userName,
-        type: .hummingbird
-      )
-    }
-    return jellyfinServers + absServers + hummingbirdServers
-  }
-
-  // MARK: - Body
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
 
   var body: some View {
-    NavigationStack {
-      Form {
-        if allServers.isEmpty {
-          emptyStateSection
-        } else {
-          serverListSection
-          addServerSection
-        }
-      }
-      .scrollContentBackground(.hidden)
-      .background(theme.systemBackgroundColor)
-      .navigationTitle("media_servers_title".localized)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .principal) {
-          Text("media_servers_title".localized)
-            .bpFont(.headline)
-            .foregroundStyle(theme.primaryColor)
-        }
+    Form {
+      section(
+        title: "Jellyfin",
+        kind: .jellyfin,
+        servers: jellyfinService.connections.map(ServerRow.init)
+      )
+      section(
+        title: "AudiobookShelf",
+        kind: .audiobookshelf,
+        servers: audiobookshelfService.connections.map(ServerRow.init)
+      )
+    }
+    .applyListStyle(with: theme, background: theme.systemBackgroundColor)
+    .navigationTitle("media_servers_title".localized)
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if style == .libraryEntry {
+        // In settings, the parent NavigationStack provides a back button — no X needed.
         ToolbarItem(placement: .cancellationAction) {
-          Button {
-            listState.activeIntegrationSheet = nil
-          } label: {
+          Button { dismiss() } label: {
             Image(systemName: "xmark")
               .foregroundStyle(theme.linkColor)
           }
         }
       }
+      ToolbarItem(placement: .primaryAction) {
+        EditButton()
+      }
     }
+    .environment(\.editMode, $editMode)
     .tint(theme.linkColor)
-    .environmentObject(theme)
-    // The per-server library browser opens as a sheet on top of this list.
-    // Pushing JellyfinRootView (which wraps a TabView) onto a NavigationStack
-    // auto-pops immediately on iOS 26 — sheet-on-sheet avoids that entirely.
-    .sheet(item: $presentedServer) { route in
+    .sheet(item: $presentedSheet) { route in
       switch route {
-      case .jellyfin:
-        JellyfinRootView(connectionService: jellyfinService, skipServerPicker: true)
-          .environmentObject(theme)
-      case .audiobookshelf:
-        AudiobookShelfRootView(connectionService: audiobookshelfService, skipServerPicker: true)
-          .environmentObject(theme)
-      case .hummingbird:
-        // Same wrap pattern as ABS — sit inside a sheet from MediaServersView so
-        // the root view's `dismiss()` lands back on the server list.
-        HummingbirdRootViewWrapper(service: hummingbirdService)
-          .environmentObject(theme)
+      case .addServer(let kind):
+        addServerSheet(for: kind)
+      case .library(let kind):
+        librarySheet(for: kind)
+      case .connectionDetails(let connectionId, let kind):
+        connectionDetailsSheet(connectionId: connectionId, kind: kind)
       }
     }
-    // "Which type?" dialog when the user taps Add Server with at least one
-    // server already saved.
-    .confirmationDialog(
-      "media_servers_choose_type_title".localized,
-      isPresented: $showingTypePicker,
-      titleVisibility: .visible
-    ) {
-      Button(ServerType.jellyfin.displayName) { handleAddServer(type: .jellyfin) }
-      Button(ServerType.audiobookshelf.displayName) { handleAddServer(type: .audiobookshelf) }
-      Button(ServerType.hummingbird.displayName) { handleAddServer(type: .hummingbird) }
-    }
-    // Add-server sheets, one per integration. Each builds a fresh connection
-    // VM in "adding" mode so existing servers aren't disturbed.
-    .sheet(isPresented: $addingJellyfin) {
-      AddJellyfinServerSheet(service: jellyfinService)
-        .environmentObject(theme)
-    }
-    .sheet(isPresented: $addingAudiobookshelf) {
-      AddAudiobookShelfServerSheet(service: audiobookshelfService)
-        .environmentObject(theme)
-    }
-    .sheet(isPresented: $addingHummingbird) {
-      AddHummingbirdServerSheet(service: hummingbirdService)
-        .environmentObject(theme)
-    }
   }
 
-  // MARK: - Empty State
+  // MARK: - Section builder
 
-  /// Shown when no servers are configured. Offers direct type selection rows
-  /// styled to match the populated server list so they read as tappable.
   @ViewBuilder
-  private var emptyStateSection: some View {
+  private func section(title: String, kind: IntegrationKind, servers: [ServerRow]) -> some View {
     ThemedSection {
-      addTypeRow(.jellyfin)
-      addTypeRow(.audiobookshelf)
-      addTypeRow(.hummingbird)
-    } header: {
-      Text("media_servers_add_prompt".localized)
-        .foregroundStyle(theme.secondaryColor)
-    }
-  }
-
-  /// Empty-state row for a server type. Same layout as populated server rows
-  /// (icon + name + chevron) so the affordance reads as a tap target rather
-  /// than a static Form row.
-  @ViewBuilder
-  private func addTypeRow(_ type: ServerType) -> some View {
-    Button {
-      handleAddServer(type: type)
-    } label: {
-      HStack(spacing: 12) {
-        serverTypeIcon(type)
-        Text(type.displayName)
-          .foregroundStyle(theme.primaryColor)
-        Spacer()
-        Image(systemName: "chevron.right")
-          .bpFont(.caption)
-          .foregroundStyle(theme.secondaryColor)
+      ForEach(servers) { server in
+        rowView(server, kind: kind)
       }
-    }
-    .accessibilityLabel(type.displayName)
-  }
-
-  /// Renders the brand icon for ABS/Jellyfin or a themed SF Symbol for
-  /// integrations without a bundled brand asset (Hummingbird).
-  @ViewBuilder
-  private func serverTypeIcon(_ type: ServerType) -> some View {
-    if let asset = type.iconAsset {
-      Image(asset)
-        .resizable()
-        .aspectRatio(contentMode: .fit)
-        .frame(width: 28, height: 28)
-    } else {
-      Image(systemName: type.iconSystemName)
-        .resizable()
-        .aspectRatio(contentMode: .fit)
-        .foregroundStyle(theme.linkColor)
-        .frame(width: 24, height: 24)
-        .padding(.horizontal, 2)
-    }
-  }
-
-  // MARK: - Server List
-
-  /// Displays all saved servers from both integrations in a single section.
-  /// Each row shows the integration icon, server name, user, and URL.
-  @ViewBuilder
-  private var serverListSection: some View {
-    ThemedSection {
-      ForEach(allServers) { server in
-        Button {
-          selectServer(server)
-        } label: {
-          HStack(spacing: 12) {
-            serverTypeIcon(server.type)
-            VStack(alignment: .leading, spacing: 2) {
-              Text(server.serverName)
-                .foregroundStyle(theme.primaryColor)
-              Text("\(server.userName) — \(server.serverUrl)")
-                .bpFont(.caption)
-                .foregroundStyle(theme.secondaryColor)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-              .bpFont(.caption)
-              .foregroundStyle(theme.secondaryColor)
-          }
+      .onDelete { indexSet in
+        for index in indexSet {
+          delete(servers[index], kind: kind)
         }
-        .accessibilityLabel(
-          "\(server.type.displayName), \(server.serverName), \(server.userName), \(server.serverUrl)"
-        )
       }
     } header: {
-      Text("media_servers_title".localized)
-        .foregroundStyle(theme.secondaryColor)
+      HStack {
+        Text(title)
+          .foregroundStyle(theme.secondaryColor)
+        Spacer()
+        Button {
+          presentedSheet = .addServer(kind)
+        } label: {
+          Image(systemName: "plus.circle.fill")
+            .imageScale(.large)
+            .foregroundStyle(theme.linkColor)
+        }
+        .accessibilityLabel("integration_add_server_button".localized)
+      }
     }
   }
 
-  // MARK: - Add Server Button
-
   @ViewBuilder
-  private var addServerSection: some View {
-    ThemedSection {
+  private func rowView(_ server: ServerRow, kind: IntegrationKind) -> some View {
+    HStack {
       Button {
-        showingTypePicker = true
+        switch style {
+        case .libraryEntry:
+          select(server, kind: kind)
+        case .settings:
+          // In Settings we don't navigate into the server; the row IS the
+          // Connection Details action.
+          presentedSheet = .connectionDetails(connectionId: server.id, kind: kind)
+        }
       } label: {
-        Label("integration_add_server_button".localized, systemImage: "plus.circle")
+        VStack(alignment: .leading, spacing: 2) {
+          Text(server.serverName)
+            .foregroundStyle(theme.primaryColor)
+          Text(server.userName)
+            .font(.caption)
+            .foregroundStyle(theme.secondaryColor)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+
+      if style == .libraryEntry {
+        Button {
+          // Show Connection Details scoped to THIS server (without activating it,
+          // so the user's current active connection isn't changed by tapping info).
+          presentedSheet = .connectionDetails(connectionId: server.id, kind: kind)
+        } label: {
+          Image(systemName: "info.circle")
+            .imageScale(.large)
+            .foregroundStyle(theme.linkColor)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityHidden(true)
+      }
+    }
+    .swipeActions(edge: .trailing) {
+      Button(role: .destructive) {
+        delete(server, kind: kind)
+      } label: {
+        Label("logout_title".localized, systemImage: "trash")
+      }
+    }
+    // In `.libraryEntry` mode, VoiceOver merges the row's main button + trailing
+    // `(i)` button into a single element, hiding the info action. Surface it via
+    // the actions rotor. (In `.settings`, row tap already opens Connection Details.)
+    .accessibilityActions {
+      if style == .libraryEntry {
+        Button("integration_connection_details_title".localized) {
+          presentedSheet = .connectionDetails(connectionId: server.id, kind: kind)
+        }
       }
     }
   }
 
   // MARK: - Actions
 
-  /// Activates the selected server in its connection service and presents the
-  /// appropriate library browser as a sheet on top of this list. The browser's
-  /// own toolbar provides the "back to servers" affordance via dismiss().
-  private func selectServer(_ server: ServerItem) {
-    switch server.type {
+  private func select(_ server: ServerRow, kind: IntegrationKind) {
+    switch kind {
     case .jellyfin:
       jellyfinService.activateConnection(id: server.id)
-      presentedServer = .jellyfin
     case .audiobookshelf:
       audiobookshelfService.activateConnection(id: server.id)
-      presentedServer = .audiobookshelf
-    case .hummingbird:
-      hummingbirdService.activateConnection(id: server.id)
-      presentedServer = .hummingbird
+    }
+    presentedSheet = .library(kind)
+  }
+
+  private func delete(_ server: ServerRow, kind: IntegrationKind) {
+    switch kind {
+    case .jellyfin:
+      jellyfinService.deleteConnection(id: server.id)
+    case .audiobookshelf:
+      audiobookshelfService.deleteConnection(id: server.id)
     }
   }
 
-  /// Opens the add-server sheet for the chosen type. Used for both empty
-  /// and populated states — adding a server is always a self-contained sheet
-  /// so the existing servers (if any) aren't disturbed.
-  private func handleAddServer(type: ServerType) {
-    switch type {
+  // MARK: - Sheets
+
+  @ViewBuilder
+  private func addServerSheet(for kind: IntegrationKind) -> some View {
+    switch kind {
     case .jellyfin:
-      addingJellyfin = true
+      AddServerJellyfinSheet(connectionService: jellyfinService)
+        .environmentObject(theme)
     case .audiobookshelf:
-      addingAudiobookshelf = true
-    case .hummingbird:
-      addingHummingbird = true
+      AddServerAudiobookShelfSheet(connectionService: audiobookshelfService)
+        .environmentObject(theme)
+    }
+  }
+
+  @ViewBuilder
+  private func librarySheet(for kind: IntegrationKind) -> some View {
+    switch kind {
+    case .jellyfin:
+      JellyfinRootView(connectionService: jellyfinService)
+    case .audiobookshelf:
+      AudiobookShelfRootView(connectionService: audiobookshelfService)
+    }
+  }
+
+  @ViewBuilder
+  private func connectionDetailsSheet(connectionId: String, kind: IntegrationKind) -> some View {
+    switch kind {
+    case .jellyfin:
+      ConnectionDetailsJellyfinSheet(
+        connectionService: jellyfinService,
+        connectionId: connectionId
+      )
+      .environmentObject(theme)
+    case .audiobookshelf:
+      ConnectionDetailsAudiobookShelfSheet(
+        connectionService: audiobookshelfService,
+        connectionId: connectionId
+      )
+      .environmentObject(theme)
     }
   }
 }
 
-// MARK: - Add Server Sheets
+/// Unified route enum driving the single `.sheet(item:)` modifier on MediaServersView.
+private enum SheetRoute: Identifiable {
+  case addServer(IntegrationKind)
+  case library(IntegrationKind)
+  case connectionDetails(connectionId: String, kind: IntegrationKind)
 
-/// Sheet for adding a new Jellyfin server when the user already has existing
-/// Jellyfin connections. Wraps `IntegrationConnectionView` in "adding" mode
-/// and auto-dismisses when the sign-in completes or the user cancels.
-private struct AddJellyfinServerSheet: View {
-  let service: JellyfinConnectionService
+  var id: String {
+    switch self {
+    case .addServer(let kind):
+      return "add-\(kind.rawValue)"
+    case .library(let kind):
+      return "lib-\(kind.rawValue)"
+    case .connectionDetails(let connectionId, let kind):
+      return "details-\(kind.rawValue)-\(connectionId)"
+    }
+  }
+}
 
+// MARK: - Helper types
+
+enum IntegrationKind: String, Identifiable {
+  case jellyfin
+  case audiobookshelf
+  var id: String { rawValue }
+}
+
+private struct ServerRow: Identifiable {
+  let id: String
+  let serverName: String
+  let serverUrl: String
+  let userName: String
+  let customHeaders: [String: String]
+
+  init(_ data: JellyfinConnectionData) {
+    self.id = data.id
+    self.serverName = data.serverName
+    self.serverUrl = data.url.absoluteString
+    self.userName = data.userName
+    self.customHeaders = data.customHeaders
+  }
+
+  init(_ data: AudiobookShelfConnectionData) {
+    self.id = data.id
+    self.serverName = data.serverName
+    self.serverUrl = data.url.absoluteString
+    self.userName = data.userName
+    self.customHeaders = data.customHeaders
+  }
+}
+
+
+// MARK: - Add Server sheets
+// Each wraps `IntegrationConnectionView` with a fresh VM constructed in `.addServer` mode,
+// so its in-flight state is fully isolated from the active library session.
+
+private struct AddServerJellyfinSheet: View {
+  let connectionService: JellyfinConnectionService
   @StateObject private var viewModel: JellyfinConnectionViewModel
-  @EnvironmentObject var theme: ThemeViewModel
-  @Environment(\.dismiss) var dismiss
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
 
-  init(service: JellyfinConnectionService) {
-    self.service = service
-    // Create VM then switch to "adding" mode (blank form, disconnected state)
-    let vm = JellyfinConnectionViewModel(connectionService: service)
-    vm.handleAddServerAction()
-    self._viewModel = .init(wrappedValue: vm)
+  init(connectionService: JellyfinConnectionService) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: JellyfinConnectionViewModel(
+        connectionService: connectionService,
+        mode: .addServer
+      )
+    )
   }
 
   var body: some View {
@@ -367,27 +324,26 @@ private struct AddJellyfinServerSheet: View {
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
-    // isAddingServer flips to false on successful sign-in or cancel
-    .onChange(of: viewModel.isAddingServer) { _, isAdding in
-      if !isAdding { dismiss() }
+    .onChange(of: viewModel.signInCompletedAt) { _, newValue in
+      if newValue != nil { dismiss() }
     }
   }
 }
 
-/// Sheet for adding a new AudiobookShelf server when existing ABS connections exist.
-/// Same pattern as `AddJellyfinServerSheet`.
-private struct AddAudiobookShelfServerSheet: View {
-  let service: AudiobookShelfConnectionService
-
+private struct AddServerAudiobookShelfSheet: View {
+  let connectionService: AudiobookShelfConnectionService
   @StateObject private var viewModel: AudiobookShelfConnectionViewModel
-  @EnvironmentObject var theme: ThemeViewModel
-  @Environment(\.dismiss) var dismiss
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
 
-  init(service: AudiobookShelfConnectionService) {
-    self.service = service
-    let vm = AudiobookShelfConnectionViewModel(connectionService: service)
-    vm.handleAddServerAction()
-    self._viewModel = .init(wrappedValue: vm)
+  init(connectionService: AudiobookShelfConnectionService) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: AudiobookShelfConnectionViewModel(
+        connectionService: connectionService,
+        mode: .addServer
+      )
+    )
   }
 
   var body: some View {
@@ -397,51 +353,80 @@ private struct AddAudiobookShelfServerSheet: View {
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
-    .onChange(of: viewModel.isAddingServer) { _, isAdding in
-      if !isAdding { dismiss() }
+    .onChange(of: viewModel.signInCompletedAt) { _, newValue in
+      if newValue != nil { dismiss() }
     }
   }
 }
 
-/// Sheet for adding a new Hummingbird server. Same pattern as the others.
-private struct AddHummingbirdServerSheet: View {
-  let service: HummingbirdConnectionService
+// MARK: - Connection details sheets (per-server, scoped via `connectionId`)
+// Reuses `IntegrationConnectionView`'s saved-list rendering (signInFlow == nil),
+// but the VM is initialized with a specific `connectionId` so the form data and
+// the destructive actions (logout, customHeaders update) target THAT server
+// rather than the service's active connection.
 
-  @StateObject private var viewModel: HummingbirdConnectionViewModel
-  @EnvironmentObject var theme: ThemeViewModel
-  @Environment(\.dismiss) var dismiss
+private struct ConnectionDetailsJellyfinSheet: View {
+  let connectionService: JellyfinConnectionService
+  @StateObject private var viewModel: JellyfinConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
 
-  init(service: HummingbirdConnectionService) {
-    self.service = service
-    let vm = HummingbirdConnectionViewModel(connectionService: service)
-    vm.handleAddServerAction()
-    self._viewModel = .init(wrappedValue: vm)
+  init(connectionService: JellyfinConnectionService, connectionId: String) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: JellyfinConnectionViewModel(
+        connectionService: connectionService,
+        mode: .viewDetails,
+        connectionId: connectionId
+      )
+    )
   }
 
   var body: some View {
     NavigationStack {
-      IntegrationConnectionView(viewModel: viewModel, integrationName: "Hummingbird")
+      IntegrationConnectionView(viewModel: viewModel, integrationName: "Jellyfin")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("done_title".localized) { dismiss() }
+              .foregroundStyle(theme.linkColor)
+          }
+        }
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
-    .onChange(of: viewModel.isAddingServer) { _, isAdding in
-      if !isAdding { dismiss() }
-    }
   }
 }
 
-/// HummingbirdRootView needs SingleFileDownloadService at init time, but
-/// MediaServersView gets it from the environment. Thin wrapper bridges the two.
-private struct HummingbirdRootViewWrapper: View {
-  let service: HummingbirdConnectionService
-  @EnvironmentObject var singleFileDownloadService: SingleFileDownloadService
+private struct ConnectionDetailsAudiobookShelfSheet: View {
+  let connectionService: AudiobookShelfConnectionService
+  @StateObject private var viewModel: AudiobookShelfConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  init(connectionService: AudiobookShelfConnectionService, connectionId: String) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: AudiobookShelfConnectionViewModel(
+        connectionService: connectionService,
+        mode: .viewDetails,
+        connectionId: connectionId
+      )
+    )
+  }
 
   var body: some View {
-    HummingbirdRootView(
-      connectionService: service,
-      singleFileDownloadService: singleFileDownloadService,
-      skipServerPicker: true
-    )
+    NavigationStack {
+      IntegrationConnectionView(viewModel: viewModel, integrationName: "AudiobookShelf")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("done_title".localized) { dismiss() }
+              .foregroundStyle(theme.linkColor)
+          }
+        }
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
   }
 }

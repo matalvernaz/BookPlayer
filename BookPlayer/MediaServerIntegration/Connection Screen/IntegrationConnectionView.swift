@@ -24,113 +24,54 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
   @State private var actionTask: Task<Void, Never>?
 
   @EnvironmentObject var theme: ThemeViewModel
-
-  /// Whether the Quick Connect sheet is currently being presented. Derived from the view
-  /// model's `quickConnectStatus`: a non-nil status means there is something for the sheet
-  /// to render (poll progress, code, success transition, or terminal failure).
-  private var isQuickConnectSheetPresented: Binding<Bool> {
-    Binding(
-      get: { viewModel.quickConnectStatus != nil },
-      set: { newValue in
-        // The user dismissed the sheet by gesture/swipe — clean up the in-flight flow.
-        if !newValue {
-          viewModel.handleCancelQuickConnect()
-        }
-      }
-    )
-  }
+  @Environment(\.dismiss) private var dismiss
 
   var body: some View {
     Form {
-      if viewModel.isAddingServer {
-        // Adding a new server from settings — show the connection flow
-        switch viewModel.connectionState {
-        case .disconnected, .connected:
-          IntegrationDisconnectedView(
-            serverUrl: $viewModel.form.serverUrl,
-            placeholderURL: integrationName == "Jellyfin"
-              ? "http://jellyfin.example.com:8096"
-              : "http://audiobookshelf.example.com",
-            integrationName: integrationName,
-            onCommit: onConnect
-          )
-          IntegrationCustomHeadersSectionView(
-            customHeaders: $viewModel.form.customHeaders
-          )
-        case .foundServer:
-          IntegrationServerInformationSectionView(
-            serverName: viewModel.form.serverName,
-            serverUrl: viewModel.form.serverUrl
-          )
-          IntegrationServerFoundView(
-            username: $viewModel.form.username,
-            password: $viewModel.form.password,
-            onCommit: onSignIn
-          )
-          if viewModel.quickConnectSupported {
-            IntegrationQuickConnectSectionView(onStart: onStartQuickConnect)
-          }
-          IntegrationCustomHeadersSectionView(
-            customHeaders: $viewModel.form.customHeaders
-          )
-        }
-      } else {
-        switch viewModel.connectionState {
-        case .disconnected:
-          IntegrationDisconnectedView(
-            serverUrl: $viewModel.form.serverUrl,
-            placeholderURL: integrationName == "Jellyfin"
-              ? "http://jellyfin.example.com:8096"
-              : "http://audiobookshelf.example.com",
-            integrationName: integrationName,
-            onCommit: onConnect
-          )
-          IntegrationCustomHeadersSectionView(
-            customHeaders: $viewModel.form.customHeaders
-          )
-        case .foundServer:
-          IntegrationServerInformationSectionView(
-            serverName: viewModel.form.serverName,
-            serverUrl: viewModel.form.serverUrl
-          )
-          IntegrationServerFoundView(
-            username: $viewModel.form.username,
-            password: $viewModel.form.password,
-            onCommit: onSignIn
-          )
-          if viewModel.quickConnectSupported {
-            IntegrationQuickConnectSectionView(onStart: onStartQuickConnect)
-          }
-          IntegrationCustomHeadersSectionView(
-            customHeaders: $viewModel.form.customHeaders
-          )
-        case .connected:
-          IntegrationServerInformationSectionView(
-            serverName: viewModel.form.serverName,
-            serverUrl: viewModel.form.serverUrl
-          )
-          IntegrationCustomHeadersSectionView(
-            customHeaders: $viewModel.form.customHeaders,
-            onCommit: { viewModel.handleCustomHeadersUpdate() }
-          )
-          IntegrationConnectedView(viewModel: viewModel)
-        }
+      switch viewModel.signInFlow {
+      case .enteringServerURL:
+        IntegrationDisconnectedView(
+          serverUrl: $viewModel.form.serverUrl,
+          placeholderURL: integrationName == "Jellyfin"
+            ? "http://jellyfin.example.com:8096"
+            : "http://audiobookshelf.example.com",
+          integrationName: integrationName,
+          onCommit: onConnect
+        )
+        IntegrationCustomHeadersSectionView(
+          customHeaders: $viewModel.form.customHeaders
+        )
+      case .enteringCredentials:
+        IntegrationServerInformationSectionView(
+          serverName: viewModel.form.serverName,
+          serverUrl: viewModel.form.serverUrl
+        )
+        IntegrationServerFoundView(
+          username: $viewModel.form.username,
+          password: $viewModel.form.password,
+          onCommit: onSignIn
+        )
+        IntegrationCustomHeadersSectionView(
+          customHeaders: $viewModel.form.customHeaders
+        )
+      case .none:
+        // Not in sign-in flow → render the connection-details UI (server info, custom
+        // headers, logout) for the active connection. Multi-server management is in
+        // `MediaServersView`, not here.
+        IntegrationServerInformationSectionView(
+          serverName: viewModel.form.serverName,
+          serverUrl: viewModel.form.serverUrl
+        )
+        IntegrationCustomHeadersSectionView(
+          customHeaders: $viewModel.form.customHeaders,
+          onCommit: { viewModel.handleCustomHeadersUpdate() }
+        )
+        IntegrationConnectedView(viewModel: viewModel)
       }
     }
     .scrollContentBackground(.hidden)
     .background(theme.systemBackgroundColor)
     .errorAlert(error: $error)
-    .sheet(isPresented: isQuickConnectSheetPresented) {
-      // The sheet is bound to the view model's status. When the flow finishes successfully
-      // the view model nils out the status and the sheet auto-dismisses; when it fails the
-      // sheet shows the error message until the user taps OK.
-      IntegrationQuickConnectSheetView(
-        status: viewModel.quickConnectStatus ?? .retrievingCode,
-        serverUrl: viewModel.form.serverUrl,
-        onCancel: { viewModel.handleCancelQuickConnect() }
-      )
-      .environmentObject(theme)
-    }
     .overlay {
       Group {
         if isLoading {
@@ -151,14 +92,14 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
         ToolbarItem(placement: .cancellationAction) {
           Button("cancel_button".localized) {
             viewModel.handleCancelAddServerAction()
+            dismiss()
           }
           .foregroundStyle(theme.linkColor)
         }
         ToolbarItemGroup(placement: .confirmationAction) {
-          if viewModel.connectionState == .foundServer {
-            signInToolbarButton
-          } else {
-            connectToolbarButton
+          switch viewModel.signInFlow {
+          case .enteringCredentials: signInToolbarButton
+          case .enteringServerURL, .none: connectToolbarButton
           }
         }
       } else {
@@ -168,13 +109,10 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
             .foregroundStyle(theme.primaryColor)
         }
         ToolbarItemGroup(placement: .confirmationAction) {
-          switch viewModel.connectionState {
-          case .disconnected:
-            connectToolbarButton
-          case .foundServer:
-            signInToolbarButton
-          case .connected:
-            EmptyView()
+          switch viewModel.signInFlow {
+          case .enteringServerURL: connectToolbarButton
+          case .enteringCredentials: signInToolbarButton
+          case .none: EmptyView()
           }
         }
       }
@@ -220,29 +158,12 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     }
   }
 
-  /// Starts the Quick Connect flow. Failures during the flow itself are surfaced inside the
-  /// sheet via the view model's `quickConnectStatus = .failed(...)`; this handler only needs
-  /// to catch the synchronous setup error (no api-client / network unreachable on initiate).
-  func onStartQuickConnect() {
-    actionTask?.cancel()
-    actionTask = Task { @MainActor in
-      do {
-        try await viewModel.handleStartQuickConnect()
-      } catch is CancellationError {
-        return
-      } catch {
-        self.error = error
-      }
-    }
-  }
-
   // MARK: - Navigation Title
 
   private var localizedNavigationTitle: String {
-    switch viewModel.connectionState {
-    case .disconnected, .foundServer: integrationName
-    case .connected: "integration_connection_details_title".localized
-    }
+    viewModel.signInFlow == nil
+      ? "integration_connection_details_title".localized
+      : integrationName
   }
 
   // MARK: - Navigation Buttons

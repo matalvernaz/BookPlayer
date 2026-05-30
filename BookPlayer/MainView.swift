@@ -22,7 +22,6 @@ struct MainView: View {
   @Environment(\.accountService) private var accountService
   @Environment(\.jellyfinService) private var jellyfinService
   @Environment(\.audiobookshelfService) private var audiobookshelfService
-  @Environment(\.hummingbirdService) private var hummingbirdService
   @Environment(\.playbackService) private var playbackService
   @Environment(\.colorScheme) private var scheme
 
@@ -89,11 +88,13 @@ struct MainView: View {
     .sheet(item: $listState.activeIntegrationSheet) { sheet in
       switch sheet {
       case .mediaServers:
-        MediaServersView(
-          jellyfinService: jellyfinService,
-          audiobookshelfService: audiobookshelfService,
-          hummingbirdService: hummingbirdService
-        )
+        NavigationStack {
+          MediaServersView(
+            jellyfinService: jellyfinService,
+            audiobookshelfService: audiobookshelfService,
+            style: .libraryEntry
+          )
+        }
       }
     }
     .fullScreenCover(isPresented: playerState.isShowingPlayerBinding) {

@@ -37,22 +37,12 @@ final class JellyfinHeaderInjector: APIClientDelegate, @unchecked Sendable {
   }
 }
 
+@MainActor
 @Observable
 class JellyfinConnectionService: BPLogger {
   private static let activeConnectionIDKey = "jellyfin_active_connection_id"
 
-  /// Polling cadence for Quick Connect, in seconds. The Jellyfin server expects the client to
-  /// poll `/QuickConnect/Connect` periodically until the user enters the code; matches the
-  /// JellyfinAPI helper's own default and is comfortable for the server.
-  private static let quickConnectPollIntervalSeconds = 5
-
-  /// Maximum number of Quick Connect polls before the helper aborts with `.maxPollingHit`.
-  /// At a 5-second cadence this gives the user roughly a 16-minute window to enter the code
-  /// on the Jellyfin web UI before the device gives up — long enough to switch devices and
-  /// sign in if they weren't already.
-  private static let quickConnectMaxPolls = 200
-
-  private let keychainService: KeychainServiceProtocol
+  private nonisolated let keychainService: KeychainServiceProtocol
 
   var connections: [JellyfinConnectionData] = []
   var connection: JellyfinConnectionData? {
@@ -70,12 +60,7 @@ class JellyfinConnectionService: BPLogger {
     set { UserDefaults.standard.set(newValue, forKey: Self.activeConnectionIDKey) }
   }
 
-  /// Optional source-tracking store wired in by the main coordinator. When present, every call to
-  /// `createItemDownloadRequest` records the (connection, item) pair so that the eventual local
-  /// library item can be linked back to its server origin for progress reporting.
-  var mediaServerSourceStore: MediaServerSourceStore?
-
-  init(keychainService: KeychainServiceProtocol = KeychainService()) {
+  nonisolated init(keychainService: KeychainServiceProtocol = KeychainService()) {
     self.keychainService = keychainService
   }
 
@@ -83,131 +68,50 @@ class JellyfinConnectionService: BPLogger {
     reloadConnections()
   }
 
-  /// Finds and creates the api-client for the specified server
+  /// Transient result of validating a server's reachability. Carries the client +
+  /// header injector that the caller hands back to ``signIn(pending:...)`` to commit
+  /// the connection. Until that commit, neither `self.client` nor `self.headerInjector`
+  /// are mutated, so an in-flight Add Server flow can't corrupt the active library
+  /// session.
+  struct PendingServer {
+    let serverName: String
+    let client: JellyfinClient
+    let injector: JellyfinHeaderInjector
+  }
+
+  /// Validates server reachability without mutating service state. Returns a
+  /// ``PendingServer`` that the caller hands back to ``signIn(pending:...)``.
   public func findServer(
     at absolutePath: String,
     customHeaders: [String: String] = [:]
-  ) async throws -> String {
-    guard let client = createClient(serverUrlString: absolutePath, customHeaders: customHeaders) else {
+  ) async throws -> PendingServer {
+    guard let (client, injector) = makeClientAndInjector(
+      serverUrlString: absolutePath,
+      customHeaders: customHeaders
+    ) else {
       throw IntegrationError.noClient("Jellyfin")
     }
 
     let publicSystemInfo = try await client.send(Paths.getPublicSystemInfo)
 
-    self.client = client
-
-    return publicSystemInfo.value.serverName ?? ""
-  }
-
-  /// Builds a Quick Connect controller bound to the current api-client.
-  ///
-  /// The caller (the view model) owns the returned controller, drives `start()` / `stop()`,
-  /// and observes `state` for code/error transitions. Returning the JellyfinAPI helper
-  /// directly avoids reimplementing the polling loop here.
-  ///
-  /// Must be called only after `findServer(at:customHeaders:)` has populated `client`;
-  /// throws `IntegrationError.noClient` otherwise.
-  public func makeQuickConnectController() throws -> JellyfinAPI.QuickConnect {
-    guard let client else {
-      throw IntegrationError.noClient("Jellyfin")
-    }
-    return JellyfinAPI.QuickConnect(
+    return PendingServer(
+      serverName: publicSystemInfo.value.serverName ?? "",
       client: client,
-      pollInterval: Self.quickConnectPollIntervalSeconds,
-      maxPolls: Self.quickConnectMaxPolls
+      injector: injector
     )
   }
 
-  /// Returns whether the server has the Quick Connect feature enabled.
-  ///
-  /// The server replies with a raw boolean body (`true` / `false`) at
-  /// `/QuickConnect/Enabled` — there's no typed model — so we decode it from `Data`
-  /// rather than a typed response. Used by the view model to decide whether to even
-  /// surface the "Use Quick Connect" affordance.
-  public func isQuickConnectEnabled() async throws -> Bool {
-    guard let client else {
-      throw IntegrationError.noClient("Jellyfin")
-    }
-    let response = try await client.send(Paths.getQuickConnectEnabled)
-    let raw = String(data: response.value, encoding: .utf8)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-      .lowercased()
-    return raw == "true"
-  }
-
-  /// Completes a Quick Connect sign-in: exchanges the authorized `secret` for an access token,
-  /// extracts the user identity from the response, and persists the connection in the same
-  /// shape as `signIn(username:password:...)`.
-  ///
-  /// The username is taken from the auth response (Quick Connect doesn't expose it client-side
-  /// before authentication) so the Connected screen still has a "you are signed in as X" line.
-  /// Returns the username for the view model to surface.
-  public func signInWithQuickConnect(
-    secret: String,
-    serverName: String,
-    customHeaders: [String: String] = [:]
-  ) async throws -> String {
-    guard let client else {
-      throw IntegrationError.noClient("Jellyfin")
-    }
-
-    let result = try await client.signIn(quickConnectSecret: secret)
-    // Bail out before persisting if the caller (the Quick Connect VM) cancelled while
-    // the auth round-trip was in flight. Without this the user can hit Cancel during
-    // the `.authenticating` window and still end up with a saved connection.
-    try Task.checkCancellation()
-
-    guard
-      let accessToken = result.accessToken,
-      let userID = result.user?.id,
-      let userName = result.user?.name
-    else {
-      throw IntegrationError.unexpectedResponse(code: nil)
-    }
-
-    // Preserve an existing connection's id + selectedLibraryId on re-auth (see the
-    // explanation in `signIn(username:password:...)` for why this matters).
-    let existing = connections.first {
-      $0.url.canonicalDedupKey == client.configuration.url.canonicalDedupKey
-        && $0.userID == userID
-    }
-    let data = JellyfinConnectionData(
-      id: existing?.id ?? UUID().uuidString,
-      url: client.configuration.url,
-      serverName: serverName,
-      userID: userID,
-      userName: userName,
-      accessToken: accessToken,
-      selectedLibraryId: existing?.selectedLibraryId,
-      customHeaders: customHeaders
-    )
-
-    // Deduplicate on canonical-url + userID, mirroring `signIn(username:password:...)`.
-    connections.removeAll {
-      $0.url.canonicalDedupKey == data.url.canonicalDedupKey && $0.userID == data.userID
-    }
-    connections.append(data)
-    activeConnectionID = data.id
-    saveConnections()
-
-    self.client = client
-    headerInjector?.setCustomHeaders(customHeaders)
-
-    return userName
-  }
-
-  /// Sign into the server using the api-client initialized in ``findServer(at:)``
+  /// Sign in using a ``PendingServer`` returned from ``findServer(at:customHeaders:)``.
+  /// Only on success does this method commit to `self.client` / `self.headerInjector`
+  /// and append to `connections`.
   public func signIn(
+    pending: PendingServer,
     username: String,
     password: String,
     serverName: String,
     customHeaders: [String: String] = [:]
   ) async throws {
-    guard let client else {
-      throw IntegrationError.noClient("Jellyfin")
-    }
-
-    let result = try await client.signIn(username: username, password: password)
+    let result = try await pending.client.signIn(username: username, password: password)
     // Bail out before persisting if the caller cancelled while the auth round-trip was
     // in flight (e.g. the user swiped the sheet down). Otherwise the cancelled sign-in
     // still ends up saved.
@@ -225,12 +129,12 @@ class JellyfinConnectionService: BPLogger {
     // they left off — same library context, same outbound references — and not a fresh
     // connection record they have to re-configure.
     let existing = connections.first {
-      $0.url.canonicalDedupKey == client.configuration.url.canonicalDedupKey
+      $0.url.canonicalDedupKey == pending.client.configuration.url.canonicalDedupKey
         && $0.userID == userID
     }
     let data = JellyfinConnectionData(
       id: existing?.id ?? UUID().uuidString,
-      url: client.configuration.url,
+      url: pending.client.configuration.url,
       serverName: serverName,
       userID: userID,
       userName: username,
@@ -247,16 +151,26 @@ class JellyfinConnectionService: BPLogger {
     activeConnectionID = data.id
     saveConnections()
 
-    self.client = client
-    headerInjector?.setCustomHeaders(customHeaders)
+    // Commit the transient client + injector now that the connection is persisted.
+    self.client = pending.client
+    self.headerInjector = pending.injector
+    pending.injector.setCustomHeaders(customHeaders)
   }
 
   func updateCustomHeaders(_ headers: [String: String]) {
-    guard let activeID = connection?.id,
-          let index = connections.firstIndex(where: { $0.id == activeID }) else { return }
+    guard let activeID = connection?.id else { return }
+    updateCustomHeaders(id: activeID, headers)
+  }
+
+  /// Persist `headers` to the connection with the given id, regardless of which is active.
+  /// If `id` happens to be the active connection, the live header injector is also updated.
+  func updateCustomHeaders(id: String, _ headers: [String: String]) {
+    guard let index = connections.firstIndex(where: { $0.id == id }) else { return }
     connections[index].customHeaders = headers
     saveConnections()
-    headerInjector?.setCustomHeaders(headers)
+    if id == connection?.id {
+      headerInjector?.setCustomHeaders(headers)
+    }
   }
 
   func saveSelectedLibrary(id: String?) {
@@ -267,6 +181,7 @@ class JellyfinConnectionService: BPLogger {
   }
 
   func activateConnection(id: String) {
+    guard connections.contains(where: { $0.id == id }) else { return }
     activeConnectionID = id
     rebuildClient(for: connection)
   }
@@ -678,6 +593,9 @@ class JellyfinConnectionService: BPLogger {
     // Try array format first
     if let storedConnections: [JellyfinConnectionData] = try? keychainService.get(.jellyfinConnection) {
       connections = storedConnections.filter { isConnectionValid($0) }
+      if connections.count != storedConnections.count {
+        saveConnections()
+      }
     } else if let single: JellyfinConnectionData = try? keychainService.get(.jellyfinConnection),
               isConnectionValid(single) {
       // Migrate from single-connection format
@@ -715,11 +633,14 @@ class JellyfinConnectionService: BPLogger {
     return !data.userID.isEmpty && !data.accessToken.isEmpty
   }
 
-  private func createClient(
+  /// Pure factory: builds a client + injector pair without touching `self`. Used by
+  /// ``findServer(at:customHeaders:)`` (which must not mutate state) and by
+  /// ``createClient(serverUrlString:accessToken:customHeaders:)`` (which commits).
+  private func makeClientAndInjector(
     serverUrlString: String,
     accessToken: String? = nil,
     customHeaders: [String: String] = [:]
-  ) -> JellyfinClient? {
+  ) -> (JellyfinClient, JellyfinHeaderInjector)? {
     let mainBundleInfo = Bundle.main.infoDictionary
     let clientName = mainBundleInfo?[kCFBundleNameKey as String] as? String
     let clientVersion = mainBundleInfo?[kCFBundleVersionKey as String] as? String
@@ -738,12 +659,30 @@ class JellyfinConnectionService: BPLogger {
       version: clientVersion
     )
     let injector = JellyfinHeaderInjector(customHeaders: customHeaders)
-    self.headerInjector = injector
-    return JellyfinClient(
+    let client = JellyfinClient(
       configuration: configuration,
       delegate: injector,
       accessToken: accessToken
     )
+    return (client, injector)
+  }
+
+  /// Builds a client + commits the underlying injector to `self.headerInjector`.
+  /// Used by ``rebuildClient(for:)`` to swap in a saved connection's client.
+  private func createClient(
+    serverUrlString: String,
+    accessToken: String? = nil,
+    customHeaders: [String: String] = [:]
+  ) -> JellyfinClient? {
+    guard let (client, injector) = makeClientAndInjector(
+      serverUrlString: serverUrlString,
+      accessToken: accessToken,
+      customHeaders: customHeaders
+    ) else {
+      return nil
+    }
+    self.headerInjector = injector
+    return client
   }
 
   func createItemDownloadUrl(_ item: JellyfinLibraryItem) throws -> URL {
@@ -767,21 +706,8 @@ class JellyfinConnectionService: BPLogger {
 
   /// Returns a URLRequest for downloading a library item, carrying the user-defined
   /// custom HTTP headers (needed for servers behind Cloudflare Access etc.).
-  ///
-  /// Also registers the item's origin with `mediaServerSourceStore` (if wired) so that playback
-  /// progress for the resulting local copy can be reported back to this Jellyfin server.
   func createItemDownloadRequest(_ item: JellyfinLibraryItem) throws -> URLRequest {
     let url = try createItemDownloadUrl(item)
-    if let connection {
-      mediaServerSourceStore?.registerPendingDownload(
-        url,
-        info: MediaServerSourceInfo(
-          kind: .jellyfin,
-          connectionId: connection.id,
-          itemId: item.id
-        )
-      )
-    }
     return wrapWithCustomHeaders(url)
   }
 
