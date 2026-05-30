@@ -10,6 +10,15 @@ import BookPlayerKit
 import Combine
 import SwiftUI
 
+/// Hummingbird-local state machine. Was on the shared protocol pre-multi-server
+/// merge; develop's reworked protocol switched to `signInFlow` instead. Kept
+/// here because Hummingbird's UI still drives off this three-state shape.
+enum IntegrationConnectionState {
+  case disconnected
+  case foundServer
+  case connected
+}
+
 @MainActor
 final class HummingbirdConnectionViewModel: IntegrationConnectionViewModelProtocol, BPLogger {
   let connectionService: HummingbirdConnectionService
