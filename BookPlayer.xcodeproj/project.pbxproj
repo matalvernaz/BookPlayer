@@ -886,6 +886,8 @@
 		F9FA95F9A4AE359006A85B88 /* PreferencesAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E6918C51C370C2E89B24F9 /* PreferencesAPI.swift */; };
 		FED52673ACD975949EF9E219 /* PreferencesSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA09FE5A35CEA0B87F83EF3 /* PreferencesSyncServiceTests.swift */; };
 		FF95F8C692908D744A32D761 /* PreferencesAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E6918C51C370C2E89B24F9 /* PreferencesAPI.swift */; };
+		CD2D764679D674AC86497638 /* MediaServerSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B8D1A3DE3BA81842B2A943 /* MediaServerSourceStore.swift */; };
+		B26F02A809F57D9EE16DB666 /* MediaServerSourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134309B3C02452489688D14F /* MediaServerSourceInfo.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -4474,6 +4476,8 @@
 				F9FA95F9A4AE359006A85B88 /* PreferencesAPI.swift in Sources */,
 				2D7D5973F598D517CBCCE0ED /* PreferencesSyncService.swift in Sources */,
 				CCC7E1CC127610C3687B8A50 /* SortPreferencesResolving.swift in Sources */,
+				CD2D764679D674AC86497638 /* MediaServerSourceStore.swift in Sources */,
+				B26F02A809F57D9EE16DB666 /* MediaServerSourceInfo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
