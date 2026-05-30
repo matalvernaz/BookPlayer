@@ -33,6 +33,23 @@ struct IntegrationServerInfo: Identifiable {
   let serverName: String
   let serverUrl: String
   let userName: String
+  /// Defaults to `false` so integrations that don't track per-row active state
+  /// (Jellyfin/ABS post-rework) can omit the argument; Hummingbird passes it.
+  let isActive: Bool
+
+  init(
+    id: String,
+    serverName: String,
+    serverUrl: String,
+    userName: String,
+    isActive: Bool = false
+  ) {
+    self.id = id
+    self.serverName = serverName
+    self.serverUrl = serverUrl
+    self.userName = userName
+    self.isActive = isActive
+  }
 }
 
 /// Status of an out-of-band code-based authentication flow (Jellyfin Quick Connect).
@@ -58,14 +75,6 @@ enum QuickConnectStatus: Equatable {
   case failed(String)
 }
 
-struct IntegrationServerInfo: Identifiable {
-  let id: String
-  let serverName: String
-  let serverUrl: String
-  let userName: String
-  let isActive: Bool
-}
-
 @MainActor
 protocol IntegrationConnectionViewModelProtocol: ObservableObject {
   associatedtype FormVM: IntegrationConnectionFormViewModelProtocol
@@ -89,12 +98,6 @@ protocol IntegrationConnectionViewModelProtocol: ObservableObject {
   /// button when adding from Settings.
   var isAddingServer: Bool { get set }
 
-  /// All saved server connections
-  var servers: [IntegrationServerInfo] { get }
-
-  /// Whether the user is adding a new server from the settings screen
-  var isAddingServer: Bool { get set }
-
   func handleConnectAction() async throws
   func handleSignInAction() async throws
   func handleSignOutAction()
@@ -114,18 +117,14 @@ protocol IntegrationConnectionViewModelProtocol: ObservableObject {
   /// Persist any changes made to the custom-headers list while the connection is already live.
   func handleCustomHeadersUpdate()
 
-  /// Whether this integration supports an out-of-band code-based sign-in flow (Jellyfin's
-  /// Quick Connect). The shared connection UI uses this to decide whether to surface the
-  /// "Use Quick Connect" affordance. Default: `false` — concrete view models opt in.
+  /// Whether this integration supports an out-of-band code-based sign-in flow
+  /// (Jellyfin's Quick Connect). Default: `false` — concrete VMs opt in.
   var quickConnectSupported: Bool { get }
 
-  /// Current state of an in-flight Quick Connect flow, or `nil` if none is running. The
-  /// shared UI observes this to drive the awaiting-code overlay and final sign-in.
+  /// Current state of an in-flight Quick Connect flow, or `nil` if none is running.
   var quickConnectStatus: QuickConnectStatus? { get }
 
-  /// Begin the Quick Connect flow. Throws if the underlying api-client cannot be reached
-  /// (e.g. before `handleConnectAction()` has succeeded). The view model is responsible for
-  /// completing sign-in and transitioning the connection to `.connected`.
+  /// Begin the Quick Connect flow. Throws if the underlying api-client cannot be reached.
   func handleStartQuickConnect() async throws
 
   /// Cancel an in-flight Quick Connect flow, dismiss any failure status, and free the
@@ -133,29 +132,12 @@ protocol IntegrationConnectionViewModelProtocol: ObservableObject {
   func handleCancelQuickConnect()
 }
 
-/// Default no-op implementations so that integrations without code-based sign-in (e.g.
-/// AudiobookShelf) can conform to this protocol without boilerplate. Concrete view models
-/// override these to opt in.
+/// Default no-op Quick Connect implementations so integrations that don't speak it
+/// (AudiobookShelf, Hummingbird, and — post-merge — the upstream Jellyfin VM until
+/// Quick Connect is re-integrated) can conform without boilerplate.
 extension IntegrationConnectionViewModelProtocol {
   var quickConnectSupported: Bool { false }
   var quickConnectStatus: QuickConnectStatus? { nil }
   func handleStartQuickConnect() async throws {}
   func handleCancelQuickConnect() {}
-
-  /// Force the connection sheet into the password-entry posture for a saved
-  /// server whose session has gone stale. Called by each root view before
-  /// presenting the form in response to the session-expired alert's "Sign
-  /// In" action.
-  ///
-  /// Without this, the `@StateObject` VM init sees `connectionService.connection
-  /// != nil` and locks in `connectionState = .connected`, which renders the
-  /// `IntegrationConnectedView` (Sign Out only) -- a dead-end trap where the
-  /// only way out is to delete the connection and re-add it from scratch,
-  /// losing customHeaders and selectedLibraryId. `.foundServer` preserves the
-  /// existing serverName/URL/headers/username (already populated by the VM's
-  /// init) and shows the password field.
-  func prepareForReauth() {
-    connectionState = .foundServer
-    form.password = ""
-  }
 }

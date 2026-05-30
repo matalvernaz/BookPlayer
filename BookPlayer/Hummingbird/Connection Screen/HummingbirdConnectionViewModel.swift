@@ -18,6 +18,20 @@ final class HummingbirdConnectionViewModel: IntegrationConnectionViewModelProtoc
   @Published var viewMode: IntegrationViewMode = .regular
   @Published var connectionState: IntegrationConnectionState
   @Published var isAddingServer: Bool = false
+  /// Required by `IntegrationConnectionViewModelProtocol` post-multi-server merge.
+  /// Hummingbird drives its UI from `connectionState`; these are protocol stubs.
+  @Published var signInFlow: SignInStep? = nil
+  @Published var signInCompletedAt: Date? = nil
+
+  /// Force the connection sheet into the password-entry posture for a saved
+  /// server whose session has gone stale. Called by `HummingbirdRootView` before
+  /// presenting the form in response to the session-expired alert's "Sign In".
+  /// Was a protocol-extension default; moved here when the protocol switched
+  /// from `connectionState` to `signInFlow` upstream.
+  func prepareForReauth() {
+    connectionState = .foundServer
+    form.password = ""
+  }
 
   var servers: [IntegrationServerInfo] {
     connectionService.connections.map { data in
