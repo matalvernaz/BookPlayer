@@ -40,6 +40,19 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   @Published private var isFetchingRemoteURL: Bool?
   /// Prevent loop from automatic URL refreshes
   private var canFetchRemoteURL = true
+  /// Pending audio-session retry task scheduled when activation fails (TestFlight builds only).
+  private var audioSessionRetryTask: Task<Void, Never>?
+  /// Tracks an in-flight initial seek issued from `loadChapterOperation`.
+  /// AVPlayer.seek is async; if autoplay was queued and the item reaches
+  /// `.readyToPlay` before the seek completes, playback would start at
+  /// the pre-seek position.
+  private var initialSeekInProgress = false
+  /// Generation counter bumped on each `load(_:)` so stacked loads can
+  /// tell their seek completions apart.
+  private var loadGeneration: Int = 0
+  /// Set when audio-session activation fails in the current process, so a later
+  /// successful activation can tell whether recovery required an app relaunch.
+  private var audioSessionFailedThisSession = false
   private var hasObserverRegistered = false
   private var observeStatus: Bool = false {
     didSet {
@@ -1105,6 +1118,29 @@ extension PlayerManager {
         guard AppEnvironment.isTestFlight else {
           fatalError("Failed to activate the audio session, \(error), description: \(error.localizedDescription)")
         }
+        /// Beta-only: don't hard-crash when the audio session can't be activated.
+        /// This happens when another process holds the session in a stuck state
+        /// that (so far) only a force-quit clears. Report it to Sentry so we can
+        /// confirm whether the stuck state still occurs, and leave the play button
+        /// inert — a missed auto-play is strictly better than the app dying in the
+        /// background.
+        let nsError = error as NSError
+        SentrySDK.capture(error: error) { scope in
+          scope.setLevel(.error)
+          scope.setFingerprint(["audio-session-activation-failure"])
+          scope.setTag(value: "audio_session_activation", key: "playback_failure")
+          scope.setContext(value: [
+            "errorCode": nsError.code,
+            "errorDomain": nsError.domain,
+            "isOtherAudioPlaying": AVAudioSession.sharedInstance().isOtherAudioPlaying,
+            "applicationState": UIApplication.shared.applicationState == .active ? "active" : "background",
+            "autoPlayed": autoPlayed,
+            "relativePath": currentItem.relativePath,
+          ], key: "audio_session")
+        }
+        markAudioSessionFailure(nsError)
+        NSLog("[PlayerManager] Audio session activation failed: %@", error.localizedDescription)
+        playbackQueued = nil
         return
       }
 
