@@ -40,13 +40,17 @@ final class JellyfinProgressReporter: MediaServerProgressReporter, BPLogger {
   }
 
   func reportInProgress(_ update: MediaServerProgressUpdate) {
-    post(update, endpoint: "Sessions/Playing/Progress", eventName: "timeupdate", isFinal: false)
+    Task { @MainActor [weak self] in
+      self?.post(update, endpoint: "Sessions/Playing/Progress", eventName: "timeupdate", isFinal: false)
+    }
   }
 
   func reportFinal(_ update: MediaServerProgressUpdate) {
     let endpoint = update.isFinished ? "Sessions/Playing/Stopped" : "Sessions/Playing/Progress"
     let eventName = update.isFinished ? "stopped" : "pause"
-    post(update, endpoint: endpoint, eventName: eventName, isFinal: true)
+    Task { @MainActor [weak self] in
+      self?.post(update, endpoint: endpoint, eventName: eventName, isFinal: true)
+    }
     if update.isFinished {
       // Clear the session id so the next playback of this item is a fresh session on the server.
       playSessionLock.withLock { _ = playSessionIds.removeValue(forKey: relativePathKey(for: update)) }
@@ -55,6 +59,9 @@ final class JellyfinProgressReporter: MediaServerProgressReporter, BPLogger {
 
   // MARK: - HTTP
 
+  /// MainActor-isolated because `connectionService.connections` is `@MainActor`
+  /// (post-multi-server-merge upstream rework). Callers hop via `Task @MainActor`.
+  @MainActor
   private func post(
     _ update: MediaServerProgressUpdate,
     endpoint: String,

@@ -30,16 +30,24 @@ final class AudiobookShelfProgressReporter: MediaServerProgressReporter, BPLogge
   }
 
   func reportInProgress(_ update: MediaServerProgressUpdate) {
-    patchProgress(update)
+    Task { @MainActor [weak self] in
+      self?.patchProgress(update)
+    }
   }
 
   func reportFinal(_ update: MediaServerProgressUpdate) {
-    patchProgress(update)
+    Task { @MainActor [weak self] in
+      self?.patchProgress(update)
+    }
   }
 
   /// `PATCH /api/me/progress/<libraryItemId>` — the endpoint the ABS web client and official
   /// apps use for periodic + boundary progress updates. Fire-and-forget by design; on transient
   /// failure the next tick will re-send and overwrite anyway.
+  ///
+  /// MainActor-isolated because `connectionService.connections` and `.wrapWithCustomHeaders(_:)`
+  /// are `@MainActor` post-multi-server-merge upstream rework.
+  @MainActor
   private func patchProgress(_ update: MediaServerProgressUpdate) {
     guard let connection = connectionService.connections.first(where: { $0.id == update.info.connectionId }) else {
       // Connection was deleted since this item was imported — nothing to do.
