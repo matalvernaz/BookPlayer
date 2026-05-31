@@ -22,6 +22,7 @@ struct MainView: View {
   @Environment(\.accountService) private var accountService
   @Environment(\.jellyfinService) private var jellyfinService
   @Environment(\.audiobookshelfService) private var audiobookshelfService
+  @Environment(\.hummingbirdService) private var hummingbirdService
   @Environment(\.playbackService) private var playbackService
   @Environment(\.colorScheme) private var scheme
 
@@ -92,6 +93,7 @@ struct MainView: View {
           MediaServersView(
             jellyfinService: jellyfinService,
             audiobookshelfService: audiobookshelfService,
+            hummingbirdService: hummingbirdService,
             style: .libraryEntry
           )
         }

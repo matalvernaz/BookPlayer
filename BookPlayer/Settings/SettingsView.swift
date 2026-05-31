@@ -26,6 +26,7 @@ struct SettingsView: View {
   @Environment(\.accountService) private var accountService
   @Environment(\.jellyfinService) private var jellyfinService
   @Environment(\.audiobookshelfService) private var audiobookshelfService
+  @Environment(\.hummingbirdService) private var hummingbirdService
   @Environment(\.hardcoverService) private var hardcoverService
   @Environment(\.playerState) private var playerState
   @EnvironmentObject private var theme: ThemeViewModel
@@ -118,6 +119,7 @@ struct SettingsView: View {
             MediaServersView(
               jellyfinService: jellyfinService,
               audiobookshelfService: audiobookshelfService,
+              hummingbirdService: hummingbirdService,
               style: .settings
             )
           )
