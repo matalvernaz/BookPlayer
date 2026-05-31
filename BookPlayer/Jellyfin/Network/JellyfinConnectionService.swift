@@ -53,6 +53,12 @@ class JellyfinConnectionService: BPLogger {
     return connections.first
   }
   var client: JellyfinClient?
+  /// Wired up by `MainCoordinator` so download flows can record per-item provenance for
+  /// playback-progress routing. Currently unused inside this class -- upstream's reworked
+  /// download path no longer calls `registerPendingDownload` here; re-wiring the
+  /// `mediaServerSourceStore?.registerPendingDownload(...)` hook on the new path is a
+  /// follow-up. The property stays so `MainCoordinator`'s wiring compiles.
+  var mediaServerSourceStore: MediaServerSourceStore?
   private var headerInjector: JellyfinHeaderInjector?
 
   private(set) var activeConnectionID: String? {

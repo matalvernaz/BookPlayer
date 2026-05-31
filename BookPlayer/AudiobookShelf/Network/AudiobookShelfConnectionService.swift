@@ -24,6 +24,11 @@ class AudiobookShelfConnectionService: BPLogger {
     }
     return connections.first
   }
+  /// Wired up by `MainCoordinator` for download-flow provenance tracking. Currently unused
+  /// here -- upstream's reworked download path doesn't call `registerPendingDownload(...)`;
+  /// re-wiring that hook on the new path is a follow-up. Property stays so the coordinator
+  /// wiring compiles.
+  var mediaServerSourceStore: MediaServerSourceStore?
   private let urlSession: URLSession
 
   private(set) var activeConnectionID: String? {
