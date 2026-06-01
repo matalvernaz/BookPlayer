@@ -1140,7 +1140,11 @@ extension PlayerManager {
         }
         markAudioSessionFailure(nsError)
         NSLog("[PlayerManager] Audio session activation failed: %@", error.localizedDescription)
-        playbackQueued = nil
+        // Don't clear playbackQueued here: scheduleAudioSessionRecovery owns it,
+        // resuming on a successful re-grab and clearing it only when the bounded
+        // backoff is exhausted. Clearing it eagerly leaves the route stuck silent
+        // after a Bluetooth call interruption until the user reconnects the device.
+        scheduleAudioSessionRecovery()
         return
       }
 
