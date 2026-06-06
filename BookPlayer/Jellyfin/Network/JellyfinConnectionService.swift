@@ -42,6 +42,16 @@ final class JellyfinHeaderInjector: APIClientDelegate, @unchecked Sendable {
 class JellyfinConnectionService: BPLogger {
   private static let activeConnectionIDKey = "jellyfin_active_connection_id"
 
+  /// Polling cadence for Quick Connect, in seconds. Matches the JellyfinAPI helper's own
+  /// default and is comfortable for the server, which expects the client to poll
+  /// `/QuickConnect/Connect` periodically until the user enters the code.
+  private static let quickConnectPollIntervalSeconds = 5
+
+  /// Maximum number of Quick Connect polls before the helper aborts with `.maxPollingHit`.
+  /// At a 5-second cadence this gives the user roughly a 16-minute window to enter the code
+  /// on another device before this one gives up.
+  private static let quickConnectMaxPolls = 200
+
   private nonisolated let keychainService: KeychainServiceProtocol
 
   var connections: [JellyfinConnectionData] = []
@@ -161,6 +171,79 @@ class JellyfinConnectionService: BPLogger {
     self.client = pending.client
     self.headerInjector = pending.injector
     pending.injector.setCustomHeaders(customHeaders)
+  }
+
+  /// Builds a Quick Connect controller bound to a validated server's client.
+  ///
+  /// The reworked add-server flow keeps the `JellyfinClient` transient inside ``PendingServer``
+  /// and only commits it on a successful sign-in. Quick Connect needs a working client *before*
+  /// any credentials exist, so it runs against the pending client rather than `self.client`.
+  func makeQuickConnectController(
+    using client: JellyfinClient
+  ) -> JellyfinAPI.QuickConnect {
+    JellyfinAPI.QuickConnect(
+      client: client,
+      pollInterval: Self.quickConnectPollIntervalSeconds,
+      maxPolls: Self.quickConnectMaxPolls
+    )
+  }
+
+  /// Completes a Quick Connect sign-in against a validated ``PendingServer``: exchanges the
+  /// authorized `secret` for an access token and persists the connection in the same shape as
+  /// ``signIn(pending:username:password:serverName:customHeaders:)``.
+  ///
+  /// Returns the username taken from the auth response — Quick Connect doesn't expose it
+  /// client-side before authentication, so the Connected screen relies on this for its
+  /// "signed in as X" line.
+  public func signInWithQuickConnect(
+    pending: PendingServer,
+    secret: String,
+    serverName: String,
+    customHeaders: [String: String] = [:]
+  ) async throws -> String {
+    let result = try await pending.client.signIn(quickConnectSecret: secret)
+    // Bail out before persisting if the caller cancelled while the exchange was in flight.
+    try Task.checkCancellation()
+
+    guard
+      let accessToken = result.accessToken,
+      let userID = result.user?.id,
+      let userName = result.user?.name
+    else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+
+    // Preserve id + selectedLibraryId on re-auth of the same (canonical-url, userID) pair,
+    // mirroring the password sign-in path so the user lands back in the same library context.
+    let existing = connections.first {
+      $0.url.canonicalDedupKey == pending.client.configuration.url.canonicalDedupKey
+        && $0.userID == userID
+    }
+    let data = JellyfinConnectionData(
+      id: existing?.id ?? UUID().uuidString,
+      url: pending.client.configuration.url,
+      serverName: serverName,
+      userID: userID,
+      userName: userName,
+      accessToken: accessToken,
+      selectedLibraryId: existing?.selectedLibraryId,
+      customHeaders: customHeaders
+    )
+
+    // Deduplicate on canonical-url + userID — at most one of these matches `existing` above.
+    connections.removeAll {
+      $0.url.canonicalDedupKey == data.url.canonicalDedupKey && $0.userID == data.userID
+    }
+    connections.append(data)
+    activeConnectionID = data.id
+    saveConnections()
+
+    // Commit the transient client + injector now that the connection is persisted.
+    self.client = pending.client
+    self.headerInjector = pending.injector
+    pending.injector.setCustomHeaders(customHeaders)
+
+    return userName
   }
 
   func updateCustomHeaders(_ headers: [String: String]) {

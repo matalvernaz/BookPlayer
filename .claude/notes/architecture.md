@@ -29,10 +29,15 @@ Quick Connect support for passwordless sign-in.
 ### Audiobookshelf (`BookPlayer/AudiobookShelf/`)
 
 Connection screen, library browser, audiobook details, download.
-**Password-only** — no OIDC support. ABS servers that fork users want to
-connect to must keep both `local` and `openid` in `authActiveAuthMethods`;
-OIDC-only setups will block this fork. Users auto-registered via OIDC
-have no local password and can't sign in here until an admin sets one.
+Password **and** native SSO. The "Sign in with SSO" button on the
+credentials step runs ABS's own OpenID Connect mobile flow
+(`signInWithOIDC` in `AudiobookShelfConnectionService`): PKCE +
+`ASWebAuthenticationSession` against `GET /auth/openid` with the
+`bookplayer://oauth` redirect, then the `GET /auth/openid/callback`
+exchange yields the same `user.token` the password path stores.
+Server-side prerequisite: the ABS OIDC config must whitelist
+`bookplayer://oauth` as a mobile redirect URI. OIDC-only servers now
+work without keeping a `local` method active.
 
 ### Hummingbird (`BookPlayer/Hummingbird/`)
 

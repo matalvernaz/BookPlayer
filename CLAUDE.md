@@ -9,9 +9,9 @@ it from the diff against upstream.
 ## Where to look
 
 - [`.claude/notes/architecture.md`](.claude/notes/architecture.md) — fork
-  features the upstream code doesn't have: Jellyfin client, Audiobookshelf
-  client (password-only, no OIDC), Hummingbird/NNELS integration,
-  share-extension web-URL imports.
+  features the upstream code doesn't have: Jellyfin client (password +
+  Quick Connect), Audiobookshelf client (password + native OIDC/SSO),
+  Hummingbird/NNELS integration, share-extension web-URL imports.
 - [`.claude/notes/audit-backlog.md`](.claude/notes/audit-backlog.md) —
   remaining items from the May 2026 multi-AI audit of `test/all-changes`.
   Critical/High items are already shipped; open items are nits and
