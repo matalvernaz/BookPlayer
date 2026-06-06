@@ -678,6 +678,9 @@ final class JellyfinNarratorBooksViewModel: IntegrationLibraryViewModelProtocol,
 
 @MainActor
 final class JellyfinAuthorsListViewModel: IntegrationLibraryViewModelProtocol, BPLogger {
+  /// Authors browse is fully loaded and name-sorted — group under letter headings.
+  var isAlphabeticallySectioned: Bool { true }
+
   let parentID: String?
 
   var navigation: BPNavigation
@@ -769,6 +772,9 @@ final class JellyfinAuthorsListViewModel: IntegrationLibraryViewModelProtocol, B
 
 @MainActor
 final class JellyfinNarratorsListViewModel: IntegrationLibraryViewModelProtocol, BPLogger {
+  /// Narrators browse is fully loaded and name-sorted — group under letter headings.
+  var isAlphabeticallySectioned: Bool { true }
+
   let parentID: String?
 
   var navigation: BPNavigation

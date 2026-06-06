@@ -100,6 +100,15 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
   }
 
+  var isAlphabeticallySectioned: Bool {
+    switch source {
+    case .entities(_, .authors), .entities(_, .narrators):
+      true
+    case .libraries, .books(_, _), .collection(_), .entities(_, _):
+      false
+    }
+  }
+
   private var usesRemoteBookSearch: Bool {
     if case .books(_, .none) = source {
       return true

@@ -38,6 +38,10 @@ protocol IntegrationLibraryViewModelProtocol: ObservableObject {
   var showsLayoutPreferences: Bool { get }
   var showsSortPreferences: Bool { get }
   var allowsEditing: Bool { get }
+  /// When true, the list view groups items under alphabetical letter headings
+  /// (A, B, C… with non-letter names under "#"). Only valid for fully-loaded,
+  /// name-sorted lists — author and narrator browses — not paginated ones.
+  var isAlphabeticallySectioned: Bool { get }
   var showingDownloadConfirmation: Bool { get set }
 
   func fetchInitialItems()
@@ -59,6 +63,7 @@ extension IntegrationLibraryViewModelProtocol {
   var showsLayoutPreferences: Bool { true }
   var showsSortPreferences: Bool { true }
   var allowsEditing: Bool { true }
+  var isAlphabeticallySectioned: Bool { false }
   var showingDownloadConfirmation: Bool {
     get { false }
     set {}

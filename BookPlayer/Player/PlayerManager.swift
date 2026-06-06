@@ -73,21 +73,48 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   private var playTask: Task<(), Error>?
   private var playerItem: AVPlayerItem?
 
-  /// Asset-creation options for the URL's file type. We pass
-  /// `AVURLAssetPreferPreciseDurationAndTimingKey: true` for the formats where
+  /// Formats we load without `AVURLAssetPreferPreciseDurationAndTimingKey`, and
+  /// which therefore have no precise seek index. For these the only way to get
+  /// precise duration is a full-file decode scan, which on iOS blocks playback
+  /// start for many seconds on a multi-hour track and produces the gap users
+  /// see between tracks — so we drop the flag and accept the
+  /// approximate-then-precise duration AVFoundation provides. Single source of
+  /// truth for both the asset-loading flag (`assetOptions`) and the
+  /// seek-tolerance decision (`seekTolerance`).
+  static let unindexedFormats: Set<String> = ["flac", "ogg", "opus", "wav"]
+
+  /// Asset-creation options for the URL's file type. Passes
+  /// `AVURLAssetPreferPreciseDurationAndTimingKey: true` for formats where
   /// AVFoundation can produce precise duration cheaply (MP4/M4A/M4B from atoms,
-  /// MP3 from the Xing header). For FLAC/Ogg/Opus the only way to get precise
-  /// duration is a full-file decode scan, which on iOS blocks playback start
-  /// for many seconds on a multi-hour audiobook track and produces the gap
-  /// users see between tracks. For those formats we drop the flag and accept
-  /// the approximate-then-precise duration AVFoundation provides.
+  /// MP3 from the Xing header), and drops it for `unindexedFormats`.
   static func assetOptions(for url: URL) -> [String: Any] {
     let ext = url.pathExtension.lowercased()
-    let slowToScan: Set<String> = ["flac", "ogg", "opus", "wav"]
     return [
-      AVURLAssetPreferPreciseDurationAndTimingKey: !slowToScan.contains(ext)
+      AVURLAssetPreferPreciseDurationAndTimingKey: !unindexedFormats.contains(ext)
     ]
   }
+
+  /// Seek tolerance for the currently-loaded item. On formats loaded without a
+  /// precise seek index (see `unindexedFormats`), zero-tolerance seeks force
+  /// AVFoundation to decode to the exact sample; on a multi-hour FLAC a forward
+  /// seek into not-yet-decoded audio can stall indefinitely — `timeControlStatus`
+  /// stays `.waitingToPlayAtSpecifiedRate`, the seek completion never fires, and
+  /// play/pause can't recover because each `play()` re-enters the same pending
+  /// seek. Only a seek to already-decoded audio (rewinding to a heard position)
+  /// supersedes it and lands. A bounded tolerance lets the seek land on a nearby
+  /// frame it can reach quickly; seek completions already persist the *landed*
+  /// time, so the ~1s imprecision (imperceptible on a 30s skip) introduces no
+  /// drift. Indexed formats keep sample-accurate seeks — there it's free.
+  private static let unindexedSeekTolerance = CMTime(
+    seconds: 1,
+    preferredTimescale: CMTimeScale(NSEC_PER_SEC)
+  )
+
+  private func seekTolerance(for item: PlayableItem) -> CMTime {
+    let ext = (item.currentChapter.relativePath as NSString).pathExtension.lowercased()
+    return Self.unindexedFormats.contains(ext) ? Self.unindexedSeekTolerance : .zero
+  }
+
   private var loadChapterTask: Task<(), Never>?
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
@@ -816,16 +843,15 @@ extension PlayerManager {
       currentItem.isBoundBook
       ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
       : boundedTime
-    // Sample-accurate seek. FLAC/Ogg/Opus/WAV assets are loaded without
-    // AVURLAssetPreferPreciseDurationAndTimingKey for fast startup, which
-    // means AVPlayer has no seek index — default tolerances of
-    // kCMTimePositiveInfinity let it land at any frame boundary, often
-    // many seconds earlier than the requested time. Zero tolerances force
-    // AVFoundation to decode to the exact target.
+    // Bounded tolerance on unindexed formats (see `seekTolerance`); sample-accurate
+    // elsewhere. Default tolerances of kCMTimePositiveInfinity would let it land at
+    // any frame boundary, often many seconds early; zero tolerance can stall on
+    // unindexed FLAC. The bounded value is the middle ground.
+    let tolerance = seekTolerance(for: currentItem)
     self.audioPlayer.seek(
       to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-      toleranceBefore: .zero,
-      toleranceAfter: .zero
+      toleranceBefore: tolerance,
+      toleranceAfter: tolerance
     )
   }
 
@@ -847,10 +873,11 @@ extension PlayerManager {
 
     initialSeekInProgress = true
     let seekGeneration = loadGeneration
+    let tolerance = seekTolerance(for: currentItem)
     audioPlayer.seek(
       to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-      toleranceBefore: .zero,
-      toleranceAfter: .zero
+      toleranceBefore: tolerance,
+      toleranceAfter: tolerance
     ) { [weak self] finished in
       DispatchQueue.main.async {
         guard let self else { return }
@@ -925,18 +952,18 @@ extension PlayerManager {
       currentItem.isBoundBook
       ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
       : boundedTime
-    // Defer persistence to the seek completion. AVFoundation honours
-    // zero-tolerance seeks exactly only when the asset has a precise
-    // timing index — unindexed FLAC lands "near" the target. Writing
-    // `boundedTime` up front would lock the model to a position the
-    // player isn't actually at; persisting from the completion writes
-    // the value the next `currentTime()` will return. `loadGeneration`
-    // gates against load-switches superseding the seek mid-flight.
+    // Defer persistence to the seek completion. On unindexed formats the
+    // seek lands "near" the target (bounded by `seekTolerance`), not exactly
+    // on it. Writing `boundedTime` up front would lock the model to a position
+    // the player isn't actually at; persisting from the completion writes the
+    // value the next `currentTime()` will return. `loadGeneration` gates
+    // against load-switches superseding the seek mid-flight.
     let seekGeneration = loadGeneration
+    let tolerance = seekTolerance(for: currentItem)
     self.audioPlayer.seek(
       to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-      toleranceBefore: .zero,
-      toleranceAfter: .zero
+      toleranceBefore: tolerance,
+      toleranceAfter: tolerance
     ) { [weak self] finished in
       guard finished else { return }
       DispatchQueue.main.async {
@@ -1210,10 +1237,11 @@ extension PlayerManager {
       let newPlayerTime = max(CMTimeGetSeconds(self.audioPlayer.currentTime()) - rewindTimeLimited, 0)
 
       let seekGeneration = loadGeneration
+      let tolerance = seekTolerance(for: item)
       self.audioPlayer.seek(
         to: CMTime(seconds: newPlayerTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-        toleranceBefore: .zero,
-        toleranceAfter: .zero
+        toleranceBefore: tolerance,
+        toleranceAfter: tolerance
       ) { [weak self] finished in
         guard finished else { return }
         DispatchQueue.main.async {

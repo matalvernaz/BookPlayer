@@ -35,7 +35,10 @@ struct IntegrationLibraryView<
 
   var body: some View {
     Group {
-      if viewModel.isGridEnabled, viewModel.layout == .grid {
+      // Alphabetically-sectioned browses (authors/narrators) are list-only —
+      // letter headings have no place in a grid, and a flat grid would hide
+      // the feature on backends that default entity browses to grid layout.
+      if viewModel.isGridEnabled, viewModel.layout == .grid, !viewModel.isAlphabeticallySectioned {
         ScrollView {
           IntegrationLibraryGridView(viewModel: viewModel, cellContent: gridCell)
             .padding()
@@ -118,7 +121,7 @@ struct IntegrationLibraryView<
 
   @ViewBuilder
   var layoutPreferences: some View {
-    if viewModel.showsLayoutPreferences {
+    if viewModel.showsLayoutPreferences, !viewModel.isAlphabeticallySectioned {
       ThemedSection {
         // ``.inline`` flattens the picker into the surrounding menu so the
         // Grid/List choices appear as siblings of Select/Download instead of
