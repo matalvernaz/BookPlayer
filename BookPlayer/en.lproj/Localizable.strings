@@ -99,6 +99,7 @@
 "player_sleep_title" = "Pause playback";
 "sleep_chapter_option_title" = "End of current chapter";
 "player_chapter_description" = "Chapter %d of %d";
+"player_book_remaining_title" = "%@ left";
 "chapters_title" = "Chapters";
 "chapters_item_description" = "Start: %@ - Duration: %@";
 "restore_title" = "Restore";
@@ -217,6 +218,7 @@
 "settings_remainingtime_title" = "Use Remaining Time";
 "settings_chaptercontext_title" = "Use Chapter Context";
 "settings_progresslabels_description" = "Toggle between displaying the remaining time, total duration and progress of either the chapter or the book in the player screen";
+"settings_bookremaining_title" = "Show Total Remaining Time";
 "settings_playerinterface_list_description" = "Adjust what the list button in the player screen opens";
 "settings_autoplay_section_title" = "AUTOPLAY";
 "settings_autoplay_restart_title" = "Restart finished books";
@@ -242,6 +244,7 @@
 "sort_button_title" = "Sort";
 "search_title" = "Search";
 "books_title" = "Books";
+"book_title" = "Book";
 "folders_title" = "Folders";
 "section_item_title" = "Title";
 "section_item_author" = "Author";
@@ -316,6 +319,8 @@ We're working hard on providing a seamless experience, if possible, please conta
 "intent_lastbook_play_title" = "Resume last played book";
 "intent_lastbook_empty_error" = "There's no last played book";
 "intent_playback_pause_title" = "Pause playback";
+"intent_play_book_title" = "Play a book";
+"intent_play_book_request_title" = "Which book?";
 "storage_artwork_cache_title" = "Artwork cache size";
 "settings_share_debug_information" = "Share debug information";
 "settings_autlock_section_title" = "Autolock";

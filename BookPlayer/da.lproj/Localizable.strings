@@ -99,6 +99,7 @@
 "player_sleep_title" = "Sæt afspilningen på pause";
 "sleep_chapter_option_title" = "Slutningen af nuværende kapitel";
 "player_chapter_description" = "Kapitel %d af %d";
+"player_book_remaining_title" = "%@ tilbage";
 "chapters_title" = "Kapitler";
 "chapters_item_description" = "Start: %@ - Varighed: %@";
 "restore_title" = "Gendan";
@@ -217,6 +218,7 @@
 "settings_remainingtime_title" = "Brug den resterende tid";
 "settings_chaptercontext_title" = "Brug kapitelkontekst";
 "settings_progresslabels_description" = "Skift mellem at vise den resterende tid, den samlede varighed og fremskridt for enten kapitlet eller bogen på afspillerskærmen";
+"settings_bookremaining_title" = "Vis samlet resterende tid";
 "settings_playerinterface_list_description" = "Juster, hvad listeknappen på afspillerskærmen åbner";
 "settings_autoplay_section_title" = "AUTOMATISK AFSPILNING";
 "settings_autoplay_restart_title" = "Genstart færdige bøger";
@@ -242,6 +244,7 @@
 "sort_button_title" = "Sortere";
 "search_title" = "Søg";
 "books_title" = "Bøger";
+"book_title" = "Bog";
 "folders_title" = "Mapper";
 "section_item_title" = "Titel";
 "section_item_author" = "Forfatter";
@@ -313,6 +316,8 @@
 "intent_lastbook_play_title" = "Genoptag sidste spillede bog";
 "intent_lastbook_empty_error" = "Der er ingen sidst spillet bog";
 "intent_playback_pause_title" = "Sæt afspilning på pause";
+"intent_play_book_title" = "Afspil en bog";
+"intent_play_book_request_title" = "Hvilken bog?";
 "storage_artwork_cache_title" = "Artwork cache størrelse";
 "settings_share_debug_information" = "Del fejlretningsoplysninger";
 "settings_autlock_section_title" = "Autolås";

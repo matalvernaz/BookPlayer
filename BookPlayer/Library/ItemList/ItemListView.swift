@@ -155,6 +155,7 @@ struct ItemListView: View {
             ForEach(model.filteredResults, id: \.id) { item in
               rowView(item)
                 .accessibilityRotorEntry(id: item.id, in: customRotorNamespace)
+                .moveDisabled(model.isFiltering)
             }
             .onMove { source, destination in
               model.reorderItems(source: source, destination: destination)
@@ -168,6 +169,16 @@ struct ItemListView: View {
             let _ = { model.selectedSetItems = itemIDs }()
             if !model.selectedItems.isEmpty {
               contextMenuContent()
+            }
+          }
+          .overlay {
+            if model.isFiltering && model.filteredResults.isEmpty {
+              if model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                /// Scope-only filter (e.g. "Folders") with no matches — no query text to echo.
+                ContentUnavailableView.search
+              } else {
+                ContentUnavailableView.search(text: model.query)
+              }
             }
           }
           .accessibilityElement(children: .contain)
