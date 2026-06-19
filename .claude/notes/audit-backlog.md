@@ -235,3 +235,53 @@ Captured in the per-agent reports. Bulk are:
 - defensive-symmetry items from the prior audit downgraded backlog
 - VoiceOver gaps absorbed by META-2
 - format/timeout/concurrency nits with no current user-visible impact
+
+---
+
+# 2026-06-19 follow-on: unindexed-FLAC seek audit
+
+Focused re-audit of the unindexed-FLAC seek/position path in
+`BookPlayer/Player/PlayerManager.swift` (the `unindexedFormats` / `seekTolerance`
+/ `beginInitialSeek` / `snapshotPlayerPosition` machinery). Verdict: the
+subsystem is sound — the core design (drop the precise-timing flag for
+`["flac","ogg","opus","wav"]`, bounded 1s seek tolerance, persist landed-not-
+requested time, real `loadGeneration &+= 1` gating) is correct.
+
+## SHIPPED
+
+- **F1 (completes C3)** — C3 gated the `beginInitialSeek` completion on
+  `finished` but still cleared `initialSeekInProgress` *before* that guard and
+  left the autoplay handoff inline. A user skip during a slow FLAC resume-seek
+  superseded the initial seek (`finished=false`), which cleared the gate and
+  bailed without resuming — playback could stick silent (or start from the
+  pre-skip position) because `jumpTo`'s completion never honored
+  `playbackQueued`. Fix: extracted the handoff into
+  `resumeQueuedPlaybackIfReady()`, called from the `finished` branch of every
+  seek completion (`beginInitialSeek`, `jumpTo`, `handleSmartRewind`); clear
+  `initialSeekInProgress` only on `finished`, so whichever seek lands last
+  resumes from the landed position. Reasoned, not yet device-reproduced.
+- **F2** — removed dead `initializeChapterTime(_:)` (no iOS caller; the only
+  caller is the watch's separate `PlayerManager`). It lacked the
+  landed-time-persist + generation gate the live seek paths have.
+
+## OPEN — Low (flagged, not fixed)
+
+- **F3** — bound-book chapter-crossing skip calls `loadChapterMetadata` without
+  bumping `loadGeneration`, so a stale same-generation seek completion from the
+  previous chapter can `snapshotPlayerPosition` against the new chapter. Mostly
+  defused by the `playerSeconds.isFinite` guard. Bound books are DAISY MP3 in
+  practice, so low FLAC relevance.
+- **F4** — `jumpToChapter` uses symmetric ±1s tolerance; on a single-file
+  *chaptered* FLAC it can land ~1s before the boundary, in the previous chapter,
+  until `updateTime` flips back. Asymmetric (`toleranceBefore=.zero`,
+  `toleranceAfter=1s`) avoids it without reintroducing the forward-stall. Only
+  matters if chaptered single-file FLAC exists in the library.
+- **F5 (test gap)** — the subsystem has no regression tests. A real F1 test
+  needs a fake `AVPlayer` (no injection seam today: `audioPlayer` is a
+  `private var = AVPlayer()`) AND a fake `AVAudioSession` (else `play()` can hit
+  the non-TestFlight `fatalError`). Test-infra investment; deferred.
+
+Related: the 2026-05-29 "Player: `initialSeekInProgress` stuck-true after
+`mediaServicesWereReset`" High item — F1 centralizes gate-clearing on every
+landed seek, which helps but doesn't fix the reset path (no seek follows a
+reset). Still open.
