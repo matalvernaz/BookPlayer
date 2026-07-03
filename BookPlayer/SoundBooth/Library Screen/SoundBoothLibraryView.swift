@@ -17,8 +17,6 @@ struct SoundBoothLibraryView: View {
   var node: SoundBoothNode = .root
   @EnvironmentObject var theme: ThemeViewModel
 
-  private var isRoot: Bool { node == .root }
-
   var body: some View {
     content
       .alert(
@@ -39,25 +37,43 @@ struct SoundBoothLibraryView: View {
         downloadBanner(status)
       }
 
-      let rows = viewModel.rows(for: node)
+      let sections = viewModel.sections(for: node)
       Group {
         switch viewModel.loadState {
-        case .idle, .loading where rows.isEmpty:
+        case .idle, .loading where sections.isEmpty:
           ProgressView()
             .progressViewStyle(.circular)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .failed(let message) where rows.isEmpty:
+        case .failed(let message) where sections.isEmpty:
           failedView(message)
         default:
-          if rows.isEmpty {
-            emptyView
+          if sections.isEmpty {
+            if viewModel.isFetchingSeason(node) {
+              ProgressView()
+                .progressViewStyle(.circular)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+              emptyView
+            }
           } else {
-            List(rows) { item in
-              rowView(item)
+            List {
+              ForEach(sections) { section in
+                Section {
+                  ForEach(section.rows) { item in
+                    rowView(item)
+                  }
+                } header: {
+                  if let title = section.title {
+                    Text(title)
+                      .bpFont(.caption)
+                      .foregroundStyle(theme.secondaryColor)
+                  }
+                }
+              }
             }
             .listStyle(.plain)
             .refreshable {
-              if isRoot { await viewModel.loadLibrary() }
+              await viewModel.refresh(node)
             }
           }
         }
@@ -65,6 +81,9 @@ struct SoundBoothLibraryView: View {
     }
     .scrollContentBackground(.hidden)
     .background(theme.systemBackgroundColor)
+    .task {
+      await viewModel.loadSeasonIfNeeded(node)
+    }
   }
 
   @ViewBuilder

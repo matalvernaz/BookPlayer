@@ -56,7 +56,15 @@ struct SoundBoothRootView: View {
             .accessibilityLabel("media_servers_title".localized)
           }
           if connectionService.connection != nil {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+              Button {
+                Task { await libraryViewModel.loadLibrary() }
+              } label: {
+                Image(systemName: "arrow.clockwise")
+                  .foregroundStyle(theme.linkColor)
+              }
+              .accessibilityLabel("Refresh library")
+
               Menu {
                 Button(role: .destructive) {
                   connectionService.deleteConnection()

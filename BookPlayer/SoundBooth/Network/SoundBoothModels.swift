@@ -144,6 +144,11 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
   public let seriesId: String?
   /// Season (`Group`) this item belongs to, when it's an episode of a season.
   public let groupId: String?
+  /// Production format: `audiobook`, `cinematic`, `immersion`, or `bonus`.
+  public let format: String?
+  /// ISO-8601 release timestamps; used to order episodes chronologically.
+  public let releaseAt: String?
+  public let originalReleaseAt: String?
   public let displayOptions: SoundBoothDisplayOptions?
 
   /// Best available cover art for this element, preferring the full image over the thumbnail.
@@ -151,13 +156,69 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
     displayOptions?.image?.attachment?.bestURL
   }
 
+  /// Sort key for chronological ordering (ISO-8601 strings compare lexicographically). Missing
+  /// dates sort last.
+  public var releaseSortKey: String {
+    releaseAt ?? originalReleaseAt ?? "\u{FFFF}"
+  }
+
+  /// Parsed release date, when present.
+  public var releaseDate: Date? {
+    releaseAt.flatMap { try? Date($0, strategy: Self.isoParse) }
+  }
+
+  /// Whether the title's audio is out yet. Season bundles sell as preorders whose episodes
+  /// release on a weekly schedule; unreleased episodes are visible but not downloadable.
+  public var isReleased: Bool {
+    guard let releaseDate else { return true }
+    return releaseDate <= Date()
+  }
+
+  private static let isoParse = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+
   enum CodingKeys: String, CodingKey {
     case id = "_id"
     case name
     case subtype = "__t"
     case seriesId
     case groupId
+    case format
+    case releaseAt
+    case originalReleaseAt
     case displayOptions
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try container.decode(String.self, forKey: .name)
+    subtype = try container.decodeIfPresent(String.self, forKey: .subtype)
+    // Reference fields arrive as bare id strings from some endpoints and populated objects from
+    // others (e.g. `u/items/list` populates `groupId`); accept both.
+    seriesId = Self.idRef(container, .seriesId)
+    groupId = Self.idRef(container, .groupId)
+    format = try container.decodeIfPresent(String.self, forKey: .format)
+    releaseAt = try container.decodeIfPresent(String.self, forKey: .releaseAt)
+    originalReleaseAt = try container.decodeIfPresent(String.self, forKey: .originalReleaseAt)
+    displayOptions = try container.decodeIfPresent(SoundBoothDisplayOptions.self, forKey: .displayOptions)
+  }
+
+  private static func idRef(
+    _ container: KeyedDecodingContainer<CodingKeys>,
+    _ key: CodingKeys
+  ) -> String? {
+    if let id = try? container.decodeIfPresent(String.self, forKey: key) { return id }
+    if let ref = try? container.decodeIfPresent(SoundBoothIDRef.self, forKey: key) { return ref.id }
+    return nil
+  }
+}
+
+/// A populated reference object (`{"_id": "…", …}`) decoded down to just its id.
+struct SoundBoothIDRef: Decodable, Sendable {
+  let id: String
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
   }
 }
 
@@ -173,8 +234,29 @@ public struct SoundBoothSeries: Decodable, Identifiable, Sendable {
   }
 }
 
+/// A season (`Group`, from `/functions/u/groups/list`). Names and orders the seasons a series'
+/// episodes belong to — including seasons the user doesn't own as an object (their episodes still
+/// carry the season's `groupId`). Note: this endpoint populates `seriesId` as a full object, so
+/// it's deliberately not decoded here (each doc would fail lossy decoding as a `String`).
+public struct SoundBoothGroup: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let name: String
+  public let displayOptions: SoundBoothDisplayOptions?
+
+  /// Position of the season within its series (Season 1 = 1, …), for ordering.
+  public var index: Int? { displayOptions?.index }
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
+    case displayOptions
+  }
+}
+
 public struct SoundBoothDisplayOptions: Decodable, Sendable {
   public let image: SoundBoothImage?
+  /// Season ordinal for `Group` display options (nil for element cover-art display options).
+  public let index: Int?
 }
 
 public struct SoundBoothImage: Decodable, Sendable {

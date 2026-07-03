@@ -21,9 +21,17 @@ struct SoundBoothLibraryListItemView: View {
         .frame(width: 28)
         .accessibilityHidden(true)
 
-      Text(item.displayName)
-        .bpFont(.titleRegular)
-        .foregroundStyle(theme.primaryColor)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(item.displayName)
+          .bpFont(.titleRegular)
+          .foregroundStyle(theme.primaryColor)
+
+        if let detail = item.detailLabel {
+          Text(detail)
+            .bpFont(.caption)
+            .foregroundStyle(theme.secondaryColor)
+        }
+      }
 
       Spacer()
 

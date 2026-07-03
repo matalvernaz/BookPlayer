@@ -140,6 +140,43 @@ public struct SoundBoothAPIClient {
     return page.docs
   }
 
+  /// All episodes of a season (`Group`). Used for owned season bundles, whose episodes aren't
+  /// individual purchases in `library-elements`; entitlement flows through the bundle, so the
+  /// standard `item-resources`/`resources/play` calls work on the returned items.
+  public func items(inGroup groupId: String, session sbSession: SoundBoothSession) async throws -> [SoundBoothElement] {
+    let request = try makeRequest(
+      path: "/functions/u/items/list",
+      method: "POST",
+      jsonBody: ["groupId": groupId],
+      session: sbSession
+    )
+    let (data, response) = try await session.data(for: request)
+    try validate(response)
+    let envelope = try decode(SoundBoothEnvelope<SoundBoothPage<SoundBoothElement>>.self, from: data)
+    guard envelope.success, let page = envelope.data else {
+      throw Self.apiError(envelope.message, envelope.code)
+    }
+    return page.docs
+  }
+
+  /// Season (`Group`) records — names + orders the seasons the owned episodes belong to, even
+  /// when the season bundle itself isn't owned.
+  public func groups(session sbSession: SoundBoothSession) async throws -> [SoundBoothGroup] {
+    let request = try makeRequest(
+      path: "/functions/u/groups/list",
+      method: "POST",
+      jsonBody: [:],
+      session: sbSession
+    )
+    let (data, response) = try await session.data(for: request)
+    try validate(response)
+    let envelope = try decode(SoundBoothEnvelope<SoundBoothPage<SoundBoothGroup>>.self, from: data)
+    guard envelope.success, let page = envelope.data else {
+      throw Self.apiError(envelope.message, envelope.code)
+    }
+    return page.docs
+  }
+
   /// All saved playback positions, keyed by `(item, resource)`.
   public func progresses(session sbSession: SoundBoothSession) async throws -> [SoundBoothProgress] {
     let request = try makeRequest(

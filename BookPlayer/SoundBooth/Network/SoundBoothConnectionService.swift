@@ -126,6 +126,26 @@ class SoundBoothConnectionService: BPLogger {
     }
   }
 
+  func fetchGroups() async throws -> [SoundBoothGroup] {
+    let session = try requireSession()
+    do {
+      return try await apiClient.groups(session: session)
+    } catch {
+      throw mapError(error)
+    }
+  }
+
+  /// Episodes of a season bundle the user owns as a whole (they have no per-episode docs in
+  /// `library-elements`).
+  func fetchSeasonItems(groupId: String) async throws -> [SoundBoothElement] {
+    let session = try requireSession()
+    do {
+      return try await apiClient.items(inGroup: groupId, session: session)
+    } catch {
+      throw mapError(error)
+    }
+  }
+
   // MARK: - Streaming / download
 
   /// Resolve a resource to its playable CDN URL (via the authenticated `resources/play` gate).
