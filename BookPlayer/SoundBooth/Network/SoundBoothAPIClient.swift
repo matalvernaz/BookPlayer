@@ -50,6 +50,14 @@ public struct SoundBoothAPIClient {
     self.config = configuration
     let sessionConfig = URLSessionConfiguration.default
     sessionConfig.timeoutIntervalForRequest = 20
+    // Manage the iglu.sid session cookie explicitly (see applyStandardHeaders). URLSession's
+    // automatic cookie store would otherwise re-attach a stale/invalidated session cookie to the
+    // login calls (code/link, code/verify), which the server rejects with `[720]` — breaking
+    // re-add after a prior sign-in. With the store off, login calls go out clean and data calls
+    // carry only the cookie captured at verify.
+    sessionConfig.httpCookieStorage = nil
+    sessionConfig.httpShouldSetCookies = false
+    sessionConfig.httpCookieAcceptPolicy = .never
     self.session = URLSession(configuration: sessionConfig)
     let blocker = RedirectBlocker()
     self.redirectBlocker = blocker
