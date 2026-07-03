@@ -1994,6 +1994,8 @@
 			);
 			name = Hummingbird;
 			path = Hummingbird;
+			sourceTree = "<group>";
+		};
 		2D01F5B723886251F26FB742 /* ChapterFixtures */ = {
 			isa = PBXGroup;
 			children = (
@@ -2011,6 +2013,7 @@
 		349F568001B5C23CF1DD5AF6 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				2D01F5B723886251F26FB742 /* ChapterFixtures */,
 			);
 			name = Resources;
 			path = Resources;
