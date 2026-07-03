@@ -30,6 +30,7 @@ class MainCoordinator: NSObject {
   let jellyfinConnectionService: JellyfinConnectionService
   let audiobookshelfConnectionService: AudiobookShelfConnectionService
   let hummingbirdConnectionService: HummingbirdConnectionService
+  let soundboothConnectionService: SoundBoothConnectionService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
   let mediaServerSourceStore: MediaServerSourceStore
@@ -91,6 +92,10 @@ class MainCoordinator: NSObject {
     hummingbirdService.setup()
     self.hummingbirdConnectionService = hummingbirdService
 
+    let soundboothService = SoundBoothConnectionService()
+    soundboothService.setup()
+    self.soundboothConnectionService = soundboothService
+
     self.hardcoverService = coreServices.hardcoverService
     self.preferencesService = coreServices.preferencesService
 
@@ -99,6 +104,7 @@ class MainCoordinator: NSObject {
     audiobookshelfService.mediaServerSourceStore = sourceStore
     jellyfinService.mediaServerSourceStore = sourceStore
     hummingbirdService.mediaServerSourceStore = sourceStore
+    soundboothService.mediaServerSourceStore = sourceStore
     // Gate Tortuga sync against media-server-sourced items so progress
     // ticks / deletes / list-syncs don't cross-talk with the source
     // server's authoritative record.
@@ -114,6 +120,7 @@ class MainCoordinator: NSObject {
         AudiobookShelfProgressReporter(connectionService: audiobookshelfService),
         JellyfinProgressReporter(connectionService: jellyfinService),
         HummingbirdProgressReporter(connectionService: hummingbirdService),
+        SoundBoothProgressReporter(connectionService: soundboothService),
       ],
       accountService: coreServices.accountService
     )
@@ -170,6 +177,7 @@ class MainCoordinator: NSObject {
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
       .environment(\.hummingbirdService, hummingbirdConnectionService)
+      .environment(\.soundboothService, soundboothConnectionService)
       .environment(\.mediaServerSourceStore, mediaServerSourceStore)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)

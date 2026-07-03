@@ -585,7 +585,7 @@ extension ItemListViewModel {
       Task { [hummingbirdService, itemId = info.itemId] in
         try? await hummingbirdService.returnBook(bookId: itemId)
       }
-    case .audiobookshelf, .jellyfin:
+    case .audiobookshelf, .jellyfin, .soundbooth:
       // No checkout concept upstream -- local delete is local-only by
       // design. The book stays on the server's library.
       break

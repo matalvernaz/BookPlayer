@@ -30,17 +30,20 @@ struct MediaServersView: View {
   let jellyfinService: JellyfinConnectionService
   let audiobookshelfService: AudiobookShelfConnectionService
   let hummingbirdService: HummingbirdConnectionService
+  let soundboothService: SoundBoothConnectionService
   let style: Style
 
   init(
     jellyfinService: JellyfinConnectionService,
     audiobookshelfService: AudiobookShelfConnectionService,
     hummingbirdService: HummingbirdConnectionService,
+    soundboothService: SoundBoothConnectionService,
     style: Style = .libraryEntry
   ) {
     self.jellyfinService = jellyfinService
     self.audiobookshelfService = audiobookshelfService
     self.hummingbirdService = hummingbirdService
+    self.soundboothService = soundboothService
     self.style = style
   }
 
@@ -70,6 +73,11 @@ struct MediaServersView: View {
         title: "Hummingbird",
         kind: .hummingbird,
         servers: hummingbirdService.connections.map(ServerRow.init)
+      )
+      section(
+        title: "SoundBooth",
+        kind: .soundbooth,
+        servers: soundboothService.connections.map(ServerRow.init)
       )
     }
     .applyListStyle(with: theme, background: theme.systemBackgroundColor)
@@ -201,6 +209,8 @@ struct MediaServersView: View {
       audiobookshelfService.activateConnection(id: server.id)
     case .hummingbird:
       hummingbirdService.activateConnection(id: server.id)
+    case .soundbooth:
+      soundboothService.activateConnection(id: server.id)
     }
     presentedSheet = .library(kind)
   }
@@ -213,6 +223,8 @@ struct MediaServersView: View {
       audiobookshelfService.deleteConnection(id: server.id)
     case .hummingbird:
       hummingbirdService.deleteConnection(id: server.id)
+    case .soundbooth:
+      soundboothService.deleteConnection(id: server.id)
     }
   }
 
@@ -230,6 +242,9 @@ struct MediaServersView: View {
     case .hummingbird:
       AddServerHummingbirdSheet(connectionService: hummingbirdService)
         .environmentObject(theme)
+    case .soundbooth:
+      AddServerSoundBoothSheet(connectionService: soundboothService)
+        .environmentObject(theme)
     }
   }
 
@@ -243,6 +258,11 @@ struct MediaServersView: View {
     case .hummingbird:
       HummingbirdRootView(
         connectionService: hummingbirdService,
+        singleFileDownloadService: singleFileDownloadService
+      )
+    case .soundbooth:
+      SoundBoothRootView(
+        connectionService: soundboothService,
         singleFileDownloadService: singleFileDownloadService
       )
     }
@@ -266,6 +286,12 @@ struct MediaServersView: View {
     case .hummingbird:
       ConnectionDetailsHummingbirdSheet(
         connectionService: hummingbirdService,
+        connectionId: connectionId
+      )
+      .environmentObject(theme)
+    case .soundbooth:
+      ConnectionDetailsSoundBoothSheet(
+        connectionService: soundboothService,
         connectionId: connectionId
       )
       .environmentObject(theme)
@@ -297,6 +323,7 @@ enum IntegrationKind: String, Identifiable {
   case jellyfin
   case audiobookshelf
   case hummingbird
+  case soundbooth
   var id: String { rawValue }
 }
 
@@ -329,6 +356,14 @@ private struct ServerRow: Identifiable {
     self.serverUrl = data.url.absoluteString
     self.userName = data.userName
     self.customHeaders = data.customHeaders
+  }
+
+  init(_ data: SoundBoothConnectionData) {
+    self.id = data.id
+    self.serverName = data.serverName
+    self.serverUrl = ""
+    self.userName = data.userName
+    self.customHeaders = [:]
   }
 }
 
@@ -528,6 +563,76 @@ private struct ConnectionDetailsHummingbirdSheet: View {
               .foregroundStyle(theme.linkColor)
           }
         }
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+  }
+}
+
+// MARK: - SoundBooth sheets
+// SoundBooth uses a custom email-code sign-in (not the shared IntegrationConnectionView),
+// so its add/details sheets are purpose-built rather than reusing the generic wrappers.
+
+private struct AddServerSoundBoothSheet: View {
+  let connectionService: SoundBoothConnectionService
+  @StateObject private var viewModel: SoundBoothConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  init(connectionService: SoundBoothConnectionService) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: SoundBoothConnectionViewModel(connectionService: connectionService)
+    )
+  }
+
+  var body: some View {
+    NavigationStack {
+      SoundBoothConnectionView(viewModel: viewModel)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+    .onChange(of: viewModel.signInCompletedAt) { _, newValue in
+      if newValue != nil { dismiss() }
+    }
+  }
+}
+
+private struct ConnectionDetailsSoundBoothSheet: View {
+  let connectionService: SoundBoothConnectionService
+  let connectionId: String
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        if let connection = connectionService.connections.first(where: { $0.id == connectionId }) {
+          Section {
+            Text(connection.email)
+              .foregroundStyle(theme.primaryColor)
+          } header: {
+            Text("SoundBooth account")
+              .foregroundStyle(theme.secondaryColor)
+          }
+        }
+        Section {
+          Button(role: .destructive) {
+            connectionService.deleteConnection(id: connectionId)
+            dismiss()
+          } label: {
+            Text("integration_sign_out_button".localized)
+          }
+        }
+      }
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("done_title".localized) { dismiss() }
+            .foregroundStyle(theme.linkColor)
+        }
+      }
     }
     .tint(theme.linkColor)
     .environmentObject(theme)

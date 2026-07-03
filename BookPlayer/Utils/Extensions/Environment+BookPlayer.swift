@@ -18,6 +18,7 @@ extension EnvironmentValues {
   @Entry var jellyfinService: JellyfinConnectionService = .init()
   @Entry var audiobookshelfService: AudiobookShelfConnectionService = .init()
   @Entry var hummingbirdService: HummingbirdConnectionService = .init()
+  @Entry var soundboothService: SoundBoothConnectionService = .init()
   @Entry var mediaServerSourceStore: MediaServerSourceStore = .init()
   @Entry var hardcoverService: HardcoverService = .init()
   @Entry var loadingState: LoadingOverlayState = .init()
