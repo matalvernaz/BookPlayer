@@ -835,34 +835,12 @@ extension PlayerManager {
     bindPlayableChapterSubscription(to: updatedItem, dropInitialReplay: true)
   }
 
-  func initializeChapterTime(_ time: Double) {
-    guard let currentItem = self.currentItem else { return }
-
-    let boundedTime = min(max(time, 0), currentItem.duration)
-
-    let newTime =
-      currentItem.isBoundBook
-      ? currentItem.getChapterTime(in: currentItem.currentChapter, for: boundedTime)
-      : boundedTime
-    // Bounded tolerance on unindexed formats (see `seekTolerance`); sample-accurate
-    // elsewhere. Default tolerances of kCMTimePositiveInfinity would let it land at
-    // any frame boundary, often many seconds early; zero tolerance can stall on
-    // unindexed FLAC. The bounded value is the middle ground.
-    let tolerance = seekTolerance(for: currentItem)
-    self.audioPlayer.seek(
-      to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-      toleranceBefore: tolerance,
-      toleranceAfter: tolerance
-    )
-  }
-
   /// Initial seek used by `loadChapterOperation` when the loaded item has
-  /// a non-zero resume position. Differs from `initializeChapterTime` in
-  /// that it holds back queued autoplay until the seek completes — without
-  /// this gate, `playImmediately` can fire from the `.readyToPlay` observer
-  /// while the seek is still in flight, and playback starts from the
-  /// pre-seek position (most visible on unindexed FLAC where seeks are
-  /// slower).
+  /// a non-zero resume position. Holds back queued autoplay until the seek
+  /// completes — without this gate, `playImmediately` can fire from the
+  /// `.readyToPlay` observer while the seek is still in flight, and playback
+  /// starts from the pre-seek position (most visible on unindexed FLAC where
+  /// seeks are slower).
   func beginInitialSeek(to time: Double) {
     guard let currentItem = self.currentItem else { return }
 
@@ -884,33 +862,22 @@ extension PlayerManager {
         guard let self else { return }
         // Stale completion from a load that was superseded — ignore.
         guard self.loadGeneration == seekGeneration else { return }
-        self.initialSeekInProgress = false
-        // Persist the *landed* time, not the requested time. On unindexed
-        // FLAC AVFoundation can snap to a frame boundary near (but not at)
-        // the target; saving the requested time would cause cumulative
-        // drift on the next pause/resume cycle. Skip on finished=false
-        // because that means another seek superseded this one before it
-        // landed — let the newer seek's completion be authoritative.
-        // Gate BOTH snapshot and queued-autoplay on `finished`. A
-        // superseded seek (finished=false) means a newer seek is in
-        // flight whose completion is authoritative -- snapshotting
-        // here would record the wrong position, and firing play here
-        // would start playback from the pre-supersession position
-        // (most audible on unindexed FLAC where the new seek is slow
-        // to land).
+        // A superseded seek (finished=false) means a newer seek is in flight
+        // whose completion is authoritative. Defer everything to it: snapshotting
+        // here would record the wrong position, firing play would start from the
+        // pre-supersession position, and clearing `initialSeekInProgress` here
+        // would drop the autoplay gate while the newer seek is still pending —
+        // leaving playback stuck if that later completion never re-armed it.
+        // (Most audible on unindexed FLAC, where seeks are slow enough that a
+        // user skip routinely supersedes the initial resume-seek.)
         guard finished else { return }
         if let currentItem = self.currentItem {
+          // Persist the *landed* time, not the requested time: on unindexed FLAC
+          // AVFoundation snaps to a frame boundary near (but not at) the target,
+          // and saving the requested time would drift on the next resume.
           self.snapshotPlayerPosition(into: currentItem)
         }
-        // If autoplay was queued and the item is already ready, the
-        // `.readyToPlay` observer skipped firing playback because the
-        // seek was still pending — pick it up now.
-        if self.playbackQueued == true,
-          self.playerItem?.status == .readyToPlay
-        {
-          self.play(autoPlayed: true)
-          self.playbackQueued = nil
-        }
+        self.resumeQueuedPlaybackIfReady()
       }
     }
   }
@@ -973,6 +940,10 @@ extension PlayerManager {
               let currentItem = self.currentItem
         else { return }
         self.snapshotPlayerPosition(into: currentItem)
+        // Honor autoplay queued by a load whose initial resume-seek this jump
+        // superseded — otherwise playback can stick silent. No-op on an ordinary
+        // skip (nothing queued). See `resumeQueuedPlaybackIfReady`.
+        self.resumeQueuedPlaybackIfReady()
       }
     }
   }
@@ -1321,6 +1292,10 @@ extension PlayerManager {
           // Persist the landed time so model state matches the
           // post-rewind player position, not the computed target.
           self.snapshotPlayerPosition(into: currentItem)
+          // If this rewind superseded a launch-preload resume-seek, clear the
+          // initial-seek gate; `playbackQueued` is already nil by now (play()
+          // cleared it after `playImmediately`), so this never double-starts.
+          self.resumeQueuedPlaybackIfReady()
         }
       }
     }
@@ -1451,6 +1426,25 @@ extension PlayerManager {
       bookTime += (item.currentChapter.start - item.currentChapter.chapterOffset)
     }
     updatePlaybackTime(item: item, time: bookTime)
+  }
+
+  /// Starts playback that a load queued while its initial resume-seek was still
+  /// in flight. `beginInitialSeek` holds autoplay until a seek lands (so playback
+  /// can't start from the pre-seek position) and the `.readyToPlay` observer
+  /// defers while `initialSeekInProgress` is set; this is the one place a landed
+  /// seek re-arms that handoff. Calling it from every seek completion's `finished`
+  /// branch means a skip or smart-rewind that supersedes the initial seek still
+  /// resumes from the landed position instead of sticking silent. No-op when
+  /// nothing is queued. Only call from a `finished` branch — clearing the gate on
+  /// a superseded (finished=false) seek would drop it before the authoritative
+  /// completion runs.
+  private func resumeQueuedPlaybackIfReady() {
+    initialSeekInProgress = false
+    guard playbackQueued == true,
+      playerItem?.status == .readyToPlay
+    else { return }
+    play(autoPlayed: true)
+    playbackQueued = nil
   }
 
   func pause() {
