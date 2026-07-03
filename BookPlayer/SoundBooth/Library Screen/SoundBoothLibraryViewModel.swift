@@ -11,13 +11,30 @@ import Foundation
 import SwiftUI
 import UIKit
 
-/// Backs the SoundBooth owned-library browser. Mirrors the Hummingbird model (flat list, local
-/// search, tap-to-download into `SingleFileDownloadService`) rather than the paginated ABS one,
-/// because the SoundBooth library-elements endpoint returns the whole owned set at once.
+/// A level in the owned-library hierarchy. `library-elements` carries the season (`groupId`) and
+/// series (`seriesId`) links; `SoundBoothSeries` supplies series names, and the season Groups
+/// supply season names.
+enum SoundBoothNode: Hashable {
+  case root
+  case series(id: String, name: String)
+  case season(id: String, name: String)
+
+  var title: String {
+    switch self {
+    case .root: return "SoundBooth"
+    case .series(_, let name): return name
+    case .season(_, let name): return name
+    }
+  }
+}
+
+/// Backs the SoundBooth owned-library browser as a drill-down: Series → Season → Episode, with
+/// standalone books surfaced directly. The whole owned set is fetched once (library-elements +
+/// series names); each level's rows are computed from it via `rows(for:)`.
 ///
-/// A SoundBooth title is multi-chapter, so a download always fans its chapters into a bound-book
-/// folder. Every chapter's CDN URL ends in the same `file.mp3`, so each download is given an
-/// explicit ordered filename via `SingleFileDownloadService`'s `fileName` parameter.
+/// A SoundBooth title is multi-chapter, so a download fans its chapters into a bound-book folder.
+/// Every chapter's CDN URL ends in the same `file.mp3`, so each download gets an explicit ordered
+/// filename via `SingleFileDownloadService`'s `fileName` parameter.
 @MainActor
 final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   enum LoadState: Equatable {
@@ -27,8 +44,6 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     case failed(message: String)
   }
 
-  @Published var items: [SoundBoothLibraryItem] = []
-  @Published var searchQuery: String = ""
   @Published var loadState: LoadState = .idle
   @Published var sessionExpiredError: IntegrationError?
   @Published var downloadError: String?
@@ -44,8 +59,10 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   let connectionService: SoundBoothConnectionService
   let singleFileDownloadService: SingleFileDownloadService
 
-  private var allItems: [SoundBoothLibraryItem] = []
-  private var inflightSearch: Task<Void, Never>?
+  /// The full owned set (both season Groups and Item leaves), fetched once. `@Published` so the
+  /// views recompute their level's rows when it lands.
+  @Published private var elements: [SoundBoothLibraryElement] = []
+  private var seriesNames: [String: String] = [:]
   private var inflightDownloadPrep: Task<Void, Never>?
 
   init(
@@ -60,14 +77,11 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     loadState = .loading
     do {
       let elements = try await connectionService.fetchLibraryElements()
-      // Show the individually-owned books and episodes as downloadable rows. Groups (seasons)
-      // are containers whose episodes already appear as their own Items, so they're omitted
-      // from the flat v1 list rather than shown as dead-ends.
-      let mapped = elements
-        .filter { !$0.isGroup }
-        .map(SoundBoothLibraryItem.init(element:))
-      allItems = mapped
-      applySearch(query: searchQuery)
+      // Series names are best-effort: if that call fails, items just fall back to loose rows
+      // rather than blocking the whole library.
+      let series = (try? await connectionService.fetchSeries()) ?? []
+      self.seriesNames = Dictionary(series.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+      self.elements = elements
       loadState = .loaded
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
@@ -79,15 +93,77 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     }
   }
 
-  /// Local title filter over the already-fetched owned library. No network round-trip.
-  func applySearch(query: String) {
-    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      items = allItems
-    } else {
-      items = allItems.filter { $0.displayName.localizedCaseInsensitiveContains(trimmed) }
+  // MARK: - Hierarchy
+
+  /// Rows to show at a given level of the drill-down.
+  func rows(for node: SoundBoothNode) -> [SoundBoothLibraryItem] {
+    switch node {
+    case .root: return rootRows()
+    case .series(let id, _): return rows(inSeries: id)
+    case .season(let id, _): return rows(inSeason: id)
     }
   }
+
+  private var groups: [SoundBoothLibraryElement] { elements.filter { $0.isGroup } }
+  private var items: [SoundBoothLibraryElement] { elements.filter { !$0.isGroup } }
+  private var ownedGroupIds: Set<String> { Set(groups.map { $0.element.id }) }
+
+  /// Top level: one row per owned series (that we can name), then any standalone/unnamed titles.
+  private func rootRows() -> [SoundBoothLibraryItem] {
+    var seriesRows: [SoundBoothLibraryItem] = []
+    var seen = Set<String>()
+    for item in items {
+      guard let seriesId = item.element.seriesId,
+        let name = seriesNames[seriesId],
+        !seen.contains(seriesId)
+      else { continue }
+      seen.insert(seriesId)
+      seriesRows.append(SoundBoothLibraryItem(id: seriesId, displayName: name, kind: .series))
+    }
+
+    // Items with no series (or a series we couldn't name) show directly at the top level.
+    let looseRows = items
+      .filter { item in
+        guard let seriesId = item.element.seriesId else { return true }
+        return seriesNames[seriesId] == nil
+      }
+      .map(SoundBoothLibraryItem.init(element:))
+
+    return sortedByName(seriesRows) + sortedByName(looseRows)
+  }
+
+  /// Inside a series: its seasons, then any titles in the series not tucked under a season.
+  private func rows(inSeries seriesId: String) -> [SoundBoothLibraryItem] {
+    let seasonRows = groups
+      .filter { $0.element.seriesId == seriesId }
+      .map { SoundBoothLibraryItem(id: $0.element.id, displayName: $0.element.name, kind: .group) }
+
+    let directRows = items
+      .filter { item in
+        guard item.element.seriesId == seriesId else { return false }
+        // Exclude items that belong to one of this series' owned seasons — they live under it.
+        if let groupId = item.element.groupId, ownedGroupIds.contains(groupId) { return false }
+        return true
+      }
+      .map(SoundBoothLibraryItem.init(element:))
+
+    return sortedByName(seasonRows) + sortedByName(directRows)
+  }
+
+  /// Inside a season: its episodes.
+  private func rows(inSeason groupId: String) -> [SoundBoothLibraryItem] {
+    sortedByName(
+      items
+        .filter { $0.element.groupId == groupId }
+        .map(SoundBoothLibraryItem.init(element:))
+    )
+  }
+
+  private func sortedByName(_ rows: [SoundBoothLibraryItem]) -> [SoundBoothLibraryItem] {
+    rows.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+  }
+
+  // MARK: - Download
 
   func downloadItem(_ item: SoundBoothLibraryItem) {
     guard item.isDownloadable else { return }

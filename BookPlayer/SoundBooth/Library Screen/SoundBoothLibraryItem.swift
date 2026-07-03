@@ -13,9 +13,10 @@ import Foundation
 /// containers (a season's episodes).
 struct SoundBoothLibraryItem: IntegrationLibraryItemProtocol {
   enum Kind: String {
+    case series
+    case group  // a season
     case book
     case episode
-    case group
   }
 
   let id: String
@@ -23,13 +24,24 @@ struct SoundBoothLibraryItem: IntegrationLibraryItemProtocol {
   let kind: Kind
   let coverURL: URL?
 
-  var isDownloadable: Bool { kind != .group }
-  var isNavigable: Bool { kind == .group }
+  /// Books/episodes are downloadable leaves; series and seasons are navigable containers.
+  var isDownloadable: Bool { kind == .book || kind == .episode }
+  var isNavigable: Bool { kind == .series || kind == .group }
+
+  /// The hierarchy node a navigable row drills into (nil for downloadable leaves).
+  var childNode: SoundBoothNode? {
+    switch kind {
+    case .series: return .series(id: id, name: displayName)
+    case .group: return .season(id: id, name: displayName)
+    case .book, .episode: return nil
+    }
+  }
 
   var placeholderImageName: String {
     switch kind {
-    case .book, .episode: "waveform"
+    case .series: "books.vertical"
     case .group: "rectangle.stack"
+    case .book, .episode: "waveform"
     }
   }
 

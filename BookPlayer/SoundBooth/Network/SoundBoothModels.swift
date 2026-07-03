@@ -140,7 +140,10 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
   public let id: String
   public let name: String
   public let subtype: String?
+  /// Series this element belongs to (id only; resolve the name via `SoundBoothSeries`).
   public let seriesId: String?
+  /// Season (`Group`) this item belongs to, when it's an episode of a season.
+  public let groupId: String?
   public let displayOptions: SoundBoothDisplayOptions?
 
   /// Best available cover art for this element, preferring the full image over the thumbnail.
@@ -153,7 +156,20 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
     case name
     case subtype = "__t"
     case seriesId
+    case groupId
     case displayOptions
+  }
+}
+
+/// A series (`/functions/u/series/list`), used to name the series a library item belongs to —
+/// library-elements carry only the `seriesId`, not its name.
+public struct SoundBoothSeries: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let name: String
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
   }
 }
 

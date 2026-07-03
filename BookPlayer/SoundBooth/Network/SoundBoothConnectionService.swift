@@ -117,6 +117,15 @@ class SoundBoothConnectionService: BPLogger {
     }
   }
 
+  func fetchSeries() async throws -> [SoundBoothSeries] {
+    let session = try requireSession()
+    do {
+      return try await apiClient.series(session: session)
+    } catch {
+      throw mapError(error)
+    }
+  }
+
   // MARK: - Streaming / download
 
   /// Resolve a resource to its playable CDN URL (via the authenticated `resources/play` gate).

@@ -72,6 +72,11 @@ struct SoundBoothRootView: View {
             }
           }
         }
+        .navigationDestination(for: SoundBoothNode.self) { node in
+          SoundBoothLibraryView(viewModel: libraryViewModel, node: node)
+            .navigationTitle(node.title)
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
     .tint(theme.linkColor)
     .alert(

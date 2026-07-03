@@ -123,6 +123,23 @@ public struct SoundBoothAPIClient {
     return page.docs
   }
 
+  /// Series records — used to resolve the series names for the owned library's `seriesId`s.
+  public func series(session sbSession: SoundBoothSession) async throws -> [SoundBoothSeries] {
+    let request = try makeRequest(
+      path: "/functions/u/series/list",
+      method: "POST",
+      jsonBody: [:],
+      session: sbSession
+    )
+    let (data, response) = try await session.data(for: request)
+    try validate(response)
+    let envelope = try decode(SoundBoothEnvelope<SoundBoothPage<SoundBoothSeries>>.self, from: data)
+    guard envelope.success, let page = envelope.data else {
+      throw Self.apiError(envelope.message, envelope.code)
+    }
+    return page.docs
+  }
+
   /// All saved playback positions, keyed by `(item, resource)`.
   public func progresses(session sbSession: SoundBoothSession) async throws -> [SoundBoothProgress] {
     let request = try makeRequest(
