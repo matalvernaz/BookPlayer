@@ -34,6 +34,8 @@ public enum KeychainKeys: String {
   case audiobookshelfConnection = "audiobookshelf_connection"
   /// Stores the Hummingbird connection information ([HummingbirdConnectionData])
   case hummingbirdConnection = "hummingbird_connection"
+  /// Stores the SoundBooth connection information ([SoundBoothConnectionData])
+  case soundboothConnection = "soundbooth_connection"
   /// Stores Hardcover API access token
   case hardcoverToken = "hardcover_token"
 }
