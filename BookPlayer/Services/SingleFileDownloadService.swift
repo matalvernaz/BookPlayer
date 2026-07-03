@@ -29,9 +29,9 @@ final class SingleFileDownloadService: ObservableObject {
   private var disposeBag = Set<AnyCancellable>()
 
   public var isDownloading: Bool { !downloadQueue.isEmpty || currentTask != nil }
-  public private(set) var downloadQueue: [(request: URLRequest, folderName: String?)] = []
+  public private(set) var downloadQueue: [(request: URLRequest, folderName: String?, fileName: String?)] = []
 
-  private var currentTask: (task: URLSessionTask, folderName: String?)?
+  private var currentTask: (task: URLSessionTask, folderName: String?, fileName: String?)?
   private lazy var downloadSession: URLSession = {
     URLSession(
       configuration: URLSessionConfiguration.background(withIdentifier: "SingleFileDownloadService"),
@@ -67,22 +67,36 @@ final class SingleFileDownloadService: ObservableObject {
   }
 
   public func handleDownload(_ request: URLRequest) {
-    downloadQueue.append((request: request, folderName: nil))
+    downloadQueue.append((request: request, folderName: nil, fileName: nil))
     processNextDownload()
   }
 
   public func handleDownload(_ requests: [URLRequest]) {
-    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: nil) })
+    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: nil, fileName: nil) })
     processNextDownload()
   }
 
   public func handleDownload(_ request: URLRequest, folderName: String) {
-    downloadQueue.append((request: request, folderName: folderName))
+    downloadQueue.append((request: request, folderName: folderName, fileName: nil))
     processNextDownload()
   }
 
   public func handleDownload(_ requests: [URLRequest], folderName: String) {
-    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: folderName) })
+    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: folderName, fileName: nil) })
+    processNextDownload()
+  }
+
+  /// Download multiple files into `folderName`, each saved under the matching `fileNames` entry
+  /// rather than the URL's last path component. Needed when files share a last path component
+  /// (e.g. SoundBooth chapters all resolve to `.../file.mp3`), which would otherwise collide in
+  /// the folder. `fileNames` lines up 1:1 with `requests`; any unmatched request falls back to
+  /// the default naming.
+  public func handleDownload(_ requests: [URLRequest], folderName: String, fileNames: [String]) {
+    let items: [(request: URLRequest, folderName: String?, fileName: String?)] =
+      requests.enumerated().map { index, request in
+        (request: request, folderName: folderName, fileName: index < fileNames.count ? fileNames[index] : nil)
+      }
+    downloadQueue.append(contentsOf: items)
     processNextDownload()
   }
 
@@ -101,7 +115,7 @@ final class SingleFileDownloadService: ObservableObject {
         taskDescription: "SingleFileDownload-\(url.absoluteString)",
         session: downloadSession
       )
-      currentTask = (task: task, folderName: downloadItem.folderName)
+      currentTask = (task: task, folderName: downloadItem.folderName, fileName: downloadItem.fileName)
     }
   }
 
@@ -135,7 +149,8 @@ final class SingleFileDownloadService: ObservableObject {
 
   private func handleSingleDownloadTaskFinished(_ task: URLSessionTask, fileURL: URL) {
     let filename =
-      task.response?.suggestedFilename
+      currentTask?.fileName
+      ?? task.response?.suggestedFilename
       ?? task.originalRequest?.url?.lastPathComponent
       ?? fileURL.lastPathComponent
 
