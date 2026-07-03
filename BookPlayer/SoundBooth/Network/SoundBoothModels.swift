@@ -339,6 +339,8 @@ public struct SoundBoothProgress: Decodable, Identifiable, Sendable {
   public let speed: String?
   public let group: String?
   public let series: String?
+  /// ISO-8601; the most recently updated record is the user's current listening position.
+  public let updatedAt: String?
 
   enum CodingKeys: String, CodingKey {
     case id = "_id"
@@ -349,6 +351,7 @@ public struct SoundBoothProgress: Decodable, Identifiable, Sendable {
     case speed
     case group
     case series
+    case updatedAt
   }
 }
 

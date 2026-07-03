@@ -324,37 +324,16 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
         return
       }
 
-      // Resolve each chapter to its CDN URL and pair it with a distinct, order-preserving
-      // filename (the CDN path is `.../<resourceId>/<quality>/file.mp3` for every chapter).
-      var requests = [URLRequest]()
-      var fileNames = [String]()
-      for resource in ordered {
-        let url = try await connectionService.resolvePlaybackURL(resourceId: resource.id)
-        try Task.checkCancellation()
-        requests.append(URLRequest(url: url))
-        fileNames.append(Self.chapterFileName(number: resource.number, name: resource.name))
-      }
-
-      // Always a bound book: fan the chapters into a folder named after the title, then flag it
-      // for auto-binding so BookPlayer promotes the folder to a single book once files land.
+      let fileNames = ordered.map { Self.chapterFileName(number: $0.number, name: $0.name) }
       let folderName = Self.folderName(title: item.displayName, seriesName: item.seriesName)
-      singleFileDownloadService.handleDownload(requests, folderName: folderName, fileNames: fileNames)
-      downloadStatus = String.localizedStringWithFormat(
-        "downloading_file_title".localized, requests.count
+      let seedTime = await resumeSeed(itemIds: [item.id], fullOrdered: ordered, kept: ordered)
+      try await dispatchDownload(
+        resources: ordered,
+        fileNames: fileNames,
+        folderName: folderName,
+        sourceItemId: item.id,
+        seedTime: seedTime
       )
-
-      if let connection = connectionService.connection,
-        let sourceStore = connectionService.mediaServerSourceStore {
-        sourceStore.setSource(
-          MediaServerSourceInfo(
-            kind: .soundbooth,
-            connectionId: connection.id,
-            itemId: item.id,
-            shouldBindFolder: true
-          ),
-          for: folderName
-        )
-      }
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       downloadStatus = nil
@@ -365,6 +344,182 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       downloadError = error.localizedDescription
       downloadStatus = nil
     }
+  }
+
+  // MARK: - Season download
+
+  /// Released episodes of a season, in play order. Empty for non-season nodes.
+  private func releasedEpisodes(inSeason node: SoundBoothNode) -> [SoundBoothElement] {
+    guard case .season(let groupId, _) = node else { return [] }
+    let local = items.filter { $0.element.groupId == groupId }.map(\.element)
+    let episodes = local.isEmpty ? (seasonItems[groupId] ?? []) : local
+    return sortedByRelease(episodes).filter(\.isReleased)
+  }
+
+  func canDownloadSeason(_ node: SoundBoothNode) -> Bool {
+    !releasedEpisodes(inSeason: node).isEmpty
+  }
+
+  func releasedEpisodeCount(_ node: SoundBoothNode) -> Int {
+    releasedEpisodes(inSeason: node).count
+  }
+
+  func downloadSeason(_ node: SoundBoothNode) {
+    inflightDownloadPrep?.cancel()
+    inflightDownloadPrep = Task { [weak self] in
+      await self?._downloadSeason(node)
+    }
+  }
+
+  /// Download a whole season as one bound book. Every episode's chapters concatenate in release
+  /// order; credits chapters are trimmed so only the season's first opening credits and final
+  /// ending credits remain, and the story plays straight through episode boundaries.
+  private func _downloadSeason(_ node: SoundBoothNode) async {
+    guard case .season(let groupId, let seasonName) = node else { return }
+    let episodes = releasedEpisodes(inSeason: node)
+    guard !episodes.isEmpty else { return }
+    downloadStatus = "preparing_download_status".localized
+    do {
+      let allResources = try await connectionService.fetchItemResources(itemIds: episodes.map(\.id))
+      try Task.checkCancellation()
+      let byEpisode = Dictionary(grouping: allResources, by: \.itemId)
+
+      // Walk episodes in play order, chapters in number order. `fullOrdered` is every chapter
+      // (the coordinate system server progress records point into); `kept` is what we download.
+      var fullOrdered = [SoundBoothItemResource]()
+      var kept = [SoundBoothItemResource]()
+      var fileNames = [String]()
+      for (episodeIndex, episode) in episodes.enumerated() {
+        let chapters = (byEpisode[episode.id] ?? []).sorted { $0.number < $1.number }
+        for (chapterIndex, resource) in chapters.enumerated() {
+          fullOrdered.append(resource)
+          if Self.isCreditsChapter(resource.name) && chapters.count > 1 {
+            // Credits chapters are named inconsistently ("Credits" serves as both opening and
+            // closing), so classify by position within the episode instead of by name.
+            let isOpeningHalf = chapterIndex < chapters.count / 2
+            let keep =
+              (episodeIndex == 0 && isOpeningHalf)
+              || (episodeIndex == episodes.count - 1 && !isOpeningHalf)
+            if !keep { continue }
+          }
+          kept.append(resource)
+          fileNames.append(
+            Self.seasonChapterFileName(
+              episode: episodeIndex + 1,
+              number: resource.number,
+              name: resource.name
+            )
+          )
+        }
+      }
+      guard !kept.isEmpty else {
+        downloadStatus = nil
+        return
+      }
+
+      let seriesName = episodes.first?.seriesId.flatMap { seriesNames[$0] }
+      let folderName = Self.folderName(title: seasonName, seriesName: seriesName)
+      let seedTime = await resumeSeed(
+        itemIds: Set(episodes.map(\.id)),
+        fullOrdered: fullOrdered,
+        kept: kept
+      )
+      try await dispatchDownload(
+        resources: kept,
+        fileNames: fileNames,
+        folderName: folderName,
+        sourceItemId: groupId,
+        seedTime: seedTime
+      )
+    } catch let error as IntegrationError where error.isSessionExpired {
+      sessionExpiredError = error
+      downloadStatus = nil
+    } catch is CancellationError {
+      downloadStatus = nil
+    } catch {
+      Self.logger.warning("SoundBooth season download dispatch failed: \(error.localizedDescription)")
+      downloadError = error.localizedDescription
+      downloadStatus = nil
+    }
+  }
+
+  /// Resolve each chapter to its CDN URL (the CDN path ends in the same `file.mp3` for every
+  /// chapter, hence explicit per-file names), hand the batch to the download service, and record
+  /// provenance flagged for auto-binding — with the server-side resume position to seed, if any.
+  private func dispatchDownload(
+    resources: [SoundBoothItemResource],
+    fileNames: [String],
+    folderName: String,
+    sourceItemId: String,
+    seedTime: Double?
+  ) async throws {
+    var requests = [URLRequest]()
+    for resource in resources {
+      let url = try await connectionService.resolvePlaybackURL(resourceId: resource.id)
+      try Task.checkCancellation()
+      requests.append(URLRequest(url: url))
+    }
+
+    singleFileDownloadService.handleDownload(requests, folderName: folderName, fileNames: fileNames)
+    downloadStatus = String.localizedStringWithFormat(
+      "downloading_file_title".localized, requests.count
+    )
+
+    if let connection = connectionService.connection,
+      let sourceStore = connectionService.mediaServerSourceStore {
+      sourceStore.setSource(
+        MediaServerSourceInfo(
+          kind: .soundbooth,
+          connectionId: connection.id,
+          itemId: sourceItemId,
+          shouldBindFolder: true,
+          seedTime: seedTime
+        ),
+        for: folderName
+      )
+    }
+  }
+
+  // MARK: - Resume seeding
+
+  /// Absolute resume offset (seconds) into the downloaded chapter sequence, from the account's
+  /// per-chapter progress records — so a title in progress on SoundBooth's own apps picks up in
+  /// the same spot here. Best-effort: any failure just means starting from the beginning.
+  ///
+  /// The most recently updated progress record is the anchor. The offset sums the durations of
+  /// the *kept* chapters that precede it in `fullOrdered` (server records can point at trimmed
+  /// credits chapters, which occupy no time in the downloaded book).
+  private func resumeSeed(
+    itemIds: Set<String>,
+    fullOrdered: [SoundBoothItemResource],
+    kept: [SoundBoothItemResource]
+  ) async -> Double? {
+    guard let progresses = try? await connectionService.fetchProgresses() else { return nil }
+    let relevant = progresses.filter { itemIds.contains($0.item) }
+    guard
+      let latest = relevant.max(by: { ($0.updatedAt ?? "") < ($1.updatedAt ?? "") }),
+      let anchorIndex = fullOrdered.firstIndex(where: { $0.id == latest.resource })
+    else { return nil }
+
+    let keptIds = Set(kept.map(\.id))
+    var offset = fullOrdered[..<anchorIndex]
+      .filter { keptIds.contains($0.id) }
+      .reduce(0.0) { $0 + ($1.duration ?? 0) }
+    let anchor = fullOrdered[anchorIndex]
+    if keptIds.contains(anchor.id) {
+      if latest.finished {
+        offset += anchor.duration ?? 0
+      } else {
+        offset += min(latest.position, anchor.duration ?? latest.position)
+      }
+    }
+    return offset > 1 ? offset : nil
+  }
+
+  /// A chapter whose name marks it as credits ("Credits", "Opening Credits", "Closing Credits",
+  /// "Ending Credits" — naming varies per production).
+  private static func isCreditsChapter(_ name: String?) -> Bool {
+    name?.localizedCaseInsensitiveContains("credit") == true
   }
 
   func dismissDownloadStatus() {
@@ -384,6 +539,12 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       .components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|\n\r"))
       .joined(separator: " ")
     return String(format: "%03d - %@.mp3", number, safeTitle)
+  }
+
+  /// Chapter filename inside a whole-season bound book: the episode ordinal prefixes the chapter
+  /// number so the concatenated season stays in play order (bound files sort by name).
+  private static func seasonChapterFileName(episode: Int, number: Int, name: String?) -> String {
+    String(format: "E%02d %@", episode, chapterFileName(number: number, name: name))
   }
 
   /// Filesystem-safe folder name for a title, prefixed with its series when known. This becomes

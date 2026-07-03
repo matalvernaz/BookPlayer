@@ -57,6 +57,24 @@ struct SoundBoothLibraryView: View {
             }
           } else {
             List {
+              if viewModel.canDownloadSeason(node) {
+                Section {
+                  Button {
+                    viewModel.downloadSeason(node)
+                  } label: {
+                    HStack(spacing: 12) {
+                      Image(systemName: "arrow.down.circle")
+                        .foregroundStyle(theme.linkColor)
+                        .frame(width: 28)
+                        .accessibilityHidden(true)
+                      Text("Download season")
+                        .bpFont(.titleRegular)
+                        .foregroundStyle(theme.linkColor)
+                    }
+                  }
+                  .accessibilityValue("\(viewModel.releasedEpisodeCount(node)) episodes")
+                }
+              }
               ForEach(sections) { section in
                 Section {
                   ForEach(section.rows) { item in

@@ -42,18 +42,23 @@ public struct MediaServerSourceInfo: Codable, Hashable {
   /// "folder collection" or "subfolder" media-server flow doesn't get auto-bound by mistake.
   /// `nil` decodes from older persisted entries that pre-date the field; treat as `false`.
   public let shouldBindFolder: Bool?
+  /// Resume position (seconds into the bound book) carried over from the source server's account,
+  /// applied once when the folder is auto-bound. `nil` = no server-side position to seed.
+  public let seedTime: Double?
 
   public init(
     kind: MediaServerKind,
     connectionId: String,
     itemId: String,
     dueDate: Date? = nil,
-    shouldBindFolder: Bool? = nil
+    shouldBindFolder: Bool? = nil,
+    seedTime: Double? = nil
   ) {
     self.kind = kind
     self.connectionId = connectionId
     self.itemId = itemId
     self.dueDate = dueDate
     self.shouldBindFolder = shouldBindFolder
+    self.seedTime = seedTime
   }
 }
