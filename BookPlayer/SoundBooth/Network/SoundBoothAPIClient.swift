@@ -241,11 +241,18 @@ public struct SoundBoothAPIClient {
     return request
   }
 
+  /// Origin the API gates on. Requests without it are rejected with `session is invalid [726]`
+  /// regardless of the client key — the backend only trusts calls that look like they came from
+  /// the web player, so this native client presents the same origin.
+  private static let webOrigin = "https://player.soundbooth.app"
+
   /// Applies the always-required client-key headers, plus session auth when present.
   private func applyStandardHeaders(to request: inout URLRequest, session sbSession: SoundBoothSession?) {
     request.setValue("application/vnd.iglu.v2", forHTTPHeaderField: "Accept")
     request.setValue("Bearer \(config.clientKey)", forHTTPHeaderField: "x-iglu-api-key")
     request.setValue("\(TimeZone.current.secondsFromGMT() / 3600)", forHTTPHeaderField: "x-iglu-time-zone-offset")
+    request.setValue(Self.webOrigin, forHTTPHeaderField: "Origin")
+    request.setValue(Self.webOrigin + "/", forHTTPHeaderField: "Referer")
     if let sbSession {
       request.setValue("Token \(sbSession.jwt)", forHTTPHeaderField: "Authorization")
       if let cookie = sbSession.sessionCookie {
