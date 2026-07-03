@@ -748,16 +748,22 @@ extension ItemListView {
     let isSingle = model.selectedItems.count == 1
 
     if isSingle, let item {
+      // Server-only items have no local file to hand to the share sheet;
+      // exporting one would silently produce nothing.
+      let isDownloaded = !syncService.isActive || syncService.getDownloadState(for: item) == .downloaded
+      let canExport = isDownloaded && FileManager.default.fileExists(atPath: item.fileURL.path)
+
       ShareLink(
         item: item,
         preview: SharePreview(
-          item.relativePath,
+          item.title,
           image: Image(systemName: item.type == .book ? "waveform" : "folder")
         )
       ) {
         Label("export_button", systemImage: "square.and.arrow.up")
       }
-      .menuTint(theme.primaryColor, enabled: forMenu)
+      .menuTint(theme.primaryColor.opacity(!canExport ? 0.3 : 1.0), enabled: forMenu)
+      .disabled(!canExport)
     }
   }
 
