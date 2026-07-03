@@ -292,16 +292,25 @@ public struct SoundBoothAPIClient {
     return .api(message: message, code: code)
   }
 
-  /// Extracts the `iglu.sid` cookie value from a response's `Set-Cookie` header(s).
+  /// Extracts the `iglu.sid` session cookie — the credential the data endpoints actually gate on
+  /// (a JWT in `Authorization: Token` alone is rejected with `[706]`). Reads it from the
+  /// response's `Set-Cookie`, then falls back to the shared cookie store URLSession populates for
+  /// the same request, so a flaky header cast can't lose the credential.
   private static func sessionCookie(from response: URLResponse, baseURL: URL) -> String? {
-    guard
-      let http = response as? HTTPURLResponse,
-      let fields = http.allHeaderFields as? [String: String]
-    else {
-      return nil
+    if let http = response as? HTTPURLResponse {
+      var fields: [String: String] = [:]
+      for (key, value) in http.allHeaderFields {
+        if let key = key as? String, let value = value as? String {
+          fields[key] = value
+        }
+      }
+      if let value = HTTPCookie.cookies(withResponseHeaderFields: fields, for: baseURL)
+        .first(where: { $0.name == "iglu.sid" })?.value {
+        return value
+      }
     }
-    let cookies = HTTPCookie.cookies(withResponseHeaderFields: fields, for: baseURL)
-    return cookies.first(where: { $0.name == "iglu.sid" })?.value
+    return HTTPCookieStorage.shared.cookies(for: baseURL)?
+      .first(where: { $0.name == "iglu.sid" })?.value
   }
 }
 
