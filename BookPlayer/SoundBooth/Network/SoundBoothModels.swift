@@ -46,14 +46,39 @@ struct SoundBoothStatusEnvelope: Decodable {
   let code: String?
 }
 
-/// Shared shape of the paginated list endpoints (`/functions/u/*/list`). Only `docs` is
-/// used today; the paging fields are decoded so a future "load more" can page through.
+/// Shared shape of the paginated list endpoints (`/functions/u/*/list`). `docs` decodes
+/// lossily: a single malformed/incomplete entry (e.g. a refunded purchase whose `element` is
+/// `null`) is skipped rather than failing the whole list. Paging fields are kept for a future
+/// "load more".
 struct SoundBoothPage<Doc: Decodable>: Decodable {
   let docs: [Doc]
   let totalDocs: Int?
   let totalPages: Int?
   let page: Int?
   let hasNextPage: Bool?
+
+  enum CodingKeys: String, CodingKey {
+    case docs, totalDocs, totalPages, page, hasNextPage
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<Doc>].self, forKey: .docs) ?? []
+    self.docs = raw.compactMap { $0.value }
+    self.totalDocs = try container.decodeIfPresent(Int.self, forKey: .totalDocs)
+    self.totalPages = try container.decodeIfPresent(Int.self, forKey: .totalPages)
+    self.page = try container.decodeIfPresent(Int.self, forKey: .page)
+    self.hasNextPage = try container.decodeIfPresent(Bool.self, forKey: .hasNextPage)
+  }
+}
+
+/// Decodes `T` when possible, otherwise captures `nil` instead of throwing — an array of these
+/// skips individual malformed elements without failing the whole decode.
+struct FailableDecodable<T: Decodable>: Decodable {
+  let value: T?
+  init(from decoder: Decoder) throws {
+    self.value = try? T(from: decoder)
+  }
 }
 
 // MARK: - Session
@@ -192,6 +217,14 @@ public struct SoundBoothItemResource: Decodable, Identifiable, Sendable {
 
 struct SoundBoothItemResourcesResponse: Decodable {
   let itemResources: [SoundBoothItemResource]
+
+  enum CodingKeys: String, CodingKey { case itemResources }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<SoundBoothItemResource>].self, forKey: .itemResources) ?? []
+    self.itemResources = raw.compactMap { $0.value }
+  }
 }
 
 // MARK: - Progress
