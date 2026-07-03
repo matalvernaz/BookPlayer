@@ -318,7 +318,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     downloadStatus = "preparing_download_status".localized
     do {
       let resources = try await connectionService.fetchItemResources(itemIds: [item.id])
-      let ordered = resources.sorted { $0.number < $1.number }
+      let ordered = resources.sorted { ($0.number, $0.id) < ($1.number, $1.id) }
       guard !ordered.isEmpty else {
         downloadStatus = nil
         return
@@ -326,7 +326,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
 
       let fileNames = ordered.map { Self.chapterFileName(number: $0.number, name: $0.name) }
       let folderName = Self.folderName(title: item.displayName, seriesName: item.seriesName)
-      let seedTime = await resumeSeed(itemIds: [item.id], fullOrdered: ordered, kept: ordered)
+      let seedTime = try await resumeSeed(itemIds: [item.id], fullOrdered: ordered, kept: ordered)
       try await dispatchDownload(
         resources: ordered,
         fileNames: fileNames,
@@ -383,34 +383,52 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       let allResources = try await connectionService.fetchItemResources(itemIds: episodes.map(\.id))
       try Task.checkCancellation()
       let byEpisode = Dictionary(grouping: allResources, by: \.itemId)
+      // Episodes that actually returned chapters, in play order. Filtering here keeps the credits
+      // selection and episode numbering from being thrown off by an episode that returned nothing.
+      let playable = episodes.filter { !(byEpisode[$0.id] ?? []).isEmpty }
 
-      // Walk episodes in play order, chapters in number order. `fullOrdered` is every chapter
-      // (the coordinate system server progress records point into); `kept` is what we download.
+      // Flatten to (episode, chapter) in play order. Credits chapters are named inconsistently
+      // ("Credits" serves as both opening and closing), so classify by position within the
+      // episode: a credits chapter in the first half is opening-side, the second half closing-side.
+      typealias Flat = (resource: SoundBoothItemResource, episodeNumber: Int, isCredits: Bool, isOpeningSide: Bool)
+      var flat = [Flat]()
+      for (episodeIndex, episode) in playable.enumerated() {
+        let chapters = (byEpisode[episode.id] ?? [])
+          .sorted { ($0.number, $0.id) < ($1.number, $1.id) }
+        for (chapterIndex, resource) in chapters.enumerated() {
+          flat.append((
+            resource: resource,
+            episodeNumber: episodeIndex + 1,
+            isCredits: Self.isCreditsChapter(resource.name) && chapters.count > 1,
+            isOpeningSide: chapterIndex < chapters.count / 2
+          ))
+        }
+      }
+
+      // Keep exactly the season's FIRST opening-side credits and LAST ending-side credits; drop
+      // every other credits chapter. Keying on actual occurrence (not episode index) is robust to
+      // a first/last episode that has no credits of its own.
+      let openingCreditsIndex = flat.firstIndex { $0.isCredits && $0.isOpeningSide }
+      let endingCreditsIndex = flat.lastIndex { $0.isCredits && !$0.isOpeningSide }
+
+      // `fullOrdered` is every chapter (the coordinate system server progress points into);
+      // `kept` is what we download.
       var fullOrdered = [SoundBoothItemResource]()
       var kept = [SoundBoothItemResource]()
       var fileNames = [String]()
-      for (episodeIndex, episode) in episodes.enumerated() {
-        let chapters = (byEpisode[episode.id] ?? []).sorted { $0.number < $1.number }
-        for (chapterIndex, resource) in chapters.enumerated() {
-          fullOrdered.append(resource)
-          if Self.isCreditsChapter(resource.name) && chapters.count > 1 {
-            // Credits chapters are named inconsistently ("Credits" serves as both opening and
-            // closing), so classify by position within the episode instead of by name.
-            let isOpeningHalf = chapterIndex < chapters.count / 2
-            let keep =
-              (episodeIndex == 0 && isOpeningHalf)
-              || (episodeIndex == episodes.count - 1 && !isOpeningHalf)
-            if !keep { continue }
-          }
-          kept.append(resource)
-          fileNames.append(
-            Self.seasonChapterFileName(
-              episode: episodeIndex + 1,
-              number: resource.number,
-              name: resource.name
-            )
-          )
+      for (index, chapter) in flat.enumerated() {
+        fullOrdered.append(chapter.resource)
+        if chapter.isCredits, index != openingCreditsIndex, index != endingCreditsIndex {
+          continue
         }
+        kept.append(chapter.resource)
+        fileNames.append(
+          Self.seasonChapterFileName(
+            episode: chapter.episodeNumber,
+            number: chapter.resource.number,
+            name: chapter.resource.name
+          )
+        )
       }
       guard !kept.isEmpty else {
         downloadStatus = nil
@@ -419,7 +437,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
 
       let seriesName = episodes.first?.seriesId.flatMap { seriesNames[$0] }
       let folderName = Self.folderName(title: seasonName, seriesName: seriesName)
-      let seedTime = await resumeSeed(
+      let seedTime = try await resumeSeed(
         itemIds: Set(episodes.map(\.id)),
         fullOrdered: fullOrdered,
         kept: kept
@@ -493,24 +511,45 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     itemIds: Set<String>,
     fullOrdered: [SoundBoothItemResource],
     kept: [SoundBoothItemResource]
-  ) async -> Double? {
-    guard let progresses = try? await connectionService.fetchProgresses() else { return nil }
-    let relevant = progresses.filter { itemIds.contains($0.item) }
+  ) async throws -> Double? {
+    let progresses: [SoundBoothProgress]
+    do {
+      progresses = try await connectionService.fetchProgresses()
+    } catch is CancellationError {
+      throw CancellationError()
+    } catch {
+      return nil  // best-effort: no resume rather than aborting the download
+    }
+
+    let orderIndex = Dictionary(
+      fullOrdered.enumerated().map { ($1.id, $0) },
+      uniquingKeysWith: { first, _ in first }
+    )
+    // Consider only progress records we can place in the downloaded sequence, THEN take the most
+    // recent — so a newest record pointing at an undownloaded/removed resource doesn't wipe out a
+    // slightly older record we could have used.
+    let anchorable = progresses.filter { itemIds.contains($0.item) && orderIndex[$0.resource] != nil }
     guard
-      let latest = relevant.max(by: { ($0.updatedAt ?? "") < ($1.updatedAt ?? "") }),
-      let anchorIndex = fullOrdered.firstIndex(where: { $0.id == latest.resource })
+      let latest = anchorable.max(by: { ($0.updatedAt ?? "") < ($1.updatedAt ?? "") }),
+      let anchorIndex = orderIndex[latest.resource]
     else { return nil }
 
     let keptIds = Set(kept.map(\.id))
-    var offset = fullOrdered[..<anchorIndex]
-      .filter { keptIds.contains($0.id) }
-      .reduce(0.0) { $0 + ($1.duration ?? 0) }
+    // Sum durations of kept chapters before the anchor. A missing/NaN duration would make the
+    // offset silently too small; a wrong resume point is worse than none, so fail closed to start.
+    var offset = 0.0
+    for resource in fullOrdered[..<anchorIndex] where keptIds.contains(resource.id) {
+      guard let duration = resource.duration, duration.isFinite else { return nil }
+      offset += duration
+    }
     let anchor = fullOrdered[anchorIndex]
     if keptIds.contains(anchor.id) {
+      guard let duration = anchor.duration, duration.isFinite else { return nil }
       if latest.finished {
-        offset += anchor.duration ?? 0
+        offset += duration
       } else {
-        offset += min(latest.position, anchor.duration ?? latest.position)
+        guard latest.position.isFinite else { return nil }
+        offset += min(max(0, latest.position), duration)
       }
     }
     return offset > 1 ? offset : nil
@@ -542,9 +581,10 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   }
 
   /// Chapter filename inside a whole-season bound book: the episode ordinal prefixes the chapter
-  /// number so the concatenated season stays in play order (bound files sort by name).
+  /// number so the concatenated season stays in play order (bound files sort by name). Zero-padded
+  /// to three digits so lexical order stays correct past 99 episodes.
   private static func seasonChapterFileName(episode: Int, number: Int, name: String?) -> String {
-    String(format: "E%02d %@", episode, chapterFileName(number: number, name: name))
+    String(format: "E%03d %@", episode, chapterFileName(number: number, name: name))
   }
 
   /// Filesystem-safe folder name for a title, prefixed with its series when known. This becomes

@@ -15,6 +15,17 @@ struct SoundBoothLibraryListItemView: View {
   @EnvironmentObject var theme: ThemeViewModel
 
   var body: some View {
+    // Only expose the Import action when the row can actually be downloaded — an unreleased
+    // episode has no download button, so VoiceOver shouldn't offer a dead action either.
+    if item.isDownloadable {
+      row.accessibilityAction(named: "import_button".localized, onDownload)
+    } else {
+      row
+    }
+  }
+
+  @ViewBuilder
+  private var row: some View {
     HStack(spacing: 12) {
       Image(systemName: item.placeholderImageName)
         .foregroundStyle(theme.secondaryColor)
@@ -47,6 +58,5 @@ struct SoundBoothLibraryListItemView: View {
       }
     }
     .accessibilityElement(children: .combine)
-    .accessibilityAction(named: "import_button".localized, onDownload)
   }
 }
