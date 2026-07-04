@@ -364,17 +364,18 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     releasedEpisodes(inSeason: node).count
   }
 
-  func downloadSeason(_ node: SoundBoothNode) {
+  func downloadSeason(_ node: SoundBoothNode, trimCredits: Bool) {
     inflightDownloadPrep?.cancel()
     inflightDownloadPrep = Task { [weak self] in
-      await self?._downloadSeason(node)
+      await self?._downloadSeason(node, trimCredits: trimCredits)
     }
   }
 
   /// Download a whole season as one bound book. Every episode's chapters concatenate in release
-  /// order; credits chapters are trimmed so only the season's first opening credits and final
-  /// ending credits remain, and the story plays straight through episode boundaries.
-  private func _downloadSeason(_ node: SoundBoothNode) async {
+  /// order. When `trimCredits` is on, repeated credits chapters are dropped so only the season's
+  /// first opening credits and final ending credits remain and the story plays straight through
+  /// episode boundaries; when off, every chapter is kept verbatim.
+  private func _downloadSeason(_ node: SoundBoothNode, trimCredits: Bool) async {
     guard case .season(let groupId, let seasonName) = node else { return }
     let episodes = releasedEpisodes(inSeason: node)
     guard !episodes.isEmpty else { return }
@@ -399,7 +400,9 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
           flat.append((
             resource: resource,
             episodeNumber: episodeIndex + 1,
-            isCredits: Self.isCreditsChapter(resource.name) && chapters.count > 1,
+            // With trimming off nothing is flagged credits, so the keep/drop pass below is a no-op
+            // and every chapter downloads.
+            isCredits: trimCredits && Self.isCreditsChapter(resource.name) && chapters.count > 1,
             isOpeningSide: chapterIndex < chapters.count / 2
           ))
         }

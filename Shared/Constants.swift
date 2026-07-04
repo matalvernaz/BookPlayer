@@ -79,6 +79,11 @@ public enum Constants {
     public static let audiobookshelfLibraryLayout = "audiobookshelfLibraryLayout"
     public static let audiobookshelfLibraryLayoutSortBy = "audiobookshelfLibraryLayoutSortBy"
 
+    /// SoundBooth
+    /// Whole-season downloads drop the repeated opening/closing credits between episodes, keeping
+    /// only the season's first and last. Default on; off downloads every credits chapter verbatim.
+    public static let soundboothTrimSeasonCredits = "soundboothTrimSeasonCredits"
+
     /// Hardcover
     public static let hardcoverAutoMatch = "hardcoverAutoMatch"
     public static let hardcoverAutoAddWantToRead = "hardcoverAutoAddWantToRead"

@@ -16,6 +16,10 @@ struct SoundBoothLibraryView: View {
   @ObservedObject var viewModel: SoundBoothLibraryViewModel
   var node: SoundBoothNode = .root
   @EnvironmentObject var theme: ThemeViewModel
+  /// Global, persisted. On by default so season downloads keep today's behaviour; turn off when the
+  /// positional credits heuristic clips a chapter it shouldn't and you want everything verbatim.
+  @AppStorage(Constants.UserDefaults.soundboothTrimSeasonCredits, store: UserDefaults.sharedDefaults)
+  private var trimSeasonCredits = true
 
   var body: some View {
     content
@@ -60,7 +64,7 @@ struct SoundBoothLibraryView: View {
               if viewModel.canDownloadSeason(node) {
                 Section {
                   Button {
-                    viewModel.downloadSeason(node)
+                    viewModel.downloadSeason(node, trimCredits: trimSeasonCredits)
                   } label: {
                     HStack(spacing: 12) {
                       Image(systemName: "arrow.down.circle")
@@ -73,6 +77,16 @@ struct SoundBoothLibraryView: View {
                     }
                   }
                   .accessibilityValue("\(viewModel.releasedEpisodeCount(node)) episodes")
+                }
+                Section {
+                  Toggle("Trim repeated credits", isOn: $trimSeasonCredits)
+                    .bpFont(.titleRegular)
+                    .foregroundStyle(theme.primaryColor)
+                    .tint(theme.linkColor)
+                } footer: {
+                  Text("Keeps only the season's first opening credits and final closing credits, dropping the repeated credits between episodes.")
+                    .bpFont(.caption)
+                    .foregroundStyle(theme.secondaryColor)
                 }
               }
               ForEach(sections) { section in
