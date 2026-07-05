@@ -140,6 +140,25 @@ public struct SoundBoothAPIClient {
     return page.docs
   }
 
+  /// The full item catalog (~884 items, one page). Unlike `series/list`/`groups/list`, every item
+  /// here carries its `seriesId`/`groupId` as populated objects (name included), so it can name
+  /// series that those list endpoints omit (free-preview/orphan series).
+  public func items(session sbSession: SoundBoothSession) async throws -> [SoundBoothElement] {
+    let request = try makeRequest(
+      path: "/functions/u/items/list",
+      method: "POST",
+      jsonBody: [:],
+      session: sbSession
+    )
+    let (data, response) = try await session.data(for: request)
+    try validate(response)
+    let envelope = try decode(SoundBoothEnvelope<SoundBoothPage<SoundBoothElement>>.self, from: data)
+    guard envelope.success, let page = envelope.data else {
+      throw Self.apiError(envelope.message, envelope.code)
+    }
+    return page.docs
+  }
+
   /// All episodes of a season (`Group`). Used for owned season bundles, whose episodes aren't
   /// individual purchases in `library-elements`; entitlement flows through the bundle, so the
   /// standard `item-resources`/`resources/play` calls work on the returned items.

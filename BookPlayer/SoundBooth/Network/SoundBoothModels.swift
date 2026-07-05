@@ -150,6 +150,13 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
   public let releaseAt: String?
   public let originalReleaseAt: String?
   public let displayOptions: SoundBoothDisplayOptions?
+  /// Series/season names carried by a POPULATED reference (as `u/items/list` returns them); nil when
+  /// the reference arrived as a bare id string. Lets orphan series/seasons that `series/list` and
+  /// `groups/list` omit stay nameable.
+  public let seriesName: String?
+  public let groupName: String?
+  /// Season index from a populated `groupId` reference, for ordering; nil when not populated.
+  public let groupIndex: Int?
 
   /// Best available cover art for this element, preferring the full image over the thumbnail.
   public var coverURL: URL? {
@@ -203,31 +210,62 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
     name = try container.decode(String.self, forKey: .name)
     subtype = try container.decodeIfPresent(String.self, forKey: .subtype)
     // Reference fields arrive as bare id strings from some endpoints and populated objects from
-    // others (e.g. `u/items/list` populates `groupId`); accept both.
-    seriesId = Self.idRef(container, .seriesId)
-    groupId = Self.idRef(container, .groupId)
+    // others (e.g. `u/items/list` populates both); accept either, and keep the name off a populated
+    // ref so orphan series/seasons (absent from series/list & groups/list) stay nameable.
+    let seriesRef = Self.ref(container, .seriesId)
+    let groupRef = Self.ref(container, .groupId)
+    seriesId = seriesRef?.id
+    groupId = groupRef?.id
+    seriesName = seriesRef?.name
+    groupName = groupRef?.name
+    groupIndex = groupRef?.displayOptions?.index
     format = try container.decodeIfPresent(String.self, forKey: .format)
     releaseAt = try container.decodeIfPresent(String.self, forKey: .releaseAt)
     originalReleaseAt = try container.decodeIfPresent(String.self, forKey: .originalReleaseAt)
     displayOptions = try container.decodeIfPresent(SoundBoothDisplayOptions.self, forKey: .displayOptions)
   }
 
-  private static func idRef(
+  /// Decode a reference that may be a populated object (`{_id, name, …}`) or a bare id string.
+  /// Populated form first so its name survives; a bare string becomes a name-less ref; absent → nil.
+  private static func ref(
     _ container: KeyedDecodingContainer<CodingKeys>,
     _ key: CodingKeys
-  ) -> String? {
-    if let id = try? container.decodeIfPresent(String.self, forKey: key) { return id }
-    if let ref = try? container.decodeIfPresent(SoundBoothIDRef.self, forKey: key) { return ref.id }
+  ) -> SoundBoothIDRef? {
+    if let ref = try? container.decode(SoundBoothIDRef.self, forKey: key) { return ref }
+    if let id = try? container.decode(String.self, forKey: key) {
+      return SoundBoothIDRef(id: id, name: nil, displayOptions: nil)
+    }
     return nil
   }
 }
 
-/// A populated reference object (`{"_id": "…", …}`) decoded down to just its id.
+/// A reference that some endpoints return fully populated (`{"_id": "…", "name": "…", …}`, notably
+/// `u/items/list`) and others send as a bare id string. Keeps the id plus any `name`/`displayOptions`
+/// so a populated ref can supply a name the list endpoints omit for orphan series.
 struct SoundBoothIDRef: Decodable, Sendable {
   let id: String
+  let name: String?
+  let displayOptions: SoundBoothDisplayOptions?
 
   enum CodingKeys: String, CodingKey {
     case id = "_id"
+    case name
+    case displayOptions
+  }
+
+  init(id: String, name: String?, displayOptions: SoundBoothDisplayOptions?) {
+    self.id = id
+    self.name = name
+    self.displayOptions = displayOptions
+  }
+
+  /// Optional fields decode defensively: a malformed `name`/`displayOptions` must not throw away the
+  /// whole ref (and with it the id), only that field.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try? container.decode(String.self, forKey: .name)
+    displayOptions = try? container.decode(SoundBoothDisplayOptions.self, forKey: .displayOptions)
   }
 }
 

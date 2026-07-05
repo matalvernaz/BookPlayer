@@ -135,6 +135,17 @@ class SoundBoothConnectionService: BPLogger {
     }
   }
 
+  /// The full item catalog, used to recover series/season names for orphan items whose series
+  /// `series/list` omits (their references come back populated here).
+  func fetchCatalog() async throws -> [SoundBoothElement] {
+    let session = try requireSession()
+    do {
+      return try await apiClient.items(session: session)
+    } catch {
+      throw mapError(error)
+    }
+  }
+
   /// Episodes of a season bundle the user owns as a whole (they have no per-episode docs in
   /// `library-elements`).
   func fetchSeasonItems(groupId: String) async throws -> [SoundBoothElement] {

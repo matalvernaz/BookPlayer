@@ -74,6 +74,10 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   /// Season (`Group`) records keyed by id, from `groups/list` — supplies season names + order even
   /// for seasons the user owns only as individual episodes (not as the season bundle object).
   private var groupInfo: [String: SoundBoothGroup] = [:]
+  /// Season name + index recovered from the full item catalog for orphan seasons `groups/list`
+  /// omits (their `groupId` comes back populated in `u/items/list`). Consulted by `seasonInfo`
+  /// after `groupInfo`.
+  private var orphanSeasonInfo: [String: (name: String, index: Int)] = [:]
   /// Episode lists fetched per owned season bundle (their episodes aren't in `library-elements`),
   /// keyed by groupId. Cleared on library reload.
   @Published private var seasonItems: [String: [SoundBoothElement]] = [:]
@@ -96,8 +100,32 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       // rather than blocking the whole library.
       let series = (try? await connectionService.fetchSeries()) ?? []
       let groupList = (try? await connectionService.fetchGroups()) ?? []
-      self.seriesNames = Dictionary(series.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-      self.groupInfo = Dictionary(groupList.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+      var names = Dictionary(series.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+      let groupDict = Dictionary(groupList.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+      // Some owned items reference a series `series/list` omits (free-preview/orphan series), which
+      // would strand them nameless at the top level. The full item catalog carries those items with
+      // populated series/season names, so when any owned series is still unresolved, fetch it once
+      // and backfill. Best-effort — a failure just leaves those items in the "Other Titles" fallback.
+      var orphanSeasons: [String: (name: String, index: Int)] = [:]
+      let hasUnresolvedSeries = elements.contains { element in
+        guard !element.isGroup, let seriesId = element.element.seriesId else { return false }
+        return names[seriesId] == nil
+      }
+      if hasUnresolvedSeries, let catalog = try? await connectionService.fetchCatalog() {
+        for item in catalog {
+          if let seriesId = item.seriesId, let name = item.seriesName, names[seriesId] == nil {
+            names[seriesId] = name
+          }
+          if let groupId = item.groupId, let name = item.groupName, orphanSeasons[groupId] == nil {
+            orphanSeasons[groupId] = (name: name, index: item.groupIndex ?? Int.max)
+          }
+        }
+      }
+
+      self.seriesNames = names
+      self.groupInfo = groupDict
+      self.orphanSeasonInfo = orphanSeasons
       self.elements = elements
       self.seasonItems = [:]
       loadState = .loaded
@@ -217,6 +245,9 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     }
     if let owned = groups.first(where: { $0.element.id == groupId }) {
       return (owned.element.name, owned.element.displayOptions?.index ?? Int.max)
+    }
+    if let orphan = orphanSeasonInfo[groupId] {
+      return orphan
     }
     return nil
   }
