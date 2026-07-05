@@ -145,7 +145,8 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       .filter { $0.element.seriesId.flatMap { seriesNames[$0] } == nil }
       .map { SoundBoothLibraryItem(id: $0.element.id, displayName: $0.element.name, kind: .group) }
 
-    // Items with no series (or a series we couldn't name) show directly at the top level.
+    // Items whose series isn't in SoundBooth's series catalog (an orphan/unlisted seriesId that
+    // `u/series/list` never returns) can't nest under a series row.
     let looseItems = items.filter { $0.element.seriesId.flatMap { seriesNames[$0] } == nil }
 
     let containers = sortedByName(seriesRows) + sortedByName(looseSeasons)
@@ -153,7 +154,18 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     if !containers.isEmpty {
       sections.append(SoundBoothLibrarySection(id: "top", title: nil, rows: containers))
     }
-    sections += leafSections(looseItems.map(\.element), seriesName: nil)
+
+    // Sitting bare among the named series above, an orphan title reads as broken — a tap-to-download
+    // title masquerading as a drill-in series row. Gather them under an explicit header to set them
+    // apart, but only when there are named series to set them apart *from*; an all-orphan library
+    // just shows them as its plain contents.
+    let looseRows = sortedByRelease(looseItems.map(\.element)).map {
+      SoundBoothLibraryItem(raw: $0, seriesName: nil)
+    }
+    if !looseRows.isEmpty {
+      let title = containers.isEmpty ? nil : "soundbooth_other_titles_title".localized
+      sections.append(SoundBoothLibrarySection(id: "loose", title: title, rows: looseRows))
+    }
     return sections
   }
 
@@ -209,20 +221,34 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     return nil
   }
 
-  /// Inside a season: its episodes — owned episode docs when present, otherwise the episode list
-  /// fetched for an owned bundle (`loadSeasonIfNeeded`).
-  private func sections(inSeason groupId: String) -> [SoundBoothLibrarySection] {
-    let local = items.filter { $0.element.groupId == groupId }.map(\.element)
-    let episodes = local.isEmpty ? (seasonItems[groupId] ?? []) : local
-    let seriesName = episodes.first?.seriesId.flatMap { seriesNames[$0] }
-    return leafSections(episodes, seriesName: seriesName)
+  /// Whether the user owns this season as a whole bundle (a `Group` doc in `library-elements`), as
+  /// opposed to owning only individual episodes of it à-la-carte.
+  private func ownsBundle(_ groupId: String) -> Bool {
+    groups.contains { $0.element.id == groupId }
   }
 
-  /// Owned-bundle seasons have no episode docs in `library-elements`; fetch their episode list on
-  /// first visit. No-op when the level already has local episodes, a cached fetch, or one in flight.
+  /// The episodes to show for a season. When the user owns the bundle, that's the full fetched
+  /// episode list (`u/items/list {groupId}`) — any individually-owned episode docs are a redundant
+  /// subset since entitlement flows through the bundle, so showing only them would mask the rest of
+  /// the season. When the user owns no bundle, it's exactly the episodes they bought à-la-carte.
+  private func episodes(inSeason groupId: String) -> [SoundBoothElement] {
+    if ownsBundle(groupId) { return seasonItems[groupId] ?? [] }
+    return items.filter { $0.element.groupId == groupId }.map(\.element)
+  }
+
+  /// Inside a season: its episodes — the owned bundle's full list, or the à-la-carte episodes owned.
+  private func sections(inSeason groupId: String) -> [SoundBoothLibrarySection] {
+    let seasonEpisodes = episodes(inSeason: groupId)
+    let seriesName = seasonEpisodes.first?.seriesId.flatMap { seriesNames[$0] }
+    return leafSections(seasonEpisodes, seriesName: seriesName)
+  }
+
+  /// Owned-bundle seasons list their episodes via `u/items/list {groupId}`, not `library-elements`;
+  /// fetch that list on first visit. No-op unless the user owns the bundle (à-la-carte seasons read
+  /// their episodes straight from the library), or when a fetch is cached or already in flight.
   func loadSeasonIfNeeded(_ node: SoundBoothNode) async {
     guard case .season(let groupId, _) = node,
-      !items.contains(where: { $0.element.groupId == groupId }),
+      ownsBundle(groupId),
       seasonItems[groupId] == nil,
       !seasonFetchesInFlight.contains(groupId)
     else { return }
@@ -247,8 +273,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
 
   /// Pull-to-refresh: the root refetches the whole library; a season refetches its episode list.
   func refresh(_ node: SoundBoothNode) async {
-    if case .season(let groupId, _) = node,
-      !items.contains(where: { $0.element.groupId == groupId }) {
+    if case .season(let groupId, _) = node, ownsBundle(groupId) {
       seasonItems[groupId] = nil
       await loadSeasonIfNeeded(node)
     } else {
@@ -351,9 +376,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   /// Released episodes of a season, in play order. Empty for non-season nodes.
   private func releasedEpisodes(inSeason node: SoundBoothNode) -> [SoundBoothElement] {
     guard case .season(let groupId, _) = node else { return [] }
-    let local = items.filter { $0.element.groupId == groupId }.map(\.element)
-    let episodes = local.isEmpty ? (seasonItems[groupId] ?? []) : local
-    return sortedByRelease(episodes).filter(\.isReleased)
+    return sortedByRelease(episodes(inSeason: groupId)).filter(\.isReleased)
   }
 
   func canDownloadSeason(_ node: SoundBoothNode) -> Bool {

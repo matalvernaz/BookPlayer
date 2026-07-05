@@ -162,9 +162,15 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
     releaseAt ?? originalReleaseAt ?? "\u{FFFF}"
   }
 
-  /// Parsed release date, when present.
+  /// Parsed release date, when present. SoundBooth returns ISO-8601 both with and without
+  /// fractional seconds; try both, since a nil parse falls through to `isReleased == true` and
+  /// would silently un-gate a preorder episode.
   public var releaseDate: Date? {
-    releaseAt.flatMap { try? Date($0, strategy: Self.isoParse) }
+    guard let releaseAt else { return nil }
+    for parser in Self.isoParsers {
+      if let date = try? Date(releaseAt, strategy: parser) { return date }
+    }
+    return nil
   }
 
   /// Whether the title's audio is out yet. Season bundles sell as preorders whose episodes
@@ -174,7 +180,10 @@ public struct SoundBoothElement: Decodable, Identifiable, Sendable {
     return releaseDate <= Date()
   }
 
-  private static let isoParse = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+  private static let isoParsers: [Date.ISO8601FormatStyle] = [
+    Date.ISO8601FormatStyle(includingFractionalSeconds: true),
+    Date.ISO8601FormatStyle(includingFractionalSeconds: false),
+  ]
 
   enum CodingKeys: String, CodingKey {
     case id = "_id"
