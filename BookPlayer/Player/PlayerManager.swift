@@ -885,6 +885,11 @@ extension PlayerManager {
   func jumpTo(_ time: Double, recordBookmark: Bool = true) {
     guard let currentItem = self.currentItem else { return }
 
+    // Captured before any load: a bound-book seek that crosses into another file
+    // reloads the player, and that reload must resume playback only if we were
+    // already playing (mirrors `playerDidFinishPlaying`'s cross-chapter handoff).
+    let wasPlaying = isPlaying
+
     if recordBookmark {
       self.createOrUpdateAutomaticBookmark(
         at: currentItem.currentTime,
@@ -911,7 +916,11 @@ extension PlayerManager {
         chapterBeforeSkip?.relativePath != chapterAfterSkip.relativePath
       {
         updatePlaybackTime(item: currentItem, time: boundedTime)
-        loadChapterMetadata(chapterAfterSkip)
+        // Carry the play state: both resume paths (the `.readyToPlay` observer and
+        // the initial seek's completion) gate on `playbackQueued`, which is nil
+        // during steady playback — so without this the freshly loaded chapter file
+        // sits silent after the seek instead of continuing to play.
+        loadChapterMetadata(chapterAfterSkip, autoplay: wasPlaying)
         return
       }
     }
