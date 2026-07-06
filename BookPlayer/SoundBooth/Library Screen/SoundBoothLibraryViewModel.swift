@@ -95,11 +95,16 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   func loadLibrary() async {
     loadState = .loading
     do {
-      let elements = try await connectionService.fetchLibraryElements()
-      // Series names are best-effort: if that call fails, items just fall back to loose rows
-      // rather than blocking the whole library.
-      let series = (try? await connectionService.fetchSeries()) ?? []
-      let groupList = (try? await connectionService.fetchGroups()) ?? []
+      // The owned set, series names, and season groups are three independent fetches; run them
+      // concurrently so the load costs one round-trip instead of three. `elements` is required —
+      // its failure fails the load (and surfaces session-expiry). Series and groups are best-effort:
+      // a failure there just drops affected items to loose rows rather than blocking the library.
+      async let elementsFetch = connectionService.fetchLibraryElements()
+      async let seriesFetch = connectionService.fetchSeries()
+      async let groupsFetch = connectionService.fetchGroups()
+      let elements = try await elementsFetch
+      let series = (try? await seriesFetch) ?? []
+      let groupList = (try? await groupsFetch) ?? []
       var names = Dictionary(series.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
       let groupDict = Dictionary(groupList.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
 
@@ -198,9 +203,12 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
   }
 
   /// Inside a series: its seasons (owned bundles and seasons inferred from owned episodes, ordered
-  /// by season index), then standalone titles that don't belong to a nameable season.
+  /// by season index), then standalone titles that don't belong to a nameable season. When the
+  /// series is owned in more than one production format, these are grouped under per-format headers
+  /// instead (see `formatGroupedSections`).
   private func sections(inSeries seriesId: String) -> [SoundBoothLibrarySection] {
     let seriesItems = items.filter { $0.element.seriesId == seriesId }
+    let seriesName = seriesNames[seriesId]
 
     var seasons: [(id: String, name: String, index: Int)] = []
     var seenSeasons = Set<String>()
@@ -219,21 +227,113 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       seenSeasons.insert(groupId)
       seasons.append((groupId, info.name, info.index))
     }
-    let seasonRows = seasons
-      .sorted { ($0.index, $0.name.localizedLowercase) < ($1.index, $1.name.localizedLowercase) }
-      .map { SoundBoothLibraryItem(id: $0.id, displayName: $0.name, kind: .group) }
 
     // Standalone titles: no season, or a season we couldn't name.
     let directItems = seriesItems.filter { item in
       guard let groupId = item.element.groupId else { return true }
       return seasonInfo(forGroupId: groupId) == nil
+    }.map(\.element)
+
+    // SoundBooth sells the same story in several formats, and its data is inconsistent about them:
+    // one edition's episodes carry a `groupId` (so they nest under a season) while another's don't
+    // (so they fall out as standalone titles). Grouped flat, the editions scatter across the screen
+    // and the season rows show no format at all. When more than one format is owned, split the
+    // series into per-format sections so each edition reads as its own labelled branch.
+    let ownedFormats = Set(seriesItems.compactMap { SoundBoothLibraryItem.formatDisplayName($0.element.format) })
+    if ownedFormats.count > 1 {
+      return formatGroupedSections(
+        seriesName: seriesName,
+        seriesItems: seriesItems,
+        seasons: seasons,
+        directItems: directItems
+      )
     }
 
+    let seasonRows = seasons
+      .sorted { ($0.index, $0.name.localizedLowercase) < ($1.index, $1.name.localizedLowercase) }
+      .map { SoundBoothLibraryItem(id: $0.id, displayName: $0.name, kind: .group) }
     var sections = [SoundBoothLibrarySection]()
     if !seasonRows.isEmpty {
       sections.append(SoundBoothLibrarySection(id: "seasons", title: nil, rows: seasonRows))
     }
-    sections += leafSections(directItems.map(\.element), seriesName: seriesNames[seriesId])
+    sections += leafSections(directItems, seriesName: seriesName)
+    return sections
+  }
+
+  /// Group a multi-format series' seasons and standalone titles under per-format headers
+  /// ("Audiobook", "Cinematic Audio", …). A season's format is the single format shared by its
+  /// owned episodes; a season that can't be pinned to one format (a bundle whose episodes aren't
+  /// loaded at this level, or a genuinely mixed one) and any format-less title fall to a trailing
+  /// untitled section rather than being dropped.
+  private func formatGroupedSections(
+    seriesName: String?,
+    seriesItems: [SoundBoothLibraryElement],
+    seasons: [(id: String, name: String, index: Int)],
+    directItems: [SoundBoothElement]
+  ) -> [SoundBoothLibrarySection] {
+    func seasonFormat(_ groupId: String) -> String? {
+      let formats = Set(
+        seriesItems
+          .filter { $0.element.groupId == groupId }
+          .compactMap { SoundBoothLibraryItem.formatDisplayName($0.element.format) }
+      )
+      return formats.count == 1 ? formats.first : nil
+    }
+
+    typealias SeasonEntry = (index: Int, name: String, row: SoundBoothLibraryItem)
+    var seasonsByFormat = [String: [SeasonEntry]]()
+    var looseSeasons = [SeasonEntry]()
+    for season in seasons {
+      let entry: SeasonEntry = (
+        season.index, season.name,
+        SoundBoothLibraryItem(id: season.id, displayName: season.name, kind: .group)
+      )
+      if let format = seasonFormat(season.id) {
+        seasonsByFormat[format, default: []].append(entry)
+      } else {
+        looseSeasons.append(entry)
+      }
+    }
+
+    var leavesByFormat = [String: [SoundBoothElement]]()
+    var looseLeaves = [SoundBoothElement]()
+    for element in directItems {
+      if let format = SoundBoothLibraryItem.formatDisplayName(element.format) {
+        leavesByFormat[format, default: []].append(element)
+      } else {
+        looseLeaves.append(element)
+      }
+    }
+
+    func leafRow(_ element: SoundBoothElement) -> SoundBoothLibraryItem {
+      SoundBoothLibraryItem(raw: element, seriesName: seriesName ?? element.seriesId.flatMap { seriesNames[$0] })
+    }
+    func sortedSeasonRows(_ entries: [SeasonEntry]) -> [SoundBoothLibraryItem] {
+      entries
+        .sorted { ($0.index, $0.name.localizedLowercase) < ($1.index, $1.name.localizedLowercase) }
+        .map(\.row)
+    }
+
+    let order = Self.formatSectionOrder
+    let formats = Set(seasonsByFormat.keys).union(leavesByFormat.keys).sorted { lhs, rhs in
+      let li = order.firstIndex(of: lhs) ?? order.count
+      let ri = order.firstIndex(of: rhs) ?? order.count
+      return li == ri ? lhs < rhs : li < ri
+    }
+
+    var sections = [SoundBoothLibrarySection]()
+    for format in formats {
+      let rows = sortedSeasonRows(seasonsByFormat[format] ?? [])
+        + sortedByRelease(leavesByFormat[format] ?? []).map(leafRow)
+      guard !rows.isEmpty else { continue }
+      sections.append(SoundBoothLibrarySection(id: "format-\(format)", title: format, rows: rows))
+    }
+
+    // Anything we couldn't attribute to a format keeps a home rather than vanishing.
+    let looseRows = sortedSeasonRows(looseSeasons) + sortedByRelease(looseLeaves).map(leafRow)
+    if !looseRows.isEmpty {
+      sections.append(SoundBoothLibrarySection(id: "format-unlabeled", title: nil, rows: looseRows))
+    }
     return sections
   }
 
