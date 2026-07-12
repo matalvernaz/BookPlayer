@@ -57,6 +57,12 @@ class MainCoordinator: NSObject {
 
   /// Reference to know if the import screen is already being shown (or in the process of showing)
   weak var importCoordinator: ImportCoordinator?
+  /// Retry loop that keeps attempting to present the import screen while files are pending.
+  /// Non-nil while the loop is alive; see ``showImport()``.
+  private var importPresentationTask: Task<Void, Never>?
+  /// Interval between import-presentation attempts. Long enough for any in-flight
+  /// modal transition (~0.4-0.6s) to settle before the next try.
+  private static let importPresentationRetryNanoseconds: UInt64 = 750_000_000
   let navigationController: UINavigationController
 
   private var disposeBag = Set<AnyCancellable>()
@@ -220,10 +226,43 @@ class MainCoordinator: NSObject {
     coordinator.start()
   }
 
+  /// Present the import screen for the pending files, retrying until it actually shows.
+  ///
+  /// Every caller is an edge trigger (a file landing, a download queue draining,
+  /// the scene activating), but whether the presentation can succeed at that exact
+  /// moment depends on UIKit state the callers can't see: a modal transition may be
+  /// in flight, a download queue may still be running, or the import screen may
+  /// have been presented on a media-server sheet that was then dismissed and took
+  /// the screen down with it — all with the import set still pending and nothing
+  /// left to re-fire. So instead of a single attempt, this arms a loop that retries
+  /// while files remain pending and stops once they drain (import started or
+  /// discarded). While the import screen is up the loop idles; if the screen is
+  /// torn down by a parent dismissal it re-presents on the new top controller.
   func showImport() {
+    guard importPresentationTask == nil else { return }
+
+    importPresentationTask = Task { @MainActor [weak self] in
+      defer { self?.importPresentationTask = nil }
+
+      while !Task.isCancelled {
+        guard let self, self.importManager.hasPendingFiles() else { return }
+
+        // Don't present mid-queue: the import set can reference a folder that's
+        // still receiving files, and the dialog would list a half-downloaded book.
+        if self.importCoordinator == nil,
+           !self.singleFileDownloadService.isDownloading {
+          self.attemptImportPresentation()
+        }
+
+        try? await Task.sleep(nanoseconds: Self.importPresentationRetryNanoseconds)
+      }
+    }
+  }
+
+  /// Single presentation attempt; bails when UIKit can't host a new modal yet.
+  /// Failures are not terminal — the ``showImport()`` loop tries again.
+  private func attemptImportPresentation() {
     guard
-      importManager.hasPendingFiles(),
-      importCoordinator == nil,
       let topVC = WindowHelper.activeWindow?.rootViewController?.getTopVisibleViewController()
     else { return }
 
@@ -232,10 +271,7 @@ class MainCoordinator: NSObject {
     // of being dismissed (or any other modal transition is in
     // flight). Presenting on a VC that's being-presented or
     // being-dismissed causes UIKit to either drop the present or
-    // tear the new modal down with the parent's transition. The
-    // import set sticks around in `importManager`, so any later
-    // observeFiles event or scenePhase=.active trigger will pick
-    // this up cleanly when UIKit isn't busy.
+    // tear the new modal down with the parent's transition.
     guard
       !topVC.isBeingPresented,
       !topVC.isBeingDismissed,
