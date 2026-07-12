@@ -31,13 +31,44 @@ final class SoundBoothConnectionViewModel: ObservableObject, BPLogger {
   /// Set on a successful verify so the host view can dismiss and load the library.
   @Published private(set) var signInCompletedAt: Date?
 
+  /// In-flight send-code/verify task, retained so dismissing the sheet cancels it.
+  /// Without this, a dismissed verification could still persist and activate the
+  /// connection; the service's `Task.checkCancellation()` before persisting is the
+  /// other half of the contract.
+  private var authTask: Task<Void, Never>?
+
   init(connectionService: SoundBoothConnectionService) {
     self.connectionService = connectionService
   }
 
   /// Request a login code for the entered email and advance to code entry.
   @MainActor
-  func sendCode() async {
+  func sendCode() {
+    authTask?.cancel()
+    authTask = Task { [weak self] in
+      await self?.performSendCode()
+    }
+  }
+
+  /// Verify the entered code; on success the connection is persisted by the service.
+  @MainActor
+  func verify() {
+    authTask?.cancel()
+    authTask = Task { [weak self] in
+      await self?.performVerify()
+    }
+  }
+
+  /// Called when the sheet disappears — abandon any in-flight request.
+  @MainActor
+  func cancelPendingAuth() {
+    authTask?.cancel()
+    authTask = nil
+    isBusy = false
+  }
+
+  @MainActor
+  private func performSendCode() async {
     let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed.contains("@") else {
       errorMessage = "Enter the email address for your SoundBooth account."
@@ -46,20 +77,20 @@ final class SoundBoothConnectionViewModel: ObservableObject, BPLogger {
     email = trimmed
     isBusy = true
     errorMessage = nil
-    defer { isBusy = false }
+    defer { if !Task.isCancelled { isBusy = false } }
     do {
       try await connectionService.requestLoginCode(email: trimmed)
+      guard !Task.isCancelled else { return }
       step = .enteringCode
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // ignore
     } catch {
       errorMessage = Self.message(for: error)
     }
   }
 
-  /// Verify the entered code; on success the connection is persisted by the service.
   @MainActor
-  func verify() async {
+  private func performVerify() async {
     let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedCode.isEmpty else {
       errorMessage = "Enter the code from your email."
@@ -67,11 +98,12 @@ final class SoundBoothConnectionViewModel: ObservableObject, BPLogger {
     }
     isBusy = true
     errorMessage = nil
-    defer { isBusy = false }
+    defer { if !Task.isCancelled { isBusy = false } }
     do {
       try await connectionService.signIn(email: email, code: trimmedCode)
+      guard !Task.isCancelled else { return }
       signInCompletedAt = Date()
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // ignore
     } catch {
       errorMessage = Self.message(for: error)

@@ -285,3 +285,83 @@ Related: the 2026-05-29 "Player: `initialSeekInProgress` stuck-true after
 `mediaServicesWereReset`" High item — F1 centralizes gate-clearing on every
 landed seek, which helps but doesn't fix the reset path (no seek follows a
 reset). Still open.
+
+---
+
+# 2026-07-12 media-server audit (roundtable: GPT-5 / Gemini Pro / Claude Opus, 3 rounds, all 83 files)
+
+## SHIPPED in this pass
+
+- **Cancellation misclassification (systemic).** `URLError(.cancelled)` now
+  treated as cancellation everywhere via `Error.isCancellation`
+  (`BP+ErrorAlerts.swift`); all 30 `catch is CancellationError` sites
+  converted. This was the "random unreadable dialog": debounced search /
+  onDisappear cancelled in-flight requests and surfaced them as errors.
+- **`errorAlert` rewrite.** Writable `isPresented` binding (was `.constant`),
+  and `LocalizedAlertError` returns nil for cancellations as a backstop.
+- **Search races.** Ownership-guarded `defer` (`if !Task.isCancelled`) so a
+  superseded fetch can't clobber its replacement's `fetchTask` handle;
+  post-await `Task.isCancelled` guards before commits; Jellyfin
+  `sortBy.didSet` cancels in-flight fetch + handles global search;
+  `dropFirst()` moved ahead of `debounce` in all 6 pipelines (was swallowing
+  the first query); ABS empty-page pagination termination.
+- **Auth.** Failed sign-in no longer clears `pendingServer`/`pingedURL`
+  (retry works); `prepareForReauth()` on JF + ABS VMs (mirrors Hummingbird)
+  and root-view recovery buttons route to it — the old path dead-ended in a
+  logout-only details view; Quick Connect exchange task tracked + cancelled
+  (NOTE: May audit item C3 claims this shipped before — it had regressed);
+  SoundBooth auth tasks owned by the VM and cancelled on sheet dismissal;
+  connection-form actions disabled while loading; ABS + Hummingbird stop
+  trimming passwords (usernames still trimmed); `targetConnectionId`
+  retargets after Add Server; JF `send` attributes 401s to the request-time
+  connection; deleting a non-active JF connection revokes its token.
+- **Cross-server routing.** Hummingbird `fetchBookmark`/`returnBook` take
+  `connectionId`; ABS + HB `wrapWithCustomHeaders(_:connection:)` overloads
+  so progress reports carry the item's connection headers (was leaking the
+  active server's proxy credentials to the originating server).
+- **Loan-expiry scanner.** `.deep` delete (`.shallow` promoted chapter files
+  to loose items instead of removing them); keeps the source mapping when
+  the delete fails so cleanup retries next scan.
+- **Provenance.** `MediaServerSourceStore.moveSources(from:to:)` +
+  migration calls at all 4 `ItemListViewModel` move sites (moves used to
+  sever progress sync); JF/ABS root-landed downloads re-wired to
+  `registerPendingDownload` via `registerItemDownloadProvenance` (the
+  "follow-up" both services' comments promised); Hummingbird single-file
+  downloads register pending provenance (were never syncing progress).
+- **Progress reporting.** All three reporters serialize sends (older
+  in-progress request can no longer overwrite a newer pause/finish on the
+  server); JF session id cleared only after the Stopped POST; new
+  `.bookStopped` notification posted from `PlayerManager.stopPlayback()`
+  (direct stop used to discard up to a throttle window of progress);
+  `.bookPaused` posted after the position snapshot (was ~1s stale);
+  dispatcher throttles before the source-store decode.
+- **A11y.** Narrator folded into the details-screen VoiceOver label;
+  grid edit-mode selection exposes `.isSelected`; navigable rows get a
+  VoiceOver hint; custom-header fields have persistent labels; server
+  delete requires confirmation; Hummingbird details sheet restores the
+  previously active connection on dismiss; `BPNavigation.dismiss` assigned
+  in `.onAppear` (was `.task`, losing early dismiss calls); SoundBooth
+  download-error alert attached once at the root (was bound at every
+  drill-down level); hardcoded English localized (tabs, details sections,
+  SoundBooth season controls, ABS browse categories) — new keys in
+  Base + en Localizable.strings.
+- **ABS decoding.** List responses decode lossily (`FailableDecodable`) so
+  one malformed record doesn't fail the page.
+
+## DEFERRED (deliberate, with reasons)
+
+- **Keychain persist hardening** (swallowed `set` failures; failed remove
+  can resurrect an account on relaunch). Failure requires a locked keychain
+  under which any fallback write also fails; no meaningful recovery without
+  rollback plumbing through every persistence call site. Already logged.
+- **ABS/JF folder-download provenance.** `MediaServerSourceTracker`
+  predicts root-landed filenames; folder downloads need a folder-aware
+  finalize before they can register. Same shape as the old follow-up.
+- **Bound-book completer batch verification** (promotes on first file
+  event). Needs an expected-file-count in the pending record — small data
+  model change, do with the folder-provenance work.
+- **SoundBooth progress write-back** — seed-only by design.
+- **`TagsFlowLayout` infinite-width** on unbounded proposals — latent,
+  constrained by the details VStack today.
+- **Per-kind row labels** (folder vs author vs series) — shipped a generic
+  "opens a folder" hint instead; per-kind needs per-backend cell changes.

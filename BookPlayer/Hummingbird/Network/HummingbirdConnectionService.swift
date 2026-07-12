@@ -218,8 +218,10 @@ class HummingbirdConnectionService: BPLogger {
   ///
   /// ``bookId`` is the Hummingbird node_id (a stringified integer in our
   /// source-info representation).
-  public func returnBook(bookId: String) async throws {
-    guard let connection else { throw URLError(.userAuthenticationRequired) }
+  public func returnBook(bookId: String, connectionId: String? = nil) async throws {
+    guard let connection = resolvedConnection(id: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
     guard let id = Int(bookId) else {
       throw IntegrationError.unexpectedResponse(code: nil)
     }
@@ -241,8 +243,10 @@ class HummingbirdConnectionService: BPLogger {
   /// `{currentTime, duration, progress, isFinished}` on every tick;
   /// this is the symmetric pull so a fresh download on a second
   /// device picks up the resume position from the first.
-  public func fetchBookmark(bookId: String) async throws -> [String: Any]? {
-    guard let connection else { throw URLError(.userAuthenticationRequired) }
+  public func fetchBookmark(bookId: String, connectionId: String? = nil) async throws -> [String: Any]? {
+    guard let connection = resolvedConnection(id: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
     let url = connection.url
       .appendingPathComponent("protocols/hummingbird/v1/bookshelf/bookmark")
       .appendingPathComponent(bookId)
@@ -437,6 +441,24 @@ class HummingbirdConnectionService: BPLogger {
     var request = URLRequest(url: url)
     applyCustomHeaders(to: &request, headers: connection?.customHeaders ?? [:])
     return request
+  }
+
+  /// Wraps a URL with a *specific* connection's custom headers. Callers acting on behalf
+  /// of an imported item (progress reports) must use the item's originating connection —
+  /// the active connection's headers would both leak another server's proxy credentials
+  /// and fail the originating server's proxy.
+  public func wrapWithCustomHeaders(_ url: URL, connection: HummingbirdConnectionData) -> URLRequest {
+    var request = URLRequest(url: url)
+    applyCustomHeaders(to: &request, headers: connection.customHeaders)
+    return request
+  }
+
+  /// The saved connection with `id`, or the active one when `id` is nil. Requests made
+  /// on behalf of an imported item must target its originating server, not whichever
+  /// happens to be active — multiple Hummingbird servers can reuse numeric book ids.
+  private func resolvedConnection(id: String?) -> HummingbirdConnectionData? {
+    guard let id else { return connection }
+    return connections.first { $0.id == id }
   }
 
   // MARK: - Persistence

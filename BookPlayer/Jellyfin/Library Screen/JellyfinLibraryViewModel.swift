@@ -42,11 +42,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
   @AppStorage(Constants.UserDefaults.jellyfinLibraryLayoutSortBy)
   var sortBy: JellyfinLayout.SortBy = .smart {
     didSet {
-      guard let folderID = folderID else { return }
-      items = []
-      nextStartItemIndex = 0
-      totalItems = Int.max
-      fetchFolderItems(folderID: folderID)
+      handleSortChanged()
     }
   }
 
@@ -95,10 +91,14 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
     self.navigation = navigation
     self.navigationTitle = navigationTitle
 
+    // `dropFirst()` must precede `debounce` — it exists to swallow the
+    // subscription seed (`""`), and downstream of the debounce it would
+    // swallow the user's first real query instead whenever they start
+    // typing before the seed's debounce window elapses.
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in
         self?.onSearchQueryChanged()
       }
@@ -156,19 +156,41 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
   private func fetchTopLevelItems() {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      // A cancelled task has been superseded — `fetchTask` now belongs to its
+      // replacement, so only the owning (uncancelled) task may clear it.
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
       items = []
 
       do {
         let items = try await connectionService.fetchTopLevelItems()
 
+        guard !Task.isCancelled else { return }
         self.totalItems = items.count
         self.items = items
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
+    }
+  }
+
+  /// Sort changes restart the current browse/search from page zero. The
+  /// in-flight fetch must be cancelled first: it captured the old sort, and
+  /// its page would otherwise append old-ordering rows into the reset list.
+  private func handleSortChanged() {
+    guard folderID != nil || !searchQuery.isEmpty else { return }
+    fetchTask?.cancel()
+    fetchTask = nil
+    items = []
+    nextStartItemIndex = 0
+    totalItems = Int.max
+
+    if let folderID {
+      fetchFolderItems(folderID: folderID)
+    } else {
+      fetchGlobalSearchItems()
     }
   }
 
@@ -192,7 +214,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
 
   private func fetchGlobalSearchItems() {
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       let capturedQuery = searchQuery
       let previousNextStart = nextStartItemIndex
@@ -210,9 +232,10 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
         self.items.append(contentsOf: newItems)
         let rawAdded = max(0, nextStart - previousNextStart)
         self.totalItems = updatedTotal(forRawAdded: rawAdded, serverTotal: maxNumItems)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -220,7 +243,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
 
   private func fetchFolderItems(folderID: String) {
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       let capturedQuery = searchQuery
       let capturedFolderID = folderID
@@ -241,9 +264,10 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
         self.items.append(contentsOf: newItems)
         let rawAdded = max(0, nextStart - previousNextStart)
         self.totalItems = updatedTotal(forRawAdded: rawAdded, serverTotal: maxNumItems)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -317,6 +341,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, BPLog
     for item in items {
       do {
         let request = try connectionService.createItemDownloadRequest(item)
+        connectionService.registerItemDownloadProvenance(request, itemId: item.id)
         requests.append(request)
       } catch {
         self.error = error
@@ -410,9 +435,9 @@ final class JellyfinAuthorBooksViewModel: IntegrationLibraryViewModelProtocol, B
     self.navigationTitle = navigationTitle
 
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in self?.applySearch() }
       .store(in: &disposeBag)
   }
@@ -420,7 +445,7 @@ final class JellyfinAuthorBooksViewModel: IntegrationLibraryViewModelProtocol, B
   func fetchInitialItems() {
     guard items.isEmpty, fetchTask == nil else { return }
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
       do {
         let (items, _, _) = try await connectionService.fetchItemsByArtist(
           artistID: authorID,
@@ -429,9 +454,10 @@ final class JellyfinAuthorBooksViewModel: IntegrationLibraryViewModelProtocol, B
           limit: nil,
           sortBy: sortBy
         )
+        guard !Task.isCancelled else { return }
         self.allItems = items
         applySearch()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
         self.error = error
@@ -493,6 +519,7 @@ final class JellyfinAuthorBooksViewModel: IntegrationLibraryViewModelProtocol, B
     for item in downloadItems {
       do {
         let request = try connectionService.createItemDownloadRequest(item)
+        connectionService.registerItemDownloadProvenance(request, itemId: item.id)
         requests.append(request)
       } catch {
         self.error = error
@@ -566,9 +593,9 @@ final class JellyfinNarratorBooksViewModel: IntegrationLibraryViewModelProtocol,
     self.navigationTitle = navigationTitle
 
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in self?.applySearch() }
       .store(in: &disposeBag)
   }
@@ -576,7 +603,7 @@ final class JellyfinNarratorBooksViewModel: IntegrationLibraryViewModelProtocol,
   func fetchInitialItems() {
     guard items.isEmpty, fetchTask == nil else { return }
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
       do {
         let (items, _, _) = try await connectionService.fetchItemsByPerson(
           personID: personID,
@@ -586,9 +613,10 @@ final class JellyfinNarratorBooksViewModel: IntegrationLibraryViewModelProtocol,
           limit: nil,
           sortBy: sortBy
         )
+        guard !Task.isCancelled else { return }
         self.allItems = items
         applySearch()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
         self.error = error
@@ -650,6 +678,7 @@ final class JellyfinNarratorBooksViewModel: IntegrationLibraryViewModelProtocol,
     for item in downloadItems {
       do {
         let request = try connectionService.createItemDownloadRequest(item)
+        connectionService.registerItemDownloadProvenance(request, itemId: item.id)
         requests.append(request)
       } catch {
         self.error = error
@@ -723,9 +752,9 @@ final class JellyfinAuthorsListViewModel: IntegrationLibraryViewModelProtocol, B
     self.navigationTitle = navigationTitle
 
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in self?.applyLocalSearch() }
       .store(in: &disposeBag)
   }
@@ -733,12 +762,13 @@ final class JellyfinAuthorsListViewModel: IntegrationLibraryViewModelProtocol, B
   func fetchInitialItems() {
     guard items.isEmpty, fetchTask == nil else { return }
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
       do {
         let (items, _) = try await connectionService.fetchAlbumArtists(parentID: parentID)
+        guard !Task.isCancelled else { return }
         self.allItems = items
         applyLocalSearch()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
       } catch {
         self.error = error
       }
@@ -817,9 +847,9 @@ final class JellyfinNarratorsListViewModel: IntegrationLibraryViewModelProtocol,
     self.navigationTitle = navigationTitle
 
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in self?.applyLocalSearch() }
       .store(in: &disposeBag)
   }
@@ -827,12 +857,13 @@ final class JellyfinNarratorsListViewModel: IntegrationLibraryViewModelProtocol,
   func fetchInitialItems() {
     guard items.isEmpty, fetchTask == nil else { return }
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
       do {
         let (items, _) = try await connectionService.fetchNarrators(parentID: parentID)
+        guard !Task.isCancelled else { return }
         self.allItems = items
         applyLocalSearch()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
       } catch {
         self.error = error
       }

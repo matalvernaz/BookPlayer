@@ -140,10 +140,14 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     self.navigation = navigation
     self.navigationTitle = navigationTitle
 
+    // `dropFirst()` must precede `debounce` — it exists to swallow the
+    // subscription seed (`""`), and downstream of the debounce it would
+    // swallow the user's first real query instead whenever they start
+    // typing before the seed's debounce window elapses.
     $searchQuery
+      .dropFirst()
       .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
       .removeDuplicates()
-      .dropFirst()
       .sink { [weak self] _ in
         self?.onSearchQueryChanged()
       }
@@ -242,6 +246,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     for item in items {
       do {
         let request = try connectionService.createItemDownloadRequest(item)
+        connectionService.registerItemDownloadProvenance(request, itemId: item.id)
         requests.append(request)
       } catch {
         self.error = error
@@ -281,7 +286,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   private func fetchLibraries() {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let libraries = try await connectionService.fetchLibraries()
@@ -289,9 +294,10 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
           .filter { $0.mediaType == "book" }
           .map(AudiobookShelfLibraryItem.init(library:))
         loadLocalItems(libraryItems)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -300,7 +306,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   private func fetchEntityItems(libraryID: String, category: AudiobookShelfBrowseCategory) {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         switch category {
@@ -319,9 +325,10 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
           let collections = try await connectionService.fetchCollections(in: libraryID)
           loadLocalItems(collections.map(AudiobookShelfLibraryItem.init(collection:)))
         }
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -330,15 +337,16 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   private func fetchCollectionItems(collectionID: String) {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let collection = try await connectionService.fetchCollection(id: collectionID)
         let books = collection.books.compactMap(AudiobookShelfLibraryItem.init(apiItem:))
         loadLocalItems(books)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -361,7 +369,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     guard filter == nil, fetchTask == nil, canFetchMoreItems else { return }
 
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let (items, totalItems) = try await connectionService.fetchItems(
@@ -373,12 +381,22 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
           filter: nil
         )
 
+        guard !Task.isCancelled else { return }
         self.nextPage += 1
-        self.totalItems = totalItems
-        self.items.append(contentsOf: items)
-      } catch is CancellationError {
+        // An empty page is the end of the list even when the server-reported
+        // total was never reached — records the app can't map into items
+        // would otherwise keep `canFetchMoreItems` true forever, refetching
+        // empty pages on every scroll.
+        if items.isEmpty {
+          self.totalItems = self.items.count
+        } else {
+          self.totalItems = totalItems
+          self.items.append(contentsOf: items)
+        }
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -387,7 +405,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   private func fetchAllFilteredBooks(libraryID: String, filter: AudiobookShelfItemFilter?) {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let items: [AudiobookShelfLibraryItem]
@@ -410,9 +428,10 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
         }
 
         loadLocalItems(items)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -421,7 +440,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   private func searchLibraryItems(libraryID: String, query: String) {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let items = try await connectionService.searchItems(
@@ -430,11 +449,13 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
           limit: Self.searchResultLimit
         )
 
+        guard !Task.isCancelled else { return }
         self.totalItems = items.count
         self.items = sortItems(items)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
+        guard !Task.isCancelled else { return }
         self.error = error
       }
     }
@@ -456,6 +477,9 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   }
 
   private func loadLocalItems(_ items: [AudiobookShelfLibraryItem]) {
+    // Only ever called from fetch tasks; a cancelled task has been superseded
+    // and must not overwrite the replacement's results.
+    guard !Task.isCancelled else { return }
     allItems = items
     applyLocalSearchAndSort()
   }

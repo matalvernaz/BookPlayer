@@ -34,7 +34,18 @@ struct IntegrationLibraryGridView<
     LazyVGrid(columns: columns, spacing: itemSpacingBase * accessabilityScale) {
       ForEach(viewModel.items, id: \.id) { item in
         cellContent(item)
-          .accessibilityAddTraits(.isButton)
+          // `.isSelected` is the only way a VoiceOver user can tell a tap in
+          // edit mode registered — the checkmark overlay lives in the (hidden)
+          // cover art.
+          .accessibilityAddTraits(
+            viewModel.editMode.isEditing && viewModel.selectedItems.contains(item.id)
+              ? [.isButton, .isSelected]
+              : .isButton
+          )
+          // Navigable cells (folders, authors, series…) are visually
+          // distinguished by a badge VoiceOver never reads; the hint carries
+          // that signal.
+          .accessibilityHint(item.isNavigable ? "integration_navigable_hint".localized : "")
           .onTapGesture {
             if viewModel.editMode.isEditing {
               guard item.isDownloadable else { return }

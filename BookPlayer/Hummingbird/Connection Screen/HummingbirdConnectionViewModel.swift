@@ -93,8 +93,12 @@ final class HummingbirdConnectionViewModel: IntegrationConnectionViewModelProtoc
   @MainActor
   func handleSignInAction() async throws {
     let wasAdding = isAddingServer
+    // Trim the username (iOS autocorrect appends spaces) but send the password
+    // verbatim — SecureFields aren't autocorrected, a legitimate password may
+    // begin or end with a space, and Hummingbird replays it on every Basic-auth
+    // request, so a trimmed-on-save password would fail forever.
     let username = form.username.trimmingCharacters(in: .whitespacesAndNewlines)
-    let password = form.password.trimmingCharacters(in: .whitespacesAndNewlines)
+    let password = form.password
     try await connectionService.signIn(
       username: username,
       password: password,

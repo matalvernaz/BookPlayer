@@ -83,7 +83,7 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       loadState = .failed(message: error.localizedDescription)
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       loadState = .idle
     } catch {
       loadState = .failed(message: error.localizedDescription)
@@ -117,7 +117,7 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
       } catch let error as IntegrationError where error.isSessionExpired {
         sessionExpiredError = error
         loadState = .failed(message: error.localizedDescription)
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // user typed another character; the new task handles it
       } catch {
         loadState = .failed(message: error.localizedDescription)
@@ -152,12 +152,33 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
       // BookPlayer-with-SMIL or Dolphin EasyReader hitting our KADOS
       // surface) can still build full navigation; we just don't use it.
       let audio = resources.filter { $0.mimeType.hasPrefix("audio/") }
+      // A cancel during the (potentially long, 503-polling) fetch above must
+      // not still queue the files.
+      try Task.checkCancellation()
 
       if audio.count == 1 {
-        // Single-file flow: drop the one file at the library root.
+        // Single-file flow: drop the one file at the library root. Root-landed
+        // files can use the pending-download machinery — the tracker's
+        // predicted relativePath is the bare filename, exactly where this file
+        // lands. Without this the book gets no provenance: progress never
+        // syncs and its loan can never expire.
         let request = try connectionService.createResourceDownloadRequest(
           audio[0], bookId: item.bookId, folderName: "", dueDate: item.dueDate
         )
+        if let url = request.url,
+          let connection = connectionService.connection,
+          let sourceStore = connectionService.mediaServerSourceStore
+        {
+          sourceStore.registerPendingDownload(
+            url,
+            info: MediaServerSourceInfo(
+              kind: .hummingbird,
+              connectionId: connection.id,
+              itemId: "\(item.bookId)",
+              dueDate: item.dueDate
+            )
+          )
+        }
         singleFileDownloadService.handleDownload(request)
         downloadStatus = String.localizedStringWithFormat(
           "downloading_file_title".localized, 1
@@ -219,7 +240,7 @@ final class HummingbirdLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       downloadStatus = nil
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // User dismissed the "Preparing download..." banner mid-prep.
       // Hide the banner; no error toast -- the cancel was deliberate.
       downloadStatus = nil

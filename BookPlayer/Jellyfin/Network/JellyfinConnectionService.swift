@@ -64,11 +64,28 @@ class JellyfinConnectionService: BPLogger {
   }
   var client: JellyfinClient?
   /// Wired up by `MainCoordinator` so download flows can record per-item provenance for
-  /// playback-progress routing. Currently unused inside this class -- upstream's reworked
-  /// download path no longer calls `registerPendingDownload` here; re-wiring the
-  /// `mediaServerSourceStore?.registerPendingDownload(...)` hook on the new path is a
-  /// follow-up. The property stays so `MainCoordinator`'s wiring compiles.
+  /// playback-progress routing. See ``registerItemDownloadProvenance(_:itemId:)``.
   var mediaServerSourceStore: MediaServerSourceStore?
+
+  /// Registers download provenance for a *root-landed* item download so
+  /// `MediaServerSourceTracker` can key progress reporting to the final file.
+  /// Folder downloads must NOT be registered — the tracker predicts the landed
+  /// relativePath as the bare filename, which is wrong inside a subfolder.
+  func registerItemDownloadProvenance(_ request: URLRequest, itemId: String) {
+    guard
+      let url = request.url,
+      let connection,
+      let store = mediaServerSourceStore
+    else { return }
+    store.registerPendingDownload(
+      url,
+      info: MediaServerSourceInfo(
+        kind: .jellyfin,
+        connectionId: connection.id,
+        itemId: itemId
+      )
+    )
+  }
   private var headerInjector: JellyfinHeaderInjector?
 
   private(set) var activeConnectionID: String? {
@@ -112,6 +129,24 @@ class JellyfinConnectionService: BPLogger {
 
     return PendingServer(
       serverName: publicSystemInfo.value.serverName ?? "",
+      client: client,
+      injector: injector
+    )
+  }
+
+  /// Rebuilds a transient ``PendingServer`` from a saved connection, without the
+  /// reachability ping ``findServer`` does. Used by session-expiry recovery, where
+  /// the 401 that triggered it proves the server is reachable and the saved URL,
+  /// name, and custom headers are known-good.
+  func makePendingServer(from data: JellyfinConnectionData) -> PendingServer? {
+    guard let (client, injector) = makeClientAndInjector(
+      serverUrlString: data.url.absoluteString,
+      customHeaders: data.customHeaders
+    ) else {
+      return nil
+    }
+    return PendingServer(
+      serverName: data.serverName,
       client: client,
       injector: injector
     )
@@ -280,9 +315,19 @@ class JellyfinConnectionService: BPLogger {
     // signOut doesn't race with the rebuildClient call below (and so signOut
     // is invoked on the connection the user actually asked us to remove).
     let oldClientToSignOut: JellyfinClient? = {
-      guard let data = connections.first(where: { $0.id == id }),
-            data.id == connection?.id else { return nil }
-      return client
+      guard let data = connections.first(where: { $0.id == id }) else { return nil }
+      if data.id == connection?.id {
+        return client
+      }
+      // A non-active connection still holds a live server-side access token —
+      // build a throwaway client so deleting it revokes that token too. Uses the
+      // pure factory, NOT `createClient`, which commits its injector to
+      // `self.headerInjector` and would clobber the active connection's headers.
+      return makeClientAndInjector(
+        serverUrlString: data.url.absoluteString,
+        accessToken: data.accessToken,
+        customHeaders: data.customHeaders
+      )?.0
     }()
 
     connections.removeAll { $0.id == id }
@@ -660,10 +705,14 @@ class JellyfinConnectionService: BPLogger {
       throw IntegrationError.noClient("Jellyfin")
     }
 
+    // Capture before the await: if the user switches the active server while this
+    // request is in flight, the 401 must be attributed to the server that actually
+    // rejected it, not whichever is active when the response lands.
+    let requestConnection = connection
     do {
       return try await client.send(request)
     } catch APIError.unacceptableStatusCode(let status)
-            where (status == 401 || status == 403) && connection != nil {
+            where (status == 401 || status == 403) && requestConnection != nil {
       // Mid-session unauthorized — the saved access token is no longer accepted (server
       // invalidated, revoked, or password rotated). Surface this as a typed re-auth signal so
       // the UI can offer a "sign in again to {server}" path instead of dumping the user into
@@ -673,7 +722,7 @@ class JellyfinConnectionService: BPLogger {
       // The `connection != nil` clause guards pre-sign-in calls (e.g. the api-client probe
       // inside `findServer`) — we only re-auth when there's actually a session to re-auth.
       throw IntegrationError.sessionExpired(
-        serverName: connection?.serverName ?? "Jellyfin"
+        serverName: requestConnection?.serverName ?? "Jellyfin"
       )
     }
   }

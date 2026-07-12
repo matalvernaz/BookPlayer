@@ -31,18 +31,36 @@ final class HummingbirdProgressReporter: MediaServerProgressReporter, BPLogger {
     self.urlSession = urlSession
   }
 
+  /// Pending report chain. Each send awaits the previous one, so an older
+  /// in-progress request can't land after — and overwrite — a newer pause or
+  /// finish report on the server. Guarded by `chainLock` because the protocol
+  /// entry points are nonisolated.
+  private var sendChain: Task<Void, Never>?
+  private let chainLock = NSLock()
+
   func reportInProgress(_ update: MediaServerProgressUpdate) {
-    postBookmark(update)
+    enqueue(update)
   }
 
   func reportFinal(_ update: MediaServerProgressUpdate) {
-    postBookmark(update)
+    enqueue(update)
+  }
+
+  private func enqueue(_ update: MediaServerProgressUpdate) {
+    chainLock.withLock {
+      let previous = sendChain
+      sendChain = Task { @MainActor [weak self] in
+        await previous?.value
+        await self?.postBookmark(update)
+      }
+    }
   }
 
   /// `POST /protocols/hummingbird/v1/bookshelf/bookmark/{id}` -- the REST surface
   /// that mirrors KADOS's `setBookmarks` method but is easier to call from a
-  /// native client. Fire-and-forget; the next tick will overwrite anyway.
-  private func postBookmark(_ update: MediaServerProgressUpdate) {
+  /// native client. Failures are logged and dropped; the next tick overwrites.
+  @MainActor
+  private func postBookmark(_ update: MediaServerProgressUpdate) async {
     guard let connection = connectionService.connections.first(
       where: { $0.id == update.info.connectionId }
     ) else {
@@ -66,7 +84,7 @@ final class HummingbirdProgressReporter: MediaServerProgressReporter, BPLogger {
     ]
     guard let payload = try? JSONSerialization.data(withJSONObject: body) else { return }
 
-    var request = connectionService.wrapWithCustomHeaders(url)
+    var request = connectionService.wrapWithCustomHeaders(url, connection: connection)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     let basic = "\(connection.userName):\(connection.password)"
@@ -75,14 +93,13 @@ final class HummingbirdProgressReporter: MediaServerProgressReporter, BPLogger {
     }
     request.httpBody = payload
 
-    urlSession.dataTask(with: request) { _, response, error in
-      if let error {
-        Self.logger.warning("Hummingbird bookmark POST failed for \(update.info.itemId): \(error.localizedDescription)")
-        return
-      }
+    do {
+      let (_, response) = try await urlSession.data(for: request)
       if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
         Self.logger.warning("Hummingbird bookmark POST non-2xx for \(update.info.itemId): \(http.statusCode)")
       }
-    }.resume()
+    } catch {
+      Self.logger.warning("Hummingbird bookmark POST failed for \(update.info.itemId): \(error.localizedDescription)")
+    }
   }
 }

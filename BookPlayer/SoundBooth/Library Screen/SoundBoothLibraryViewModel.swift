@@ -137,7 +137,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       loadState = .failed(message: error.localizedDescription)
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       loadState = .idle
     } catch {
       loadState = .failed(message: error.localizedDescription)
@@ -389,7 +389,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
       seasonItems[groupId] = try await connectionService.fetchSeasonItems(groupId: groupId)
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // Leave the cache empty; the next visit retries.
     } catch {
       Self.logger.warning("SoundBooth season fetch failed: \(error.localizedDescription)")
@@ -493,7 +493,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       downloadStatus = nil
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       downloadStatus = nil
     } catch {
       Self.logger.warning("SoundBooth download dispatch failed: \(error.localizedDescription)")
@@ -609,7 +609,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     } catch let error as IntegrationError where error.isSessionExpired {
       sessionExpiredError = error
       downloadStatus = nil
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       downloadStatus = nil
     } catch {
       Self.logger.warning("SoundBooth season download dispatch failed: \(error.localizedDescription)")
@@ -672,7 +672,7 @@ final class SoundBoothLibraryViewModel: ObservableObject, BPLogger {
     let progresses: [SoundBoothProgress]
     do {
       progresses = try await connectionService.fetchProgresses()
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       throw CancellationError()
     } catch {
       return nil  // best-effort: no resume rather than aborting the download

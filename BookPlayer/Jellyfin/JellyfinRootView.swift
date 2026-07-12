@@ -62,7 +62,7 @@ struct JellyfinRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
-      Tab("Authors", systemImage: "person.2.fill") {
+      Tab("integration_tab_authors".localized, systemImage: "person.2.fill") {
         JellyfinEntityTabRoot<JellyfinAuthorsListViewModel>(
           connectionService: connectionService,
           singleFileDownloadService: singleFileDownloadService,
@@ -74,7 +74,7 @@ struct JellyfinRootView: View {
               connectionService: connectionService,
               singleFileDownloadService: singleFileDownloadService,
               navigation: nav,
-              navigationTitle: "Authors"
+              navigationTitle: "integration_tab_authors".localized
             )
           }
         )
@@ -97,9 +97,12 @@ struct JellyfinRootView: View {
         // saved-server list with sign-out, matching prod behavior).
         if (loadError as? IntegrationError)?.isSessionExpired == true {
           // Session expired: Retry would just hit the same 401, so omit it.
-          Button("integration_connection_details_title".localized) {
+          // Route straight into the credentials step for the saved connection —
+          // the details view only offers Log out, which would discard custom
+          // headers and the library selection.
+          Button("integration_sign_in_button".localized) {
             loadError = nil
-            connectionViewModel.signInFlow = nil
+            connectionViewModel.prepareForReauth()
             showConnectionForm = true
           }
           Button("cancel_button".localized, role: .cancel) {
@@ -231,7 +234,7 @@ struct JellyfinRootView: View {
       } else {
         availableLibraries = libraries
       }
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // ignore
     } catch {
       loadError = error
@@ -312,7 +315,9 @@ private struct JellyfinTabRoot: View {
     .sheet(isPresented: $showConnectionDetails) {
       connectionDetailsSheet
     }
-    .task {
+    // `.onAppear`, not `.task`: a child can fire `navigation.dismiss?()` from its
+    // first load failure, which would beat a `.task`-scheduled assignment.
+    .onAppear {
       navigation.dismiss = onDismiss
     }
   }
@@ -510,7 +515,9 @@ where ViewModel.Item == JellyfinLibraryItem {
         dismissAll: dismissAll
       )
     }
-    .task {
+    // `.onAppear`, not `.task`: a child can fire `navigation.dismiss?()` from its
+    // first load failure, which would beat a `.task`-scheduled assignment.
+    .onAppear {
       navigation.dismiss = onDismiss
     }
   }

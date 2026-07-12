@@ -38,6 +38,12 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// Subscription to the Quick Connect helper's `state` publisher, dropped when the flow ends.
   private var quickConnectStateSubscription: AnyCancellable?
 
+  /// The secret→token exchange spawned on `.authenticated`. Tracked so cancelling the
+  /// flow (or dismissing the form) also cancels the exchange — otherwise it could
+  /// persist and activate the connection after the user backed out. The service's
+  /// `Task.checkCancellation()` before persisting is the other half of this contract.
+  private var quickConnectExchangeTask: Task<Void, Never>?
+
   /// Transient handle returned by `findServer`. Held across the connect → sign-in
   /// transition so the service can commit it without touching `self.client` mid-flight.
   private var pendingServer: JellyfinConnectionService.PendingServer?
@@ -45,8 +51,16 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// When non-nil, the VM operates on this specific connection (read its data on init,
   /// route logout / custom-headers updates to its id) regardless of which connection is
   /// active in the service. Used by `MediaServersView`'s per-server info sheet so editing
-  /// one server doesn't change the active connection.
-  let targetConnectionId: String?
+  /// one server doesn't change the active connection. Retargeted to a newly added
+  /// connection after a successful Add Server, since the form then displays that server.
+  private(set) var targetConnectionId: String?
+
+  /// The connection this VM is scoped to, falling back to the active one.
+  private var scopedConnection: JellyfinConnectionData? {
+    targetConnectionId.flatMap { id in
+      connectionService.connections.first(where: { $0.id == id })
+    } ?? connectionService.connection
+  }
 
   var servers: [IntegrationServerInfo] {
     connectionService.connections.map { data in
@@ -113,10 +127,6 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
     guard let pending = pendingServer else {
       throw IntegrationError.noClient("Jellyfin")
     }
-    // Always drop the transient `pending` after this method runs — on success the
-    // service commits it as `self.client`, on failure it's no longer reusable
-    // (credentials may be wrong, URL may be stale relative to what the user typed next).
-    defer { pendingServer = nil }
     do {
       try await connectionService.signIn(
         pending: pending,
@@ -126,6 +136,17 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
         customHeaders: form.customHeadersDictionary()
       )
 
+      // Drop the transient handle only on success (the service has committed it
+      // as `self.client`). On failure it stays valid — the server didn't change,
+      // only the credentials were wrong — so an immediate retry with a corrected
+      // password works instead of dead-ending on `noClient`. A URL edit re-runs
+      // Connect, which replaces the handle anyway.
+      pendingServer = nil
+      if isAddingServer {
+        // The form now displays the just-added server; scope edits to it, not
+        // the server this sheet was originally opened for.
+        targetConnectionId = connectionService.connection?.id
+      }
       isAddingServer = false
 
       if let data = connectionService.connection {
@@ -143,6 +164,25 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
     } catch {
       throw error
     }
+  }
+
+  /// Session-expiry recovery: jump straight to the credentials step for the saved
+  /// connection, rebuilding the transient server handle from stored data so Sign In
+  /// works without re-running Connect. Preserves URL, server name, and custom
+  /// headers. Mirrors Hummingbird's `prepareForReauth`.
+  @MainActor
+  func prepareForReauth() {
+    guard let data = scopedConnection else { return }
+
+    form.setValues(
+      url: data.url.absoluteString,
+      serverName: data.serverName,
+      userName: data.userName,
+      customHeaders: data.customHeaders
+    )
+    form.password = ""
+    pendingServer = connectionService.makePendingServer(from: data)
+    signInFlow = .enteringCredentials
   }
 
   @MainActor
@@ -190,7 +230,7 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
     // Drop any transient `pending` from a half-finished Connect → Sign In flow,
     // so a stale `JellyfinClient` can't get reused by a later sign-in attempt.
     pendingServer = nil
-    if let data = connectionService.connection {
+    if let data = scopedConnection {
       form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
     }
   }
@@ -241,6 +281,7 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
   /// no flow is running.
   @MainActor
   func handleCancelQuickConnect() {
+    quickConnectExchangeTask?.cancel()
     activeQuickConnect?.stop()
     teardownQuickConnect()
     quickConnectStatus = nil
@@ -259,7 +300,7 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       quickConnectStatus = .awaitingCode(code)
     case .authenticated(let secret):
       quickConnectStatus = .authenticating
-      Task { @MainActor in
+      quickConnectExchangeTask = Task { @MainActor in
         await self.completeQuickConnectSignIn(secret: secret)
       }
     case .error(let qcError):
@@ -287,6 +328,11 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       )
       // Only drop the transient pending handle once the service has committed it.
       pendingServer = nil
+      if isAddingServer {
+        // The form now displays the just-added server; scope edits to it, not
+        // the server this sheet was originally opened for.
+        targetConnectionId = connectionService.connection?.id
+      }
       isAddingServer = false
       if let data = connectionService.connection {
         form.setValues(
@@ -302,6 +348,12 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
       quickConnectStatus = nil
       teardownQuickConnect()
     } catch {
+      // A cancelled exchange means the user backed out — don't resurrect the
+      // sheet with a "failed" status after `handleCancelQuickConnect` cleared it.
+      guard !error.isCancellation, !Task.isCancelled else {
+        teardownQuickConnect()
+        return
+      }
       Self.logger.error("Quick Connect sign-in failed: \(error.localizedDescription)")
       // Keep `pendingServer` so the user can retry or fall back to password without re-pinging.
       quickConnectStatus = .failed(error.localizedDescription)
@@ -316,6 +368,7 @@ final class JellyfinConnectionViewModel: IntegrationConnectionViewModelProtocol,
     activeQuickConnect = nil
     quickConnectStateSubscription?.cancel()
     quickConnectStateSubscription = nil
+    quickConnectExchangeTask = nil
   }
 
   /// Translates the JellyfinAPI helper's error cases into a user-presentable, localizable message.

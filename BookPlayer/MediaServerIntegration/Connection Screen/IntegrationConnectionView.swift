@@ -150,6 +150,10 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     .onDisappear {
       actionTask?.cancel()
       actionTask = nil
+      // Also tear down any in-flight Quick Connect flow (poller + token
+      // exchange) — dismissing the form must not let a background exchange
+      // commit a connection the user walked away from.
+      viewModel.handleCancelQuickConnect()
     }
   }
 
@@ -159,11 +163,13 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     actionTask?.cancel()
     isLoading = true
     actionTask = Task { @MainActor in
-      defer { isLoading = false }
+      // A cancelled task was superseded by a newer action — the spinner now
+      // belongs to the replacement, so only the owning task may clear it.
+      defer { if !Task.isCancelled { isLoading = false } }
       do {
         try await viewModel.handleConnectAction()
         try Task.checkCancellation()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         // Sheet dismissed mid-flight; nothing to surface.
       } catch {
         self.error = error
@@ -175,11 +181,13 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     actionTask?.cancel()
     isLoading = true
     actionTask = Task { @MainActor in
-      defer { isLoading = false }
+      // A cancelled task was superseded by a newer action — the spinner now
+      // belongs to the replacement, so only the owning task may clear it.
+      defer { if !Task.isCancelled { isLoading = false } }
       do {
         try await viewModel.handleSignInAction()
         try Task.checkCancellation()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         return
       } catch {
         self.error = error
@@ -206,11 +214,13 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     actionTask?.cancel()
     isLoading = true
     actionTask = Task { @MainActor in
-      defer { isLoading = false }
+      // A cancelled task was superseded by a newer action — the spinner now
+      // belongs to the replacement, so only the owning task may clear it.
+      defer { if !Task.isCancelled { isLoading = false } }
       do {
         try await viewModel.handleStartOIDC()
         try Task.checkCancellation()
-      } catch is CancellationError {
+      } catch let error where error.isCancellation {
         return
       } catch {
         self.error = error
@@ -235,7 +245,7 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
       action: onConnect
     )
     .foregroundStyle(theme.linkColor)
-    .disabledWithOpacity(viewModel.form.serverUrl.isEmpty)
+    .disabledWithOpacity(viewModel.form.serverUrl.isEmpty || isLoading)
   }
 
   @ViewBuilder
@@ -246,7 +256,7 @@ struct IntegrationConnectionView<VM: IntegrationConnectionViewModelProtocol>: Vi
     )
     .foregroundStyle(theme.linkColor)
     .disabledWithOpacity(
-      viewModel.form.serverUrl.isEmpty || viewModel.form.username.isEmpty
+      viewModel.form.serverUrl.isEmpty || viewModel.form.username.isEmpty || isLoading
     )
   }
 }

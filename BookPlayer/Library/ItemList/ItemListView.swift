@@ -33,6 +33,10 @@ struct ItemListView: View {
   /// aggregate progress instead of per-file progress.
   @State private var batchTotalFiles: Int = 0
 
+  /// Interval between import-completion alert presentation attempts; long
+  /// enough for the import screen's dismissal transition to settle.
+  private static let importAlertRetryNanoseconds: UInt64 = 500_000_000
+
   @Environment(\.libraryService) var libraryService
   @Environment(\.accountService) private var accountService
   @Environment(\.syncService) var syncService
@@ -324,15 +328,42 @@ struct ItemListView: View {
         importOperationState.alertParameters = nil
       }
     }
-    .onChange(of: importOperationState.alertParameters) {
+    .task(id: importOperationState.alertParameters) {
+      await presentImportCompletionAlertWhenHostable()
+    }
+  }
+
+  /// Convert pending `alertParameters` into the import-completion alert once
+  /// this view can actually present it.
+  ///
+  /// The parameters land the moment the import operation finishes, which for a
+  /// small book is faster than the import screen's dismissal animation. Setting
+  /// `activeAlert` while that dismissal (or any sheet, or the player cover) is
+  /// still up makes UIKit drop the presentation while the alert binding stays
+  /// true — the alert never shows, and every later alert/confirmation-dialog on
+  /// this view is dead until relaunch. The parameters are durable state, so
+  /// instead of presenting on the raw edge this retries until the main content
+  /// is frontmost and this view's presentation slots are free. Runs via
+  /// `.task(id:)`, so it restarts when the parameters change and whenever the
+  /// view reappears, and is cancelled while the view is covered or gone.
+  private func presentImportCompletionAlertWhenHostable() async {
+    while !Task.isCancelled {
       guard
         let alertParameters = importOperationState.alertParameters,
         alertParameters.lastNode == model.libraryNode
       else { return }
 
-      /// Register that at least one import operation has completed
-      BPSKANManager.updateConversionValue(.import)
-      activeAlert = .importCompletion(alertParameters)
+      if activeAlert == nil,
+         activeConfirmationDialog == nil,
+         WindowHelper.isMainContentFrontmost {
+        /// Register that at least one import operation has completed
+        BPSKANManager.updateConversionValue(.import)
+        activeAlert = .importCompletion(alertParameters)
+        return
+      }
+
+      /// `Task.sleep` throws immediately on cancellation; the loop condition exits.
+      try? await Task.sleep(nanoseconds: Self.importAlertRetryNanoseconds)
     }
   }
 

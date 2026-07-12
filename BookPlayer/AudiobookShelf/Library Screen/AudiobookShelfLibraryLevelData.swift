@@ -17,11 +17,11 @@ enum AudiobookShelfBrowseCategory: String, CaseIterable, Codable, Hashable {
 
   var title: String {
     switch self {
-    case .books: "Books"
-    case .series: "Series"
-    case .collections: "Collections"
-    case .authors: "Authors"
-    case .narrators: "Narrators"
+    case .books: "books_title".localized
+    case .series: "integration_tab_series".localized
+    case .collections: "integration_tab_collections".localized
+    case .authors: "integration_tab_authors".localized
+    case .narrators: "integration_tab_narrators".localized
     }
   }
 }

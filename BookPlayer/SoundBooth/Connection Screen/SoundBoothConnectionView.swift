@@ -44,6 +44,9 @@ struct SoundBoothConnectionView: View {
       }
     }
     .tint(theme.linkColor)
+    .onDisappear {
+      viewModel.cancelPendingAuth()
+    }
   }
 
   @ViewBuilder
@@ -64,7 +67,7 @@ struct SoundBoothConnectionView: View {
 
     Section {
       Button {
-        Task { await viewModel.sendCode() }
+        viewModel.sendCode()
       } label: {
         Text("Send code")
           .frame(maxWidth: .infinity)
@@ -90,7 +93,7 @@ struct SoundBoothConnectionView: View {
 
     Section {
       Button {
-        Task { await viewModel.verify() }
+        viewModel.verify()
       } label: {
         Text("Verify")
           .frame(maxWidth: .infinity)

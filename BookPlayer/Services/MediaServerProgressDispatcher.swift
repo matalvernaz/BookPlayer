@@ -80,19 +80,28 @@ final class MediaServerProgressDispatcher: BPLogger {
     ) { [weak self] _ in
       self?.handleBoundary(markFinished: true)
     })
+    observers.append(center.addObserver(
+      forName: .bookStopped, object: nil, queue: nil
+    ) { [weak self] _ in
+      self?.handleBoundary()
+    })
   }
 
   // MARK: - Handlers
 
   private func handlePlayingTick() {
     guard isProgressReportingAllowed else { return }
-    guard let snapshot = currentSnapshot() else { return }
-
+    // Throttle on the raw item path BEFORE building a snapshot — the snapshot
+    // does a source-store lookup (a full JSON decode) that shouldn't run on
+    // every 1Hz tick just to be discarded by the throttle.
+    guard let relativePath = playerManager?.currentItem?.relativePath else { return }
     let now = Date()
-    if let last = lastInProgressByPath[snapshot.relativePath],
+    if let last = lastInProgressByPath[relativePath],
        now.timeIntervalSince(last) < Self.inProgressThrottle {
       return
     }
+
+    guard let snapshot = currentSnapshot() else { return }
     lastInProgressByPath[snapshot.relativePath] = now
 
     let update = MediaServerProgressUpdate(

@@ -1467,14 +1467,16 @@ extension PlayerManager {
 
     self.userActivityManager.stopPlaybackActivity()
 
-    NotificationCenter.default.post(name: .bookPaused, object: nil)
-
     bindPauseObserver()
     // Set pause state on player and control center
     audioPlayer.pause()
     if let currentItem = self.currentItem {
       snapshotPlayerPosition(into: currentItem)
     }
+    // Post AFTER the position snapshot: `.bookPaused` observers (media-server
+    // progress dispatcher, watch connectivity, profile stats) read the item's
+    // currentTime, which until the snapshot still holds the previous ~1Hz tick.
+    NotificationCenter.default.post(name: .bookPaused, object: nil)
     playbackQueued = nil
     playTask?.cancel()
     loadChapterTask?.cancel()
@@ -1517,6 +1519,14 @@ extension PlayerManager {
     playbackQueued = nil
 
     audioPlayer.pause()
+    if let currentItem = self.currentItem {
+      snapshotPlayerPosition(into: currentItem)
+    }
+    // Stop is a playback boundary, but nothing here posted a boundary signal —
+    // a direct stop (or book switch) silently discarded up to a full throttle
+    // window of media-server progress. Posted while `currentItem` is still set
+    // so boundary observers can read the final position.
+    NotificationCenter.default.post(name: .bookStopped, object: nil)
     playTask?.cancel()
     loadChapterTask?.cancel()
     audioSessionRetryTask?.cancel()

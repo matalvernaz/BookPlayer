@@ -297,11 +297,24 @@ struct AudiobookShelfAPIItem: Codable {
   }
 }
 
+// The list responses decode their record arrays lossily (`FailableDecodable`,
+// shared with the SoundBooth models): ABS servers routinely carry one item with
+// odd metadata, and a strict array decode would fail the entire page for it.
+
 struct AudiobookShelfItemsResponse: Codable {
   let results: [AudiobookShelfAPIItem]
   let total: Int
   let limit: Int?
   let page: Int?
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<AudiobookShelfAPIItem>].self, forKey: .results) ?? []
+    results = raw.compactMap(\.value)
+    total = try container.decode(Int.self, forKey: .total)
+    limit = try container.decodeIfPresent(Int.self, forKey: .limit)
+    page = try container.decodeIfPresent(Int.self, forKey: .page)
+  }
 }
 
 struct AudiobookShelfSearchResponse: Codable {
@@ -309,6 +322,12 @@ struct AudiobookShelfSearchResponse: Codable {
 
   struct SearchResult: Codable {
     let libraryItem: AudiobookShelfAPIItem
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<SearchResult>].self, forKey: .book) ?? []
+    book = raw.compactMap(\.value)
   }
 }
 
@@ -346,4 +365,10 @@ struct AudiobookShelfCollection: Codable {
 
 struct AudiobookShelfCollectionsResponse: Codable {
   let results: [AudiobookShelfCollection]
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<AudiobookShelfCollection>].self, forKey: .results) ?? []
+    results = raw.compactMap(\.value)
+  }
 }

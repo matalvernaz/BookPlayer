@@ -65,21 +65,21 @@ class JellyfinAudiobookDetailsViewModel: IntegrationDetailsViewModelProtocol {
       return
     }
 
-    fetchTask = Task {
-      defer { fetchTask = nil }
+    fetchTask = Task { @MainActor in
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
 
       do {
         let details = try await connectionService.fetchItemDetails(for: item.id)
 
-        await MainActor.run {
-          self.details = details
-        }
-      } catch is CancellationError {
+        guard !Task.isCancelled else { return }
+        self.details = details
+      } catch let error where error.isCancellation {
         // ignore
       } catch {
-        Task { @MainActor in
-          self.error = error
-        }
+        // Assign inline (not via a detached Task) so `cancelFetchData()` on
+        // the way out of the screen also suppresses the error alert.
+        guard !Task.isCancelled else { return }
+        self.error = error
       }
     }
   }
@@ -93,6 +93,7 @@ class JellyfinAudiobookDetailsViewModel: IntegrationDetailsViewModelProtocol {
   @MainActor
   func beginDownloadAudiobook(_ item: JellyfinLibraryItem) throws {
     let request = try connectionService.createItemDownloadRequest(item)
+    connectionService.registerItemDownloadProvenance(request, itemId: item.id)
     singleFileDownloadService.handleDownload(request)
   }
 }

@@ -122,6 +122,19 @@ struct SoundBoothRootView: View {
       .tint(theme.linkColor)
       .environmentObject(theme)
     }
+    // Download-error alert is attached ONCE here rather than in
+    // SoundBoothLibraryView: every drill-down level shares `libraryViewModel`,
+    // so a per-level alert would bind the same error to every view on the
+    // stack simultaneously and fire wherever the user happens to be.
+    .alert(
+      "error_title".localized,
+      isPresented: .init(
+        get: { libraryViewModel.downloadError != nil },
+        set: { if !$0 { libraryViewModel.downloadError = nil } }
+      ),
+      actions: { Button("ok_button".localized) { libraryViewModel.downloadError = nil } },
+      message: { Text(libraryViewModel.downloadError ?? "") }
+    )
     .onChange(of: connectionViewModel.signInCompletedAt) { _, newValue in
       if newValue != nil {
         showConnectionForm = false

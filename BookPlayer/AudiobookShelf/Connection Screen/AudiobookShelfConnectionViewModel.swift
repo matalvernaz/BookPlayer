@@ -29,8 +29,16 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
   /// When non-nil, the VM operates on this specific connection (read its data on init,
   /// route logout / custom-headers updates to its id) regardless of which connection is
   /// active in the service. Used by `MediaServersView`'s per-server info sheet so editing
-  /// one server doesn't change the active connection.
-  let targetConnectionId: String?
+  /// one server doesn't change the active connection. Retargeted to a newly added
+  /// connection after a successful Add Server, since the form then displays that server.
+  private(set) var targetConnectionId: String?
+
+  /// The connection this VM is scoped to, falling back to the active one.
+  private var scopedConnection: AudiobookShelfConnectionData? {
+    targetConnectionId.flatMap { id in
+      connectionService.connections.first(where: { $0.id == id })
+    } ?? connectionService.connection
+  }
 
   /// URL captured at `handleConnectAction` time, after normalization and a successful
   /// `pingServer`. `handleSignInAction` uses this rather than `form.serverUrl` so that
@@ -108,22 +116,29 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
     guard let serverUrl = pingedURL else {
       throw IntegrationError.urlMalformed(nil)
     }
-    // Drop the captured URL after this method runs — on success the connection is
-    // persisted, on failure the user must re-validate via Connect anyway.
-    defer { pingedURL = nil }
     do {
       // ABS auth doesn't trim whitespace server-side, so iOS autocorrect inserting a trailing
       // space on the username is enough to silently reject otherwise-correct credentials.
+      // The password is sent verbatim: SecureFields aren't autocorrected, and a legitimate
+      // password may begin or end with a space.
       let username = form.username.trimmingCharacters(in: .whitespacesAndNewlines)
-      let password = form.password.trimmingCharacters(in: .whitespacesAndNewlines)
       try await connectionService.signIn(
         username: username,
-        password: password,
+        password: form.password,
         serverUrl: serverUrl,
         serverName: form.serverName,
         customHeaders: form.customHeadersDictionary()
       )
 
+      // Drop the validated URL only on success. On failure it stays valid — the
+      // server didn't change, only the credentials were wrong — so an immediate
+      // retry with a corrected password works instead of dead-ending locally.
+      pingedURL = nil
+      if isAddingServer {
+        // The form now displays the just-added server; scope edits to it, not
+        // the server this sheet was originally opened for.
+        targetConnectionId = connectionService.connection?.id
+      }
       isAddingServer = false
 
       if let data = connectionService.connection {
@@ -151,6 +166,26 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
       return trimmed
     }
     return "https://" + trimmed
+  }
+
+  /// Session-expiry recovery: jump straight to the credentials step for the saved
+  /// connection so Sign In (or SSO) works without re-running Connect. The saved URL
+  /// is trusted without a fresh ping — the 401 that triggered recovery proves the
+  /// server is reachable. Preserves URL, server name, and custom headers. Mirrors
+  /// Hummingbird's `prepareForReauth`.
+  @MainActor
+  func prepareForReauth() {
+    guard let data = scopedConnection else { return }
+
+    form.setValues(
+      url: data.url.absoluteString,
+      serverName: data.serverName,
+      userName: data.userName,
+      customHeaders: data.customHeaders
+    )
+    form.password = ""
+    pingedURL = data.url.absoluteString
+    signInFlow = .enteringCredentials
   }
 
   @MainActor
@@ -198,7 +233,7 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
     // Drop any URL captured from a half-finished Connect → Sign In flow so a stale
     // value can't get reused by a later sign-in attempt.
     pingedURL = nil
-    if let data = connectionService.connection {
+    if let data = scopedConnection {
       form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)
     }
   }
@@ -231,6 +266,11 @@ final class AudiobookShelfConnectionViewModel: IntegrationConnectionViewModelPro
     )
     // Only drop the validated URL once sign-in succeeded.
     pingedURL = nil
+    if isAddingServer {
+      // The form now displays the just-added server; scope edits to it, not
+      // the server this sheet was originally opened for.
+      targetConnectionId = connectionService.connection?.id
+    }
     isAddingServer = false
     if let data = connectionService.connection {
       form.setValues(url: data.url.absoluteString, serverName: data.serverName, userName: data.userName)

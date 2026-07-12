@@ -13,6 +13,10 @@ extension Notification.Name {
   public static let bookPlayed = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.play")
   public static let bookPaused = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.pause")
   public static let bookEnd = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.end")
+  /// Playback torn down without a pause/finish — direct stop or switching books.
+  /// Posted while `currentItem` is still set so boundary observers can read the
+  /// final position.
+  public static let bookStopped = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.stop")
   public static let bookPlaying = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.playback")
   public static let bookReady = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).book.ready")
   public static let messageReceived = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).watch.message")

@@ -64,6 +64,31 @@ public final class MediaServerSourceStore {
     }
   }
 
+  /// Re-keys every source mapping under `oldRelativePath` — the item itself and, when a
+  /// folder moves, its descendants — to live under `newRelativePath`. Must be called
+  /// whenever a mapped item's `relativePath` changes; otherwise the move silently severs
+  /// progress reporting and loan tracking for the item.
+  public func moveSources(from oldRelativePath: String, to newRelativePath: String) {
+    queue.sync {
+      var resolved = readResolved()
+      var changed = false
+      for (key, info) in resolved {
+        let newKey: String
+        if key == oldRelativePath {
+          newKey = newRelativePath
+        } else if key.hasPrefix(oldRelativePath + "/") {
+          newKey = newRelativePath + key.dropFirst(oldRelativePath.count)
+        } else {
+          continue
+        }
+        resolved.removeValue(forKey: key)
+        resolved[newKey] = info
+        changed = true
+      }
+      if changed { writeResolved(resolved) }
+    }
+  }
+
   /// Records a source mapping directly. Used when the relativePath is already known at import
   /// time (e.g. tests, or future code paths that bypass `SingleFileDownloadService`).
   public func setSource(_ info: MediaServerSourceInfo, for relativePath: String) {

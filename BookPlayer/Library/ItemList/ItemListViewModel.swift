@@ -432,12 +432,25 @@ extension ItemListViewModel {
     }
   }
 
+  /// Media-server provenance is keyed by relativePath; re-key it after a move so
+  /// progress reporting and loan tracking follow the item. Mirrors the path shape
+  /// `LibraryService.rebuildRelativePaths` produces: parent + "/" + filename.
+  private func migrateMediaServerSources(for items: [LibraryItemRef], into parentPath: String?) {
+    for item in items {
+      let fileName = (item.relativePath as NSString).lastPathComponent
+      let newPath = parentPath.map { "\($0)/\(fileName)" } ?? fileName
+      guard newPath != item.relativePath else { continue }
+      mediaServerSourceStore.moveSources(from: item.relativePath, to: newPath)
+    }
+  }
+
   func handleMoveIntoLibrary() {
     let selectedItemPaths = selectedItems.compactMap({ LibraryItemRef(relativePath: $0.relativePath, uuid: $0.uuid) })
     let parentFolder = selectedItems.first?.parentFolder
 
     do {
       try libraryService.moveItems(selectedItemPaths, inside: nil)
+      migrateMediaServerSources(for: selectedItemPaths, into: nil)
       syncService.scheduleMove(items: selectedItemPaths, to: nil)
       if let parentFolder {
         libraryService.rebuildFolderDetails(parentFolder)
@@ -453,6 +466,7 @@ extension ItemListViewModel {
   func importIntoLibrary(_ items: [LibraryItemRef]) {
     do {
       try libraryService.moveItems(items, inside: nil)
+      migrateMediaServerSources(for: items, into: nil)
       syncService.scheduleMove(items: items, to: nil)
     } catch {
       loadingState.error = error
@@ -477,6 +491,7 @@ extension ItemListViewModel {
         await syncService.scheduleUpload(items: [folder])
         if let fetchedItems = items {
           try libraryService.moveItems(fetchedItems, inside: folder.relativePath)
+          migrateMediaServerSources(for: fetchedItems, into: folder.relativePath)
           syncService.scheduleMove(items: fetchedItems, to: LibraryItemRef(relativePath: folder.relativePath, uuid: folder.uuid))
         }
         try libraryService.updateFolder(at: folder.relativePath, type: type)
@@ -511,6 +526,7 @@ extension ItemListViewModel {
 
     do {
       try libraryService.moveItems(fetchedItems, inside: folder.relativePath)
+      migrateMediaServerSources(for: fetchedItems, into: folder.relativePath)
       syncService.scheduleMove(items: fetchedItems, to: LibraryItemRef(relativePath: folder.relativePath, uuid: folder.uuid))
     } catch {
       loadingState.error = error

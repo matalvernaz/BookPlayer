@@ -63,7 +63,7 @@ struct AudiobookShelfRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
-      Tab("Series", systemImage: "rectangle.stack.fill") {
+      Tab("integration_tab_series".localized, systemImage: "rectangle.stack.fill") {
         AudiobookShelfTabRoot(
           source: .entities(libraryID: resolvedLibrary?.id ?? "", category: .series),
           libraryTitle: resolvedLibrary?.title ?? "",
@@ -77,7 +77,7 @@ struct AudiobookShelfRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
-      Tab("Collections", systemImage: "square.stack.3d.up.fill") {
+      Tab("integration_tab_collections".localized, systemImage: "square.stack.3d.up.fill") {
         AudiobookShelfTabRoot(
           source: .entities(libraryID: resolvedLibrary?.id ?? "", category: .collections),
           libraryTitle: resolvedLibrary?.title ?? "",
@@ -91,7 +91,7 @@ struct AudiobookShelfRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
-      Tab("Authors", systemImage: "person.2.fill") {
+      Tab("integration_tab_authors".localized, systemImage: "person.2.fill") {
         AudiobookShelfTabRoot(
           source: .entities(libraryID: resolvedLibrary?.id ?? "", category: .authors),
           libraryTitle: resolvedLibrary?.title ?? "",
@@ -105,7 +105,7 @@ struct AudiobookShelfRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
-      Tab("Narrators", systemImage: "mic.fill") {
+      Tab("integration_tab_narrators".localized, systemImage: "mic.fill") {
         AudiobookShelfTabRoot(
           source: .entities(libraryID: resolvedLibrary?.id ?? "", category: .narrators),
           libraryTitle: resolvedLibrary?.title ?? "",
@@ -139,9 +139,12 @@ struct AudiobookShelfRootView: View {
         // form (which preserves customHeaders + selectedLibraryId).
         if (loadError as? IntegrationError)?.isSessionExpired == true {
           // Session expired: Retry would just hit the same 401, so omit it.
-          Button("integration_connection_details_title".localized) {
+          // Route straight into the credentials step for the saved connection —
+          // the details view only offers Log out, which would discard custom
+          // headers and the library selection.
+          Button("integration_sign_in_button".localized) {
             loadError = nil
-            connectionViewModel.signInFlow = nil
+            connectionViewModel.prepareForReauth()
             showConnectionForm = true
           }
           Button("cancel_button".localized, role: .cancel) {
@@ -284,7 +287,7 @@ struct AudiobookShelfRootView: View {
       } else {
         availableLibraries = bookLibraries
       }
-    } catch is CancellationError {
+    } catch let error where error.isCancellation {
       // ignore
     } catch {
       loadError = error
@@ -432,7 +435,9 @@ private struct AudiobookShelfTabRoot: View {
       .tint(theme.linkColor)
       .environmentObject(theme)
     }
-    .task {
+    // `.onAppear`, not `.task`: a child can fire `navigation.dismiss?()` from its
+    // first load failure, which would beat a `.task`-scheduled assignment.
+    .onAppear {
       navigation.dismiss = onDismiss
     }
   }

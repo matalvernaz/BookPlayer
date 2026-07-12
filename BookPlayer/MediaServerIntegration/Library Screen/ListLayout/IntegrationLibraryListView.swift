@@ -79,7 +79,16 @@ struct IntegrationLibraryListView<
 
   func row(item: Model.Item) -> some View {
     rowContent(item)
-      .accessibilityAddTraits(.isButton)
+      // `.isSelected` is the only way a VoiceOver user can tell a tap in edit
+      // mode registered — the visual checkmark lives in the (hidden) cover art.
+      .accessibilityAddTraits(
+        viewModel.editMode.isEditing && viewModel.selectedItems.contains(item.id)
+          ? [.isButton, .isSelected]
+          : .isButton
+      )
+      // Navigable rows (folders, authors, series…) are visually distinguished
+      // by a chevron/badge VoiceOver never reads; the hint carries that signal.
+      .accessibilityHint(item.isNavigable ? "integration_navigable_hint".localized : "")
       .contentShape(Rectangle())
       .onTapGesture {
         if viewModel.editMode.isEditing {

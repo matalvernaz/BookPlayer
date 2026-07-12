@@ -103,6 +103,9 @@ struct IntegrationCustomHeadersSectionView: View {
         .focused($focusedField, equals: .key(entry.wrappedValue.id))
         .onSubmit { onCommit?() }
         .strikethrough(shouldStrikethrough(entry.wrappedValue))
+        // Placeholders disappear once the field has text; a persistent label is
+        // the only way VoiceOver can tell the key and value fields apart.
+        .accessibilityLabel("integration_custom_headers_key_placeholder".localized)
 
         TextField(
           "integration_custom_headers_value_placeholder".localized,
@@ -112,6 +115,7 @@ struct IntegrationCustomHeadersSectionView: View {
         .autocorrectionDisabled()
         .focused($focusedField, equals: .value(entry.wrappedValue.id))
         .onSubmit { onCommit?() }
+        .accessibilityLabel("integration_custom_headers_value_placeholder".localized)
       }
 
       Button {

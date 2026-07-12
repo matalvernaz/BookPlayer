@@ -22,16 +22,10 @@ struct SoundBoothLibraryView: View {
   private var trimSeasonCredits = true
 
   var body: some View {
+    // The download-error alert lives on SoundBoothRootView, NOT here: every
+    // drill-down level shares this view model, so a per-level alert would bind
+    // the same error to every view on the navigation stack at once.
     content
-      .alert(
-        "error_title".localized,
-        isPresented: .init(
-          get: { viewModel.downloadError != nil },
-          set: { if !$0 { viewModel.downloadError = nil } }
-        ),
-        actions: { Button("ok_button".localized) { viewModel.downloadError = nil } },
-        message: { Text(viewModel.downloadError ?? "") }
-      )
   }
 
   @ViewBuilder
@@ -71,20 +65,25 @@ struct SoundBoothLibraryView: View {
                         .foregroundStyle(theme.linkColor)
                         .frame(width: 28)
                         .accessibilityHidden(true)
-                      Text("Download season")
+                      Text("soundbooth_download_season_button".localized)
                         .bpFont(.titleRegular)
                         .foregroundStyle(theme.linkColor)
                     }
                   }
-                  .accessibilityValue("\(viewModel.releasedEpisodeCount(node)) episodes")
+                  .accessibilityValue(
+                    String.localizedStringWithFormat(
+                      "soundbooth_episode_count".localized,
+                      viewModel.releasedEpisodeCount(node)
+                    )
+                  )
                 }
                 Section {
-                  Toggle("Trim repeated credits", isOn: $trimSeasonCredits)
+                  Toggle("soundbooth_trim_credits_toggle".localized, isOn: $trimSeasonCredits)
                     .bpFont(.titleRegular)
                     .foregroundStyle(theme.primaryColor)
                     .tint(theme.linkColor)
                 } footer: {
-                  Text("Keeps only the season's first opening credits and final closing credits, dropping the repeated credits between episodes.")
+                  Text("soundbooth_trim_credits_footer".localized)
                     .bpFont(.caption)
                     .foregroundStyle(theme.secondaryColor)
                 }

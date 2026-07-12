@@ -113,7 +113,10 @@ final class HummingbirdBookmarkPuller: BPLogger {
 
     let bookmark: [String: Any]?
     do {
-      bookmark = try await connectionService.fetchBookmark(bookId: info.itemId)
+      bookmark = try await connectionService.fetchBookmark(
+        bookId: info.itemId,
+        connectionId: info.connectionId
+      )
     } catch {
       Self.logger.warning(
         "Hummingbird bookmark pull failed for \(info.itemId): \(error.localizedDescription)"

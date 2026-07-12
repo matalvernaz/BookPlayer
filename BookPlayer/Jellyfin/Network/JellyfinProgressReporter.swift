@@ -39,21 +39,43 @@ final class JellyfinProgressReporter: MediaServerProgressReporter, BPLogger {
     self.urlSession = urlSession
   }
 
+  /// Pending report chain. Each send awaits the previous one, so an older
+  /// in-progress request can't land after — and overwrite — a newer pause or
+  /// finish report on the server. Guarded by `chainLock` because the protocol
+  /// entry points are nonisolated.
+  private var sendChain: Task<Void, Never>?
+  private let chainLock = NSLock()
+
   func reportInProgress(_ update: MediaServerProgressUpdate) {
-    Task { @MainActor [weak self] in
-      self?.post(update, endpoint: "Sessions/Playing/Progress", eventName: "timeupdate", isFinal: false)
-    }
+    enqueue(update, endpoint: "Sessions/Playing/Progress", eventName: "timeupdate", isFinal: false)
   }
 
   func reportFinal(_ update: MediaServerProgressUpdate) {
     let endpoint = update.isFinished ? "Sessions/Playing/Stopped" : "Sessions/Playing/Progress"
     let eventName = update.isFinished ? "stopped" : "pause"
-    Task { @MainActor [weak self] in
-      self?.post(update, endpoint: endpoint, eventName: eventName, isFinal: true)
-    }
-    if update.isFinished {
-      // Clear the session id so the next playback of this item is a fresh session on the server.
-      playSessionLock.withLock { _ = playSessionIds.removeValue(forKey: relativePathKey(for: update)) }
+    enqueue(update, endpoint: endpoint, eventName: eventName, isFinal: true)
+  }
+
+  private func enqueue(
+    _ update: MediaServerProgressUpdate,
+    endpoint: String,
+    eventName: String,
+    isFinal: Bool
+  ) {
+    chainLock.withLock {
+      let previous = sendChain
+      sendChain = Task { @MainActor [weak self] in
+        await previous?.value
+        await self?.post(update, endpoint: endpoint, eventName: eventName, isFinal: isFinal)
+        if update.isFinished, let self {
+          // Clear the session id only after the Stopped POST has gone out —
+          // clearing it earlier would mint a fresh session id for the Stopped
+          // event itself, orphaning the session the progress updates used.
+          self.playSessionLock.withLock {
+            _ = self.playSessionIds.removeValue(forKey: self.relativePathKey(for: update))
+          }
+        }
+      }
     }
   }
 
@@ -67,7 +89,7 @@ final class JellyfinProgressReporter: MediaServerProgressReporter, BPLogger {
     endpoint: String,
     eventName: String,
     isFinal: Bool
-  ) {
+  ) async {
     guard let connection = connectionService.connections.first(where: { $0.id == update.info.connectionId }) else {
       return
     }
@@ -92,15 +114,14 @@ final class JellyfinProgressReporter: MediaServerProgressReporter, BPLogger {
     request.setValue(Self.authorizationHeader(token: connection.accessToken), forHTTPHeaderField: "Authorization")
     request.httpBody = payload
 
-    urlSession.dataTask(with: request) { _, response, error in
-      if let error {
-        Self.logger.warning("Jellyfin progress POST failed for \(update.info.itemId): \(error.localizedDescription)")
-        return
-      }
+    do {
+      let (_, response) = try await urlSession.data(for: request)
       if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
         Self.logger.warning("Jellyfin progress POST non-2xx for \(update.info.itemId): \(http.statusCode)")
       }
-    }.resume()
+    } catch {
+      Self.logger.warning("Jellyfin progress POST failed for \(update.info.itemId): \(error.localizedDescription)")
+    }
   }
 
   /// Jellyfin auth header for arbitrary `POST` calls. Mirrors the format the Jellyfin SDK uses

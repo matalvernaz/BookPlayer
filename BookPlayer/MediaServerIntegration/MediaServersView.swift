@@ -53,6 +53,16 @@ struct MediaServersView: View {
   @State private var presentedSheet: SheetRoute?
   @State private var editMode: EditMode = .inactive
 
+  /// Deletion staged behind a confirmation dialog. Removing a server signs it out
+  /// and discards its saved session — too destructive for a bare swipe (or a
+  /// slipped VoiceOver rotor action) to trigger directly.
+  @State private var pendingDeletion: PendingDeletion?
+
+  private struct PendingDeletion {
+    let server: ServerRow
+    let kind: IntegrationKind
+  }
+
   @EnvironmentObject private var theme: ThemeViewModel
   @EnvironmentObject private var singleFileDownloadService: SingleFileDownloadService
   @Environment(\.dismiss) private var dismiss
@@ -99,6 +109,27 @@ struct MediaServersView: View {
     }
     .environment(\.editMode, $editMode)
     .tint(theme.linkColor)
+    .confirmationDialog(
+      String(
+        format: "integration_delete_server_confirmation".localized,
+        pendingDeletion?.server.serverName ?? ""
+      ),
+      isPresented: .init(
+        get: { pendingDeletion != nil },
+        set: { if !$0 { pendingDeletion = nil } }
+      ),
+      titleVisibility: .visible
+    ) {
+      Button("logout_title".localized, role: .destructive) {
+        if let pending = pendingDeletion {
+          delete(pending.server, kind: pending.kind)
+        }
+        pendingDeletion = nil
+      }
+      Button("cancel_button".localized, role: .cancel) {
+        pendingDeletion = nil
+      }
+    }
     .sheet(item: $presentedSheet) { route in
       switch route {
       case .addServer(let kind):
@@ -120,8 +151,10 @@ struct MediaServersView: View {
         rowView(server, kind: kind)
       }
       .onDelete { indexSet in
-        for index in indexSet {
-          delete(servers[index], kind: kind)
+        // Stage the first selected row for confirmation; multi-row edit-mode
+        // deletion still removes one server per confirmed pass.
+        if let index = indexSet.first {
+          pendingDeletion = PendingDeletion(server: servers[index], kind: kind)
         }
       }
     } header: {
@@ -182,7 +215,7 @@ struct MediaServersView: View {
     }
     .swipeActions(edge: .trailing) {
       Button(role: .destructive) {
-        delete(server, kind: kind)
+        pendingDeletion = PendingDeletion(server: server, kind: kind)
       } label: {
         Label("logout_title".localized, systemImage: "trash")
       }
@@ -533,17 +566,23 @@ private struct AddServerHummingbirdSheet: View {
 
 /// Hummingbird's VM doesn't yet take a `connectionId` like the JF/ABS ones do,
 /// so to view details for a specific saved server we activate it first and the
-/// VM picks it up via `connectionService.connection`. Side effect: this changes
-/// the user's active Hummingbird connection. Acceptable trade-off pending a
-/// per-server-targeted VM init.
+/// VM picks it up via `connectionService.connection`. The previously active
+/// connection is restored on dismissal, so viewing details keeps the row
+/// affordance's "without activating it" promise — the switch is only ever a
+/// transient implementation detail, pending a per-server-targeted VM init.
 private struct ConnectionDetailsHummingbirdSheet: View {
   let connectionService: HummingbirdConnectionService
+  /// Active connection before this sheet switched it; nil when it was already
+  /// the one being viewed (nothing to restore).
+  private let previousActiveConnectionId: String?
   @StateObject private var viewModel: HummingbirdConnectionViewModel
   @EnvironmentObject private var theme: ThemeViewModel
   @Environment(\.dismiss) private var dismiss
 
   init(connectionService: HummingbirdConnectionService, connectionId: String) {
     self.connectionService = connectionService
+    let previousId = connectionService.connection?.id
+    self.previousActiveConnectionId = previousId == connectionId ? nil : previousId
     connectionService.activateConnection(id: connectionId)
     self._viewModel = .init(
       wrappedValue: HummingbirdConnectionViewModel(
@@ -566,6 +605,14 @@ private struct ConnectionDetailsHummingbirdSheet: View {
     }
     .tint(theme.linkColor)
     .environmentObject(theme)
+    .onDisappear {
+      // Skip the restore when the previous connection no longer exists —
+      // e.g. the user logged it out from inside this sheet.
+      if let previousActiveConnectionId,
+         connectionService.connections.contains(where: { $0.id == previousActiveConnectionId }) {
+        connectionService.activateConnection(id: previousActiveConnectionId)
+      }
+    }
   }
 }
 

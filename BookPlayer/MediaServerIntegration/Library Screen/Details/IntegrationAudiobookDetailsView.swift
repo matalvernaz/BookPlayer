@@ -29,10 +29,16 @@ struct IntegrationAudiobookDetailsView<
       return viewModel.item.displayName
     }
 
-    return VoiceOverService.playerMetaText(
+    var label = VoiceOverService.playerMetaText(
       title: viewModel.item.displayName,
       author: details.artist ?? "voiceover_unknown_author".localized
     )
+    // The visible narrator line is accessibility-hidden, so this label is the
+    // only place VoiceOver can surface it — for audiobooks it's primary metadata.
+    if let narrator = details.narrator, !narrator.isEmpty {
+      label += ", " + String(format: "integration_narrated_by".localized, narrator)
+    }
+    return label
   }
 
   var body: some View {
@@ -57,7 +63,7 @@ struct IntegrationAudiobookDetailsView<
         }
 
         if let narrator = viewModel.details?.narrator, !narrator.isEmpty {
-          Text("Narrated by \(narrator)")
+          Text(String(format: "integration_narrated_by".localized, narrator))
             .bpFont(.subheadline)
             .foregroundStyle(theme.secondaryColor)
             .lineLimit(1)
@@ -69,6 +75,7 @@ struct IntegrationAudiobookDetailsView<
             Text(details.runtimeString)
               .accessibilityLabel("book_duration_title".localized + details.runtimeString)
             Text(" | ")
+              .accessibilityHidden(true)
             Text(details.fileSizeString)
           }
           .foregroundStyle(theme.primaryColor)
@@ -99,32 +106,32 @@ struct IntegrationAudiobookDetailsView<
         if let details = viewModel.details {
           VStack {
             if let filePath = details.filePath {
-              DisclosureGroup("File Path", isExpanded: $isFilePathExpanded) {
+              DisclosureGroup("integration_details_file_path".localized, isExpanded: $isFilePathExpanded) {
                 Text(filePath)
               }
               .accessibilityHidden(true)
             }
 
             if let genres = details.genres, !genres.isEmpty {
-              DisclosureGroup("Genres", isExpanded: $isGenresExpanded) {
+              DisclosureGroup("integration_details_genres".localized, isExpanded: $isGenresExpanded) {
                 IntegrationTagsView(tags: genres)
               }
             }
 
             if let overview = details.overview {
-              DisclosureGroup("Overview", isExpanded: $isOverviewExpanded) {
+              DisclosureGroup("integration_details_overview".localized, isExpanded: $isOverviewExpanded) {
                 Text(overview)
               }
             }
 
             if let tags = details.tags, !tags.isEmpty {
-              DisclosureGroup("Tags", isExpanded: $isTagsExpanded) {
+              DisclosureGroup("integration_details_tags".localized, isExpanded: $isTagsExpanded) {
                 IntegrationTagsView(tags: tags)
               }
             }
 
             if !details.seriesEntries.isEmpty {
-              DisclosureGroup("Series", isExpanded: .constant(true)) {
+              DisclosureGroup("integration_details_series".localized, isExpanded: .constant(true)) {
                 VStack(alignment: .leading, spacing: 8) {
                   ForEach(details.seriesEntries) { item in
                     Text(item.name)

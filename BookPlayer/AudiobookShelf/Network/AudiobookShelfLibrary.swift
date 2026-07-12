@@ -26,4 +26,12 @@ struct AudiobookShelfLibrary: Codable, Identifiable {
 
 struct AudiobookShelfLibrariesResponse: Codable {
   let libraries: [AudiobookShelfLibrary]
+
+  // Lossy decode: one library record with unexpected metadata must not fail
+  // the whole list (which would present as "can't connect" for every library).
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([FailableDecodable<AudiobookShelfLibrary>].self, forKey: .libraries) ?? []
+    libraries = raw.compactMap(\.value)
+  }
 }

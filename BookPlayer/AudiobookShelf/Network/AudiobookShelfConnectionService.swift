@@ -27,11 +27,29 @@ class AudiobookShelfConnectionService: BPLogger {
     }
     return connections.first
   }
-  /// Wired up by `MainCoordinator` for download-flow provenance tracking. Currently unused
-  /// here -- upstream's reworked download path doesn't call `registerPendingDownload(...)`;
-  /// re-wiring that hook on the new path is a follow-up. Property stays so the coordinator
-  /// wiring compiles.
+  /// Wired up by `MainCoordinator` for download-flow provenance tracking.
+  /// See ``registerItemDownloadProvenance(_:itemId:)``.
   var mediaServerSourceStore: MediaServerSourceStore?
+
+  /// Registers download provenance for a *root-landed* item download so
+  /// `MediaServerSourceTracker` can key progress reporting to the final file.
+  /// Folder downloads must NOT be registered — the tracker predicts the landed
+  /// relativePath as the bare filename, which is wrong inside a subfolder.
+  func registerItemDownloadProvenance(_ request: URLRequest, itemId: String) {
+    guard
+      let url = request.url,
+      let connection,
+      let store = mediaServerSourceStore
+    else { return }
+    store.registerPendingDownload(
+      url,
+      info: MediaServerSourceInfo(
+        kind: .audiobookshelf,
+        connectionId: connection.id,
+        itemId: itemId
+      )
+    )
+  }
   private let urlSession: URLSession
 
   /// ABS OIDC ("SSO") constants. `oidcClientID` is the app name ABS records for the session;
@@ -748,6 +766,16 @@ class AudiobookShelfConnectionService: BPLogger {
   public func wrapWithCustomHeaders(_ url: URL) -> URLRequest {
     var request = URLRequest(url: url)
     applyCustomHeaders(to: &request, headers: connection?.customHeaders ?? [:])
+    return request
+  }
+
+  /// Wraps a URL with a *specific* connection's custom headers. Callers acting on behalf
+  /// of an imported item (progress reports) must use the item's originating connection —
+  /// the active connection's headers would both leak another server's proxy credentials
+  /// and fail the originating server's proxy.
+  public func wrapWithCustomHeaders(_ url: URL, connection: AudiobookShelfConnectionData) -> URLRequest {
+    var request = URLRequest(url: url)
+    applyCustomHeaders(to: &request, headers: connection.customHeaders)
     return request
   }
 

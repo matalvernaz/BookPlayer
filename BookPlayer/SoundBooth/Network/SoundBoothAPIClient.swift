@@ -374,23 +374,19 @@ public struct SoundBoothAPIClient {
   }
 
   /// Extracts the `iglu.sid` session cookie — the credential the data endpoints actually gate on
-  /// (a JWT in `Authorization: Token` alone is rejected with `[706]`). Reads it from the
-  /// response's `Set-Cookie`, then falls back to the shared cookie store URLSession populates for
-  /// the same request, so a flaky header cast can't lose the credential.
+  /// (a JWT in `Authorization: Token` alone is rejected with `[706]`). Read from the response's
+  /// `Set-Cookie` only: this client disables cookie storage entirely, so the shared
+  /// `HTTPCookieStorage` can never hold OUR session — anything found there would be a stale or
+  /// foreign `iglu.sid` from elsewhere in the process, which is worse than no credential.
   private static func sessionCookie(from response: URLResponse, baseURL: URL) -> String? {
-    if let http = response as? HTTPURLResponse {
-      var fields: [String: String] = [:]
-      for (key, value) in http.allHeaderFields {
-        if let key = key as? String, let value = value as? String {
-          fields[key] = value
-        }
-      }
-      if let value = HTTPCookie.cookies(withResponseHeaderFields: fields, for: baseURL)
-        .first(where: { $0.name == "iglu.sid" })?.value {
-        return value
+    guard let http = response as? HTTPURLResponse else { return nil }
+    var fields: [String: String] = [:]
+    for (key, value) in http.allHeaderFields {
+      if let key = key as? String, let value = value as? String {
+        fields[key] = value
       }
     }
-    return HTTPCookieStorage.shared.cookies(for: baseURL)?
+    return HTTPCookie.cookies(withResponseHeaderFields: fields, for: baseURL)
       .first(where: { $0.name == "iglu.sid" })?.value
   }
 }

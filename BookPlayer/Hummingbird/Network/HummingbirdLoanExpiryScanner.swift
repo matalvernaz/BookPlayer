@@ -90,26 +90,34 @@ final class HummingbirdLoanExpiryScanner: BPLogger {
     // the loan expired on its own timetable, and leaving stale local
     // copies after the date passed is worse than a missing remove call.
     do {
-      try await connectionService.returnBook(bookId: info.itemId)
+      try await connectionService.returnBook(
+        bookId: info.itemId,
+        connectionId: info.connectionId
+      )
     } catch {
       Self.logger.warning(
         "Hummingbird auto-return of \(info.itemId) failed: \(error.localizedDescription)"
       )
     }
 
-    // 2. Delete the local library item (and its file).
+    // 2. Delete the local library item (and its files). `.deep` matters for
+    // bound books: `.shallow` would promote every chapter file to a loose
+    // library item instead of removing the expired audio — the opposite of a
+    // loan return. If the delete fails, keep the source mapping so the next
+    // scan retries the cleanup; dropping it would strand the expired copy on
+    // disk forever with no further attempts.
     if let item = libraryService.getSimpleItem(with: relativePath) {
       do {
-        try libraryService.delete([item], mode: .shallow)
+        try libraryService.delete([item], mode: .deep)
       } catch {
         Self.logger.warning(
           "Loan-expiry delete of \(relativePath) failed: \(error.localizedDescription)"
         )
+        return
       }
     }
 
-    // 3. Drop the source mapping unconditionally so we don't keep
-    // re-trying the same book on every launch.
+    // 3. Drop the source mapping so completed cleanups aren't re-scanned.
     sourceStore.removeSource(for: relativePath)
   }
 }
