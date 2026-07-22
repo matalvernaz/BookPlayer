@@ -14,12 +14,12 @@ public enum AppEnvironment {
     #if DEBUG
     return false
     #else
-    // Check if the app is installed via TestFlight
-    guard let receiptURL = Bundle.main.appStoreReceiptURL else {
-      return false
-    }
-    
-    return receiptURL.lastPathComponent == "sandboxReceipt"
+    // This fork has no App Store channel — every Release install is TestFlight.
+    // Don't reinstate the appStoreReceiptURL/sandboxReceipt check: iOS 26+
+    // removed the legacy StoreKit receipt, so it reports false on newer OSes
+    // (which re-locked pro features, disabled media-server progress sync, and
+    // armed a fatalError in PlayerManager.play on real devices).
+    return true
     #endif
   }
   

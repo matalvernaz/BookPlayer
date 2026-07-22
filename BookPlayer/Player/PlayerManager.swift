@@ -1191,15 +1191,15 @@ extension PlayerManager {
         try audioSession.setActive(true)
         reportAudioSessionRecoveryIfNeeded()
       } catch {
-        guard AppEnvironment.isTestFlight else {
-          fatalError("Failed to activate the audio session, \(error), description: \(error.localizedDescription)")
-        }
-        /// Beta-only: don't hard-crash when the audio session can't be activated.
-        /// This happens when another process holds the session in a stuck state
-        /// that (so far) only a force-quit clears. Report it to Sentry so we can
-        /// confirm whether the stuck state still occurs, and leave the play button
-        /// inert — a missed auto-play is strictly better than the app dying in the
-        /// background.
+        /// Never hard-crash when the audio session can't be activated. This
+        /// happens when another process holds the session in a stuck state
+        /// that (so far) only a force-quit clears. This branch used to
+        /// `fatalError` outside TestFlight; iOS 26+ removed the legacy
+        /// StoreKit receipt that TestFlight detection relied on, which armed
+        /// that trap on real devices and killed background playback. Report
+        /// to Sentry so we can confirm whether the stuck state still occurs,
+        /// and leave the play button inert — a missed auto-play is strictly
+        /// better than the app dying in the background.
         let nsError = error as NSError
         SentrySDK.capture(error: error) { scope in
           scope.setLevel(.error)
