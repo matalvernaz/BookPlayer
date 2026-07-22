@@ -132,7 +132,6 @@ extension ItemListView {
 
   private func queueAlertAfterCurrentDismissal(_ alert: ItemListAlert) {
     pendingAlert = alert
-    activeAlert = nil
   }
 
   @ViewBuilder

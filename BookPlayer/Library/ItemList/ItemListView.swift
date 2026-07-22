@@ -38,6 +38,12 @@ struct ItemListView: View {
   /// enough for the import screen's dismissal transition to settle.
   private static let importAlertRetryNanoseconds: UInt64 = 500_000_000
 
+  private static let alertDismissalPollNanoseconds: UInt64 = 50_000_000
+
+  /// SwiftUI flips an alert's presentation binding before UIKit finishes the
+  /// dismissal animation. Delay a chained alert until that presentation slot is reusable.
+  private static let chainedAlertDismissalNanoseconds: UInt64 = 500_000_000
+
   @Environment(\.libraryService) var libraryService
   @Environment(\.accountService) private var accountService
   @Environment(\.syncService) var syncService
@@ -334,7 +340,7 @@ struct ItemListView: View {
       await presentImportCompletionAlertWhenHostable()
     }
     .task(id: pendingAlert) {
-      await presentPendingAlertWhenHostable()
+      await presentPendingAlertAfterDismissal()
     }
   }
 
@@ -374,7 +380,18 @@ struct ItemListView: View {
 
   /// Present an alert queued by an action in the currently displayed alert.
   /// UIKit must finish dismissing the first alert before SwiftUI can host the next one.
-  private func presentPendingAlertWhenHostable() async {
+  private func presentPendingAlertAfterDismissal() async {
+    guard pendingAlert != nil else { return }
+
+    /// The current alert's binding is cleared by SwiftUI as part of its native
+    /// dismissal. Do not promote the queued alert until that edge arrives.
+    while activeAlert != nil && !Task.isCancelled {
+      try? await Task.sleep(nanoseconds: Self.alertDismissalPollNanoseconds)
+    }
+
+    guard !Task.isCancelled else { return }
+    try? await Task.sleep(nanoseconds: Self.chainedAlertDismissalNanoseconds)
+
     while !Task.isCancelled {
       guard let pendingAlert else { return }
 
