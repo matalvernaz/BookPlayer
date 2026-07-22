@@ -525,3 +525,32 @@ We're working hard on providing a seamless experience, if possible, please conta
 "soundbooth_episode_count" = "%d episodes";
 "soundbooth_trim_credits_toggle" = "Trim repeated credits";
 "soundbooth_trim_credits_footer" = "Keeps only the season's first opening credits and final closing credits, dropping the repeated credits between episodes.";
+
+/* ABS public share links — 2026-07 */
+"share_link_title" = "Share Link";
+"share_link_sheet_title" = "Share Link";
+"share_link_expiry_title" = "Link expires";
+"share_link_expiry_week" = "In 1 week";
+"share_link_expiry_month" = "In 1 month";
+"share_link_expiry_three_months" = "In 3 months";
+"share_link_expiry_never" = "Never";
+"share_link_create_button" = "Create Link";
+"share_link_creating_message" = "Creating link…";
+"share_link_revoking_message" = "Revoking link…";
+"share_link_setup_footer" = "Creates a public link on your Audiobookshelf server. Anyone with the link can listen until it expires — no account needed. It opens right in BookPlayer when the app is installed, or plays in the browser otherwise.";
+"share_link_url_accessibility_label" = "Share link URL";
+"share_link_share_button" = "Share…";
+"share_link_copy_button" = "Copy Link";
+"share_link_copied_announcement" = "Link copied.";
+"share_link_revoke_button" = "Revoke Link";
+"share_link_revoke_footer" = "Revoking stops the link from working immediately, including for anyone you already sent it to.";
+"share_link_revoked_announcement" = "Link revoked.";
+"share_link_expires_format" = "Expires %@.";
+"share_link_no_expiry" = "This link doesn't expire.";
+"share_link_error_already_shared" = "This book already has an active share link that wasn't created on this device. Manage it from the Audiobookshelf web interface.";
+"share_link_error_not_permitted" = "Your Audiobookshelf account isn't allowed to create share links. The server requires an admin account for sharing.";
+"shared_import_expired_alert" = "This share link has expired or was revoked.";
+"shared_import_failed_alert" = "Couldn't load the shared book: %@";
+"shared_import_empty_alert" = "This share has no downloadable audio.";
+"shared_import_already_in_library" = "Already in your library. Opening.";
+"shared_import_started_announcement" = "Downloading %1$@, %2$d files.";

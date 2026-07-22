@@ -58,9 +58,33 @@ catalog.
 **Bound-book completion:** DAISY 2.02 / 3 archives arrive as multiple
 audio files plus an `.m3u`. A bound-book completer waits for the queue
 to drain then binds the folder into a single audiobook entry. Opt-in
-via `MediaServerSourceInfo.shouldBindFolder = true` (only the
-Hummingbird dispatcher sets it; Jellyfin / ABS folder imports stay
-folder-shaped).
+via `MediaServerSourceInfo.shouldBindFolder = true` (Hummingbird,
+SoundBooth, and ABS share-link imports set it; Jellyfin / ABS folder
+imports stay folder-shaped).
+
+## ABS public share links (universal links)
+
+Share a book to people with no account on the server. Sharer side:
+"Share Link" in the item options (ABS-sourced items only,
+`ShareLinkSheetView`) mints an ABS public share (`POST
+/api/share/mediaitem`, admin-gated, one active share per item) against
+the item's *originating* connection, with picked expiry, and hands out
+the web share page URL `https://<server>/share/<slug>`. Minted links
+are cached in UserDefaults (`MintedShareLinkCache`) for reuse/revoke.
+
+Recipient side: the URL is a universal link
+(`applinks:audiobooks.thealvernaz.space` in **both** entitlements
+files; AASA served by an nginx sidecar in the `audiobookshelf` stack on
+dockge). With BookPlayer installed the link opens in-app:
+`CommandParser.parseUniversalLink` → `Command.sharedImport` →
+`SharedLinkImportService`, which GETs `/public/share/<slug>` (carrying
+the `share_session_id` cookie ABS sets — track/cover URLs 404 without
+it), fans the tracks out through `SingleFileDownloadService` with
+zero-padded filenames, and registers the folder `shouldBindFolder` with
+sentinel `connectionId = "public-share-link"` so progress reporting
+stays off. Sharer tapping their own link gets the existing library copy
+opened instead (dedupe by ABS library item id). Without the app, the
+link lands on ABS's own share page, which streams in the browser.
 
 ## Share-extension web-URL imports
 

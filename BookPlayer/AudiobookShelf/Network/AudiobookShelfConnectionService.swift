@@ -897,6 +897,165 @@ class AudiobookShelfConnectionService: BPLogger {
   }
 }
 
+// MARK: - Public share links
+
+/// An active ABS media item share, as returned by `POST /api/share/mediaitem`.
+struct AudiobookShelfMediaItemShare: Decodable {
+  let id: String
+  let slug: String
+  /// ISO-8601 instant, or `nil` for a share that never expires.
+  let expiresAt: String?
+}
+
+enum AudiobookShelfShareError: LocalizedError {
+  /// ABS allows one active share per media item; a 409 means one already exists
+  /// (created outside this app, since we would have found our own in the local cache).
+  case alreadyShared
+  /// Share creation is admin-gated server-side.
+  case notPermitted
+
+  var errorDescription: String? {
+    switch self {
+    case .alreadyShared:
+      return "share_link_error_already_shared".localized
+    case .notPermitted:
+      return "share_link_error_not_permitted".localized
+    }
+  }
+}
+
+extension AudiobookShelfConnectionService {
+  /// The connection an item's provenance points at, falling back to the active connection when
+  /// the recorded id no longer resolves (e.g. the server was re-added after a re-auth).
+  /// Share operations must target the item's *originating* server — with multiple saved
+  /// servers, the active one may be the wrong host entirely.
+  private func shareConnection(for connectionId: String?) -> AudiobookShelfConnectionData? {
+    if let connectionId,
+      let originating = connections.first(where: { $0.id == connectionId })
+    {
+      return originating
+    }
+    return connection
+  }
+
+  /// `GET /api/items/:id` subset: shares are keyed by the *media item* id (the book), not the
+  /// library item id our provenance store carries, so it has to be looked up.
+  private struct ItemMediaIdResponse: Decodable {
+    struct MediaRef: Decodable {
+      let id: String
+    }
+    let media: MediaRef
+  }
+
+  func fetchMediaItemId(
+    forLibraryItemId libraryItemId: String,
+    connectionId: String?
+  ) async throws -> String {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("items")
+      .appendingPathComponent(libraryItemId)
+
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+
+    let (data, response) = try await urlSession.data(for: request)
+
+    _ = try validateAuthenticatedResponse(response)
+
+    return try JSONDecoder().decode(ItemMediaIdResponse.self, from: data).media.id
+  }
+
+  /// Creates a public share for a book. Requires an admin account server-side; the share is
+  /// downloadable so recipients (browser or BookPlayer) can fetch the audio files.
+  /// - Parameter expiresAt: wall-clock expiry, or `nil` for a share that never expires.
+  func createMediaItemShare(
+    mediaItemId: String,
+    slug: String,
+    expiresAt: Date?,
+    connectionId: String?
+  ) async throws -> AudiobookShelfMediaItemShare {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("share")
+      .appendingPathComponent("mediaitem")
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    // expiresAt is epoch milliseconds; JSON null means no expiry
+    let body: [String: Any] = [
+      "slug": slug,
+      "mediaItemType": "book",
+      "mediaItemId": mediaItemId,
+      "expiresAt": expiresAt.map { Int($0.timeIntervalSince1970 * 1000) } as Any? ?? NSNull(),
+      "isDownloadable": true,
+    ]
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+    let (data, response) = try await urlSession.data(for: request)
+
+    guard let http = response as? HTTPURLResponse else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+    switch http.statusCode {
+    case 200...299:
+      return try JSONDecoder().decode(AudiobookShelfMediaItemShare.self, from: data)
+    case 409:
+      throw AudiobookShelfShareError.alreadyShared
+    case 403:
+      throw AudiobookShelfShareError.notPermitted
+    case 401:
+      throw IntegrationError.sessionExpired(serverName: connection.serverName)
+    default:
+      throw IntegrationError.unexpectedResponse(code: http.statusCode)
+    }
+  }
+
+  /// Deletes (revokes) a share. The public URL 404s immediately afterwards.
+  func deleteMediaItemShare(shareId: String, connectionId: String?) async throws {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("share")
+      .appendingPathComponent("mediaitem")
+      .appendingPathComponent(shareId)
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "DELETE"
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+
+    let (_, response) = try await urlSession.data(for: request)
+
+    _ = try validateAuthenticatedResponse(response)
+  }
+
+  /// The browser-facing share page for a slug on this connection's server. This is the URL
+  /// that gets sent to people: browsers land on the ABS share page, while devices with
+  /// BookPlayer installed open it in-app via universal links.
+  func shareWebURL(slug: String, connectionId: String?) throws -> URL {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+    return connection.url
+      .appendingPathComponent("share")
+      .appendingPathComponent(slug)
+  }
+}
+
 /// Supplies the anchor window `ASWebAuthenticationSession` presents its sheet from. Resolves
 /// the foreground-active window scene's key window, falling back to any available window.
 private final class WebAuthPresentationProvider: NSObject, ASWebAuthenticationPresentationContextProviding {

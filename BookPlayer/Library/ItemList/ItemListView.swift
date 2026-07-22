@@ -44,6 +44,7 @@ struct ItemListView: View {
   @Environment(\.playerLoaderService) private var playerLoaderService
   @Environment(\.jellyfinService) var jellyfinService
   @Environment(\.audiobookshelfService) var audiobookshelfService
+  @Environment(\.mediaServerSourceStore) private var mediaServerSourceStore
   @Environment(\.preferencesService) var preferencesService
   @Environment(\.listState) var listState
   @Environment(\.playerState) private var playerState
@@ -712,6 +713,7 @@ extension ItemListView {
     detailsOption(forMenu: false)
     moveOption(forMenu: false)
     shareOption(forMenu: false)
+    shareLinkOption(forMenu: false)
     jumpToStartOption(forMenu: false)
     markFinishedOption(forMenu: false)
     boundBooksOption(forMenu: false)
@@ -727,6 +729,7 @@ extension ItemListView {
     boundBooksOption(forMenu: true)
     markFinishedOption(forMenu: true)
     jumpToStartOption(forMenu: true)
+    shareLinkOption(forMenu: true)
     shareOption(forMenu: true)
     moveOption(forMenu: true)
     detailsOption(forMenu: true)
@@ -739,6 +742,7 @@ extension ItemListView {
     detailsOption(forMenu: false)
     moveOption(forMenu: false)
     shareOption(forMenu: false)
+    shareLinkOption(forMenu: false)
     jumpToStartOption(forMenu: false)
     markFinishedOption(forMenu: false)
     boundBooksOption(forMenu: false)
@@ -771,6 +775,28 @@ extension ItemListView {
       Label("move_title", systemImage: "folder")
     }
     .menuTint(theme.primaryColor, enabled: forMenu)
+  }
+
+  /// Share a *link* to an Audiobookshelf-sourced book (public share on the source server)
+  /// instead of exporting the audio files. Only offered for ABS-backed items — the other
+  /// integrations have no public-share primitive.
+  @ViewBuilder
+  private func shareLinkOption(forMenu: Bool) -> some View {
+    let item = model.selectedItems.first
+    let isSingle = model.selectedItems.count == 1
+
+    if isSingle,
+      let item,
+      let sourceInfo = mediaServerSourceStore.source(for: item.relativePath),
+      sourceInfo.kind == .audiobookshelf
+    {
+      Button {
+        activeSheet = .shareLink(item, sourceInfo)
+      } label: {
+        Label("share_link_title", systemImage: "link")
+      }
+      .menuTint(theme.primaryColor, enabled: forMenu)
+    }
   }
 
   @ViewBuilder

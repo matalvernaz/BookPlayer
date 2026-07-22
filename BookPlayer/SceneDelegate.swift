@@ -28,6 +28,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
       playLastBook()
     }
 
+    // Universal links on cold launch arrive here, not in scene(_:continue:)
+    for activity in connectionOptions.userActivities
+    where activity.activityType == NSUserActivityTypeBrowsingWeb {
+      ActionParserService.process(activity)
+    }
+
     handleOpening(URLContexts: connectionOptions.urlContexts)
 
     guard let windowScene = (scene as? UIWindowScene) else { return }

@@ -676,6 +676,8 @@
 		8A9D0D2C2CCFBEEE007A924D /* JellyfinLibraryItemImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A9D0D2B2CCFBEEE007A924D /* JellyfinLibraryItemImageView.swift */; };
 		8A9D0D2E2CCFD968007A924D /* BlurHashDecode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A9D0D2D2CCFD968007A924D /* BlurHashDecode.swift */; };
 		8A9D0D302CD0E074007A924D /* SingleFileDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A9D0D2F2CD0E06F007A924D /* SingleFileDownloadService.swift */; };
+		7A51AE02BF20260721001A02 /* SharedLinkImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A51AE01BF20260721001A01 /* SharedLinkImportService.swift */; };
+		7A51AE04BF20260721001A04 /* ShareLinkSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A51AE03BF20260721001A03 /* ShareLinkSheetView.swift */; };
 		8AAA4F4C2CF1FF8C009D0777 /* MockCoordinatorPresentationFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AAA4F4B2CF1FF77009D0777 /* MockCoordinatorPresentationFlow.swift */; };
 		8AAD8A4F2CEE3650000A4B4B /* View+BookPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AAD8A4E2CEE3650000A4B4B /* View+BookPlayer.swift */; };
 		8AAD8A552CEE884F000A4B4B /* JellyfinConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AAD8A542CEE8849000A4B4B /* JellyfinConnectionService.swift */; };
@@ -1665,6 +1667,8 @@
 		8A9D0D2B2CCFBEEE007A924D /* JellyfinLibraryItemImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JellyfinLibraryItemImageView.swift; sourceTree = "<group>"; };
 		8A9D0D2D2CCFD968007A924D /* BlurHashDecode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurHashDecode.swift; sourceTree = "<group>"; };
 		8A9D0D2F2CD0E06F007A924D /* SingleFileDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleFileDownloadService.swift; sourceTree = "<group>"; };
+		7A51AE01BF20260721001A01 /* SharedLinkImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLinkImportService.swift; sourceTree = "<group>"; };
+		7A51AE03BF20260721001A03 /* ShareLinkSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkSheetView.swift; sourceTree = "<group>"; };
 		8AAA4F4B2CF1FF77009D0777 /* MockCoordinatorPresentationFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockCoordinatorPresentationFlow.swift; sourceTree = "<group>"; };
 		8AAD8A4E2CEE3650000A4B4B /* View+BookPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+BookPlayer.swift"; sourceTree = "<group>"; };
 		8AAD8A542CEE8849000A4B4B /* JellyfinConnectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JellyfinConnectionService.swift; sourceTree = "<group>"; };
@@ -2142,6 +2146,7 @@
 				63B4A2FB2E91828B00784A22 /* ItemListView+Alerts.swift */,
 				63B4A2FC2E91828B00784A22 /* ItemListView+Sheets.swift */,
 				63B4A3BD2E9187B800784A22 /* ItemListView+ConfirmationDialogs.swift */,
+				7A51AE03BF20260721001A03 /* ShareLinkSheetView.swift */,
 			);
 			path = ItemList;
 			sourceTree = "<group>";
@@ -3235,6 +3240,7 @@
 				9F82DF9B27DFE46B001B0EA8 /* PhoneWatchConnectivityService.swift */,
 				63B50F042B692E4200BCABBA /* ListSyncRefreshService.swift */,
 				8A9D0D2F2CD0E06F007A924D /* SingleFileDownloadService.swift */,
+				7A51AE01BF20260721001A01 /* SharedLinkImportService.swift */,
 				EA57FAC26CB0C2B165A04F02 /* MediaServerSourceTracker.swift */,
 				091026A626666D0C9CA3B983 /* MediaServerProgressDispatcher.swift */,
 			);
@@ -4942,6 +4948,8 @@
 				416A297D2568671F00605395 /* AVPlayer+BookPlayer.swift in Sources */,
 				634BA5A52C176B5A0015314D /* StoryActionView.swift in Sources */,
 				8A9D0D302CD0E074007A924D /* SingleFileDownloadService.swift in Sources */,
+				7A51AE02BF20260721001A02 /* SharedLinkImportService.swift in Sources */,
+				7A51AE04BF20260721001A04 /* ShareLinkSheetView.swift in Sources */,
 				6309F1262B0CF1C1002B86A4 /* BookPlaybackToggleIntent.swift in Sources */,
 				99329DC52F3AE9C4003F8E73 /* PlayerJumpView.swift in Sources */,
 				632D5A582E58C3CC006D10BC /* VerticalLabelStyle.swift in Sources */,

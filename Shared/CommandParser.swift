@@ -15,9 +15,33 @@ public class CommandParser {
       return self.parse(intent)
     } else if activity.activityType == "\(Bundle.main.bundleIdentifier!).activity.playback" {
       return Action(command: .play)
+    } else if activity.activityType == NSUserActivityTypeBrowsingWeb,
+      let webpageURL = activity.webpageURL
+    {
+      return self.parseUniversalLink(webpageURL)
     }
 
     return nil
+  }
+
+  /// Parses a universal link into a shared-import action. The associated domains entitlement
+  /// limits which hosts ever arrive here; the only claimed path shape is an Audiobookshelf
+  /// public share page (`…/share/<slug>`, optionally behind the server's router base path).
+  public class func parseUniversalLink(_ url: URL) -> Action? {
+    let components = url.pathComponents
+    guard
+      url.scheme == "https",
+      components.count >= 3,
+      components[components.count - 2] == "share",
+      !components[components.count - 1].isEmpty
+    else {
+      return nil
+    }
+
+    return Action(
+      command: .sharedImport,
+      parameters: [URLQueryItem(name: "url", value: url.absoluteString)]
+    )
   }
 
   public class func parse(_ intent: INIntent) -> Action? {
@@ -163,6 +187,7 @@ public enum Command: String {
   case fileImport
   case boostVolume
   case chapter
+  case sharedImport
 }
 
 public struct Action: Equatable {

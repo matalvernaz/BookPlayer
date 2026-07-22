@@ -74,7 +74,22 @@ class ActionParserService {
       self.handleSpeedRateAction(action)
     case .chapter:
       self.handleChapterAction(action)
+    case .sharedImport:
+      self.handleSharedImportAction(action)
     }
+  }
+
+  private class func handleSharedImportAction(_ action: Action) {
+    guard
+      AppDelegate.shared?.activeSceneDelegate?.mainCoordinator != nil,
+      let urlString = action.getQueryValue(for: "url"),
+      let url = URL(string: urlString)
+    else {
+      return
+    }
+
+    self.removeAction(action)
+    SharedLinkImportService.startImport(from: url)
   }
 
   private class func handleRewindAction(_ action: Action) {

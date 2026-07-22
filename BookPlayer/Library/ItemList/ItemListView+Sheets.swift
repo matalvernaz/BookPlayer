@@ -22,6 +22,15 @@ extension ItemListView {
       foldersSelectionSheet()
     case .libraryOptions:
       libraryOptionsSheet()
+    case .shareLink(let item, let sourceInfo):
+      shareLinkSheet(for: item, sourceInfo: sourceInfo)
+    }
+  }
+
+  @ViewBuilder
+  private func shareLinkSheet(for item: SimpleLibraryItem, sourceInfo: MediaServerSourceInfo) -> some View {
+    NavigationStack {
+      ShareLinkSheetView(item: item, sourceInfo: sourceInfo)
     }
   }
 
