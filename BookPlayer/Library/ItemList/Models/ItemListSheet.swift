@@ -15,7 +15,9 @@ enum ItemListSheet: Identifiable {
   case queuedTasks
   case foldersSelection
   case libraryOptions
-  case shareLink(SimpleLibraryItem, MediaServerSourceInfo)
+  /// `sourceInfo` is `nil` when the item has no recorded provenance (imports that predate
+  /// tracking); the sheet then resolves the book against the active ABS connection by title.
+  case shareLink(SimpleLibraryItem, MediaServerSourceInfo?)
 
   var id: String {
     switch self {

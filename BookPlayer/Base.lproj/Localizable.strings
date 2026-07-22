@@ -543,6 +543,10 @@ We're working hard on providing a seamless experience, if possible, please conta
 "share_link_no_expiry" = "This link doesn't expire.";
 "share_link_error_already_shared" = "This book already has an active share link that wasn't created on this device. Manage it from the Audiobookshelf web interface.";
 "share_link_error_not_permitted" = "Your Audiobookshelf account isn't allowed to create share links. The server requires an admin account for sharing.";
+"share_link_resolving_message" = "Finding this book on your server…";
+"share_link_match_footer_format" = "Matched on your server as “%@”.";
+"share_link_no_match_format" = "Couldn't find “%@” on your Audiobookshelf server. Share links can only be created for books that exist on the server.";
+"share_link_no_connection_message" = "No active Audiobookshelf connection.";
 "shared_import_expired_alert" = "This share link has expired or was revoked.";
 "shared_import_failed_alert" = "Couldn't load the shared book: %@";
 "shared_import_empty_alert" = "This share has no downloadable audio.";

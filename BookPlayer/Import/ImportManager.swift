@@ -18,6 +18,7 @@ import Foundation
 final class ImportManager: ObservableObject {
   let queue = OperationQueue()
   private let libraryService: LibraryServiceProtocol
+  private let mediaServerSourceStore: MediaServerSourceStore?
   private let timeout = 2.0
   private var subscription: AnyCancellable?
   private var timer: Timer?
@@ -25,8 +26,12 @@ final class ImportManager: ObservableObject {
 
   public var operationPublisher = PassthroughSubject<ImportOperation, Never>()
 
-  init(libraryService: LibraryServiceProtocol) {
+  init(
+    libraryService: LibraryServiceProtocol,
+    mediaServerSourceStore: MediaServerSourceStore? = nil
+  ) {
     self.libraryService = libraryService
+    self.mediaServerSourceStore = mediaServerSourceStore
   }
 
   public func process(_ fileUrl: URL) {
@@ -82,7 +87,8 @@ final class ImportManager: ObservableObject {
     // swiftlint:enable force_cast
 
     let operation = ImportOperation(files: sortedFiles,
-                                    libraryService: self.libraryService)
+                                    libraryService: self.libraryService,
+                                    mediaServerSourceStore: self.mediaServerSourceStore)
 
     self.files.value = []
 

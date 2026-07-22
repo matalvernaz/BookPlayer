@@ -820,22 +820,35 @@ extension ItemListView {
   /// Share a *link* to an Audiobookshelf-sourced book (public share on the source server)
   /// instead of exporting the audio files. Only offered for ABS-backed items — the other
   /// integrations have no public-share primitive.
+  ///
+  /// Provenance is resolved in three steps: the item's own mapping (single-file books), the
+  /// mapping its files agree on (volumes assembled from one multi-file download), and — when
+  /// there's no mapping at all but an ABS connection is active — a `nil` source that makes the
+  /// sheet match the book on the server by title. Items positively known to belong to another
+  /// integration get no row: their server has no public-share primitive to mint from.
   @ViewBuilder
   private func shareLinkOption(forMenu: Bool) -> some View {
     let item = model.selectedItems.first
     let isSingle = model.selectedItems.count == 1
 
-    if isSingle,
-      let item,
-      let sourceInfo = mediaServerSourceStore.source(for: item.relativePath),
-      sourceInfo.kind == .audiobookshelf
-    {
-      Button {
-        activeSheet = .shareLink(item, sourceInfo)
-      } label: {
-        Label("share_link_title", systemImage: "link")
+    if isSingle, let item {
+      let direct = mediaServerSourceStore.source(for: item.relativePath)
+      let inherited = direct == nil && item.type != .book
+        ? mediaServerSourceStore.unanimousDescendantSource(under: item.relativePath)
+        : nil
+      let resolved = direct ?? inherited
+      let offerRow =
+        resolved?.kind == .audiobookshelf
+        || (resolved == nil && audiobookshelfService.connection != nil)
+
+      if offerRow {
+        Button {
+          activeSheet = .shareLink(item, resolved?.kind == .audiobookshelf ? resolved : nil)
+        } label: {
+          Label("share_link_title", systemImage: "link")
+        }
+        .menuTint(theme.primaryColor, enabled: forMenu)
       }
-      .menuTint(theme.primaryColor, enabled: forMenu)
     }
   }
 

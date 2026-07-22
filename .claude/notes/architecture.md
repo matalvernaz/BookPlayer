@@ -77,12 +77,32 @@ imports stay folder-shaped).
 ## ABS public share links (universal links)
 
 Share a book to people with no account on the server. Sharer side:
-"Share Link" in the item options (ABS-sourced items only,
-`ShareLinkSheetView`) mints an ABS public share (`POST
-/api/share/mediaitem`, admin-gated, one active share per item) against
-the item's *originating* connection, with picked expiry, and hands out
-the web share page URL `https://<server>/share/<slug>`. Minted links
-are cached in UserDefaults (`MintedShareLinkCache`) for reuse/revoke.
+"Share Link" in the item options (`ShareLinkSheetView`) mints an ABS
+public share (`POST /api/share/mediaitem`, admin-gated, one active
+share per item) against the item's *originating* connection, with
+picked expiry, and hands out the web share page URL
+`https://<server>/share/<slug>`. Minted links are cached in
+UserDefaults (`MintedShareLinkCache`) for reuse/revoke.
+
+The row's provenance resolution is three-step (`shareLinkOption`):
+direct `MediaServerSourceStore` mapping → mapping the item's files
+agree on (`unanimousDescendantSource`, covers volumes assembled from
+one multi-file download) → no mapping at all + active ABS connection,
+in which case the sheet gets `sourceInfo = nil` and resolves the book
+server-side by title search (exact-match preferred), shows the matched
+"Title – Author" in the footer, and records the mapping as provenance
+on the first successful mint (user-verified match; also heals progress
+reporting for that book). Items positively mapped to another
+integration (Jellyfin etc.) get no row.
+
+Provenance survives zip extraction: ABS multi-file downloads arrive as
+one zip (`/api/items/<id>/download`) that `ImportOperation.handleZip`
+explodes and deletes; the archive's store entry is `takeSource`d and
+re-recorded against each extracted audio file (sidecars skipped) as it
+lands, then follows later moves via `migrateMediaServerSources`.
+Before 2026-07-22 the entry died with the zip — which also silently
+broke ABS progress reporting for multi-file books; imports from before
+then have no provenance and rely on the title-search fallback.
 
 Recipient side: the URL is a universal link
 (`applinks:audiobooks.thealvernaz.space` in **both** entitlements

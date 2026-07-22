@@ -54,6 +54,37 @@ public final class MediaServerSourceStore {
     queue.sync { readResolved() }
   }
 
+  /// Atomically reads and removes the mapping for `relativePath`, returning it. Used by the
+  /// import pipeline when a container file (a downloaded zip) is replaced by its extracted
+  /// contents — the container's entry must not outlive the container, and its provenance is
+  /// re-recorded against each extracted file instead.
+  public func takeSource(for relativePath: String) -> MediaServerSourceInfo? {
+    queue.sync {
+      var resolved = readResolved()
+      guard let info = resolved.removeValue(forKey: relativePath) else { return nil }
+      writeResolved(resolved)
+      return info
+    }
+  }
+
+  /// Returns the source every mapped descendant of `folderRelativePath` agrees on, or `nil`
+  /// when the folder has no mapped descendants or they disagree on origin. Provenance is
+  /// recorded per file, so a volume assembled from one multi-file download has no entry of
+  /// its own — folder-level features (share links) resolve it through the children instead.
+  /// Disagreement means the folder mixes items from different server books (e.g. a playlist),
+  /// which has no single origin to resolve to.
+  public func unanimousDescendantSource(under folderRelativePath: String) -> MediaServerSourceInfo? {
+    queue.sync {
+      let prefix = folderRelativePath + "/"
+      let descendants = readResolved().filter { $0.key.hasPrefix(prefix) }
+      guard let first = descendants.first?.value else { return nil }
+      let allAgree = descendants.values.allSatisfy {
+        $0.kind == first.kind && $0.connectionId == first.connectionId && $0.itemId == first.itemId
+      }
+      return allAgree ? first : nil
+    }
+  }
+
   /// Drops the source mapping for a library item. Called when the user deletes an item so we
   /// don't keep reporting progress for something that no longer exists locally.
   public func removeSource(for relativePath: String) {

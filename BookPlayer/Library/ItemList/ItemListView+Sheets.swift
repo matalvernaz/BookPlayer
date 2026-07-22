@@ -28,7 +28,7 @@ extension ItemListView {
   }
 
   @ViewBuilder
-  private func shareLinkSheet(for item: SimpleLibraryItem, sourceInfo: MediaServerSourceInfo) -> some View {
+  private func shareLinkSheet(for item: SimpleLibraryItem, sourceInfo: MediaServerSourceInfo?) -> some View {
     NavigationStack {
       ShareLinkSheetView(item: item, sourceInfo: sourceInfo)
     }

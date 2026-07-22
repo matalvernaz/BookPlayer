@@ -73,7 +73,13 @@ class MainCoordinator: NSObject {
   ) {
     self.navigationController = navigationController
     self.libraryService = coreServices.libraryService
-    self.importManager = ImportManager(libraryService: coreServices.libraryService)
+    // Created ahead of the services it's wired into further down so the import
+    // pipeline can carry download provenance through zip extraction.
+    let sourceStore = MediaServerSourceStore()
+    self.importManager = ImportManager(
+      libraryService: coreServices.libraryService,
+      mediaServerSourceStore: sourceStore
+    )
     self.accountService = coreServices.accountService
     self.syncService = coreServices.syncService
     self.playbackService = coreServices.playbackService
@@ -106,7 +112,6 @@ class MainCoordinator: NSObject {
     self.hardcoverService = coreServices.hardcoverService
     self.preferencesService = coreServices.preferencesService
 
-    let sourceStore = MediaServerSourceStore()
     self.mediaServerSourceStore = sourceStore
     audiobookshelfService.mediaServerSourceStore = sourceStore
     jellyfinService.mediaServerSourceStore = sourceStore

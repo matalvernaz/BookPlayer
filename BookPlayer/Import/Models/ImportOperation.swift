@@ -10,6 +10,7 @@ import BookPlayerKit
 import Foundation
 import IDZSwiftCommonCrypto
 import Sentry
+import UniformTypeIdentifiers
 import ZipArchive
 
 /// Reference: https://www.avanderlee.com/swift/asynchronous-operations/
@@ -18,6 +19,13 @@ public class ImportOperation: Operation {
   public let libraryService: LibraryServiceProtocol
   public var processedFiles = [URL]()
   public var suggestedFolderName: String?
+
+  /// Store to re-key media-server provenance when a downloaded zip is replaced by its
+  /// extracted contents. Optional so callers without provenance tracking (tests) can omit it.
+  private let mediaServerSourceStore: MediaServerSourceStore?
+  /// Extracted-from-zip entries awaiting their final destination, keyed by temp-directory URL.
+  /// Populated in `handleZip`, consumed in `processFile` once the landing filename is known.
+  private var zipExtractedSources = [URL: MediaServerSourceInfo]()
 
   private let lockQueue = DispatchQueue(label: "com.bookplayer.asyncoperation", attributes: .concurrent)
 
@@ -58,9 +66,11 @@ public class ImportOperation: Operation {
   }
 
   init(files: [URL],
-       libraryService: LibraryServiceProtocol) {
+       libraryService: LibraryServiceProtocol,
+       mediaServerSourceStore: MediaServerSourceStore? = nil) {
     self.files = files
     self.libraryService = libraryService
+    self.mediaServerSourceStore = mediaServerSourceStore
   }
 
   public override func start() {
@@ -112,6 +122,11 @@ public class ImportOperation: Operation {
       create: true
     )
 
+    // The zip's media-server provenance (recorded against the downloaded archive's filename)
+    // must follow the extracted contents; the archive itself is deleted below and its library
+    // entry never materializes.
+    let zipSource = mediaServerSourceStore?.takeSource(for: file.lastPathComponent)
+
     SSZipArchive.unzipFile(atPath: file.path, toDestination: tempDirectoryURL.path, progressHandler: nil) { _, success, error in
       try? FileManager.default.removeItem(at: file)
 
@@ -133,8 +148,24 @@ public class ImportOperation: Operation {
         files.append(fileURL)
       }
 
+      if let zipSource {
+        for fileURL in files where Self.carriesZipProvenance(fileURL) {
+          self.zipExtractedSources[fileURL] = zipSource
+        }
+      }
+
       self.processFile(from: remainingFiles + files)
     }
+  }
+
+  /// Extracted entries that should inherit the zip's media-server provenance: audio files, and
+  /// directories (a zip that wraps its tracks in a folder lands that folder as a single item).
+  /// Sidecar files (covers, metadata) are skipped so they don't leave orphaned mappings behind.
+  private static func carriesZipProvenance(_ url: URL) -> Bool {
+    if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+      return true
+    }
+    return UTType(filenameExtension: url.pathExtension)?.conforms(to: .audio) ?? false
   }
 
   func getNextAvailableURL(for url: URL) -> URL {
@@ -280,6 +311,12 @@ public class ImportOperation: Operation {
       }
       SentrySDK.flush(timeout: 2)
       fatalError("Fail to move file from \(currentFile) to \(destinationURL). Error: \(error.localizedDescription)")
+    }
+
+    // Files land at the processed-folder root, so the landed relativePath is the filename.
+    // Later moves (combine-into-volume) re-key this through `migrateMediaServerSources`.
+    if let info = zipExtractedSources.removeValue(forKey: currentFile) {
+      mediaServerSourceStore?.setSource(info, for: destinationURL.lastPathComponent)
     }
 
     self.processedFiles.append(destinationURL)
