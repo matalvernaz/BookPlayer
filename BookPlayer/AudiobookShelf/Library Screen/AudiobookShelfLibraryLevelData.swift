@@ -48,6 +48,9 @@ enum AudiobookShelfLibraryViewSource: Equatable, Hashable {
   case books(libraryID: String, filter: AudiobookShelfItemFilter?)
   case entities(libraryID: String, category: AudiobookShelfBrowseCategory)
   case collection(id: String)
+  /// Folder-tree browse: `path` is relative to the library's folder root
+  /// (empty string for the top level), mirroring the item `relPath` values.
+  case folders(libraryID: String, path: String)
 
   var libraryID: String {
     switch self {
@@ -55,6 +58,7 @@ enum AudiobookShelfLibraryViewSource: Equatable, Hashable {
     case .books(let libraryID, _): libraryID
     case .entities(let libraryID, _): libraryID
     case .collection(let id): id
+    case .folders(let libraryID, _): libraryID
     }
   }
 }

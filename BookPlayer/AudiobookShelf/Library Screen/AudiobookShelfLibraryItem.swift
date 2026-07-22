@@ -24,6 +24,7 @@ struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable {
     case collection = "collection"
     case author = "author"
     case narrator = "narrator"
+    case folder = "folder"
   }
 
   let id: String
@@ -54,6 +55,11 @@ struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable {
   let browseCategory: AudiobookShelfBrowseCategory?
   let filter: AudiobookShelfItemFilter?
 
+  /// Path relative to the library's folder root. Books carry the server's
+  /// `relPath`; `.folder` rows carry the folder's own path, which doubles as
+  /// the drill-down target in `destination(for:)`.
+  let relPath: String?
+
   init(
     id: String,
     title: String,
@@ -73,7 +79,8 @@ struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable {
     currentTime: TimeInterval? = nil,
     isFinished: Bool? = nil,
     browseCategory: AudiobookShelfBrowseCategory? = nil,
-    filter: AudiobookShelfItemFilter? = nil
+    filter: AudiobookShelfItemFilter? = nil,
+    relPath: String? = nil
   ) {
     self.id = id
     self.title = title
@@ -94,6 +101,7 @@ struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable {
     self.isFinished = isFinished
     self.browseCategory = browseCategory
     self.filter = filter
+    self.relPath = relPath
   }
 }
 
@@ -125,6 +133,7 @@ extension AudiobookShelfLibraryItem {
     case .collection: "square.stack.3d.up"
     case .author: "person"
     case .narrator: "mic"
+    case .folder: "folder"
     }
   }
 
@@ -186,6 +195,17 @@ extension AudiobookShelfLibraryItem {
     )
   }
 
+  init(folderName: String, path: String, libraryId: String, bookCount: Int) {
+    self.init(
+      id: path,
+      title: folderName,
+      kind: .folder,
+      libraryId: libraryId,
+      subtitle: bookCount == 1 ? "1 book" : "\(bookCount) books",
+      relPath: path
+    )
+  }
+
   init(collection: AudiobookShelfCollection) {
     self.init(
       id: collection.id,
@@ -218,7 +238,8 @@ extension AudiobookShelfLibraryItem {
       coverPath: apiItem.media.coverPath,
       progress: apiItem.userMediaProgress?.progress,
       currentTime: apiItem.userMediaProgress?.currentTime,
-      isFinished: apiItem.userMediaProgress?.isFinished
+      isFinished: apiItem.userMediaProgress?.isFinished,
+      relPath: apiItem.relPath
     )
   }
 }
@@ -233,6 +254,7 @@ struct AudiobookShelfAPIItem: Codable {
   let mediaType: String?
   let media: Media
   let size: Int64?
+  let relPath: String?
   let userMediaProgress: UserMediaProgress?
 
   struct Media: Codable {

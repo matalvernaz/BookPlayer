@@ -503,6 +503,7 @@ We're working hard on providing a seamless experience, if possible, please conta
 "integration_sso_button_hint" = "Opens a secure browser window to sign in through your identity provider.";
 
 /* Media-server integration — 2026-07 audit additions */
+"integration_tab_folders" = "Folders";
 "integration_tab_series" = "Series";
 "integration_tab_authors" = "Authors";
 "integration_tab_narrators" = "Narrators";

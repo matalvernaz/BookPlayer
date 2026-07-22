@@ -39,6 +39,18 @@ Server-side prerequisite: the ABS OIDC config must whitelist
 `bookplayer://oauth` as a mobile redirect URI. OIDC-only servers now
 work without keeping a `local` method active.
 
+**Folders tab:** browses the library's on-disk folder tree, built
+client-side from each item's `relPath` (ABS has no folder-browse
+endpoint). `AudiobookShelfLibraryViewSource.folders(libraryID:path:)`
+fetches all items (limit 0) per level and groups them in
+`folderLevelItems`: subfolders (recursive book counts) first, then the
+books directly at that level, both in `localizedStandardCompare` name
+order. `.folder` rows drill down through the generic `.library`
+navigation destination. Sort preferences are hidden for folder levels
+and `sortItems` passes them through untouched so disk order survives
+search filtering. A library with a flat folder root just shows all its
+books loose.
+
 ### Hummingbird (`BookPlayer/Hummingbird/`)
 
 Talks to a self-hosted Hummingbird server

@@ -63,6 +63,20 @@ struct AudiobookShelfRootView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
       }
+      Tab("integration_tab_folders".localized, systemImage: "folder.fill") {
+        AudiobookShelfTabRoot(
+          source: .folders(libraryID: resolvedLibrary?.id ?? "", path: ""),
+          libraryTitle: resolvedLibrary?.title ?? "",
+          connectionService: connectionService,
+          singleFileDownloadService: singleFileDownloadService,
+          onDismiss: { listState.activeIntegrationSheet = nil },
+          onSwitchLibrary: switchLibraryAction,
+          dismissAll: dismiss
+        )
+        .id(resolvedLibrary?.id)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(theme.secondarySystemBackgroundColor, for: .tabBar)
+      }
       Tab("integration_tab_series".localized, systemImage: "rectangle.stack.fill") {
         AudiobookShelfTabRoot(
           source: .entities(libraryID: resolvedLibrary?.id ?? "", category: .series),

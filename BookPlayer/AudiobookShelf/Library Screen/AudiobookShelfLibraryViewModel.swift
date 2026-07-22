@@ -64,7 +64,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     switch source {
     case .books(_, .none):
       true
-    case .books(_, _), .entities(_, _), .collection(_):
+    case .books(_, _), .entities(_, _), .collection(_), .folders(_, _):
       true
     case .libraries:
       false
@@ -73,7 +73,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
 
   var isGridEnabled: Bool {
     switch source {
-    case .libraries, .books(_, _), .collection(_), .entities(_, _):
+    case .libraries, .books(_, _), .collection(_), .entities(_, _), .folders(_, _):
       true
     }
   }
@@ -86,14 +86,15 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     switch source {
     case .books(_, _), .collection(_):
       true
-    case .libraries, .entities(_, _):
+    // Folder levels mirror the on-disk layout; sorting would break that.
+    case .libraries, .entities(_, _), .folders(_, _):
       false
     }
   }
 
   var allowsEditing: Bool {
     switch source {
-    case .books(_, _), .collection(_):
+    case .books(_, _), .collection(_), .folders(_, _):
       true
     case .libraries, .entities(_, _):
       false
@@ -104,7 +105,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     switch source {
     case .entities(_, .authors), .entities(_, .narrators):
       true
-    case .libraries, .books(_, _), .collection(_), .entities(_, _):
+    case .libraries, .books(_, _), .collection(_), .entities(_, _), .folders(_, _):
       false
     }
   }
@@ -190,6 +191,9 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     case .author, .series, .narrator:
       guard let filter = item.filter else { return nil }
       return .library(source: .books(libraryID: item.libraryId, filter: filter), title: item.title)
+    case .folder:
+      guard let path = item.relPath else { return nil }
+      return .library(source: .folders(libraryID: item.libraryId, path: path), title: item.title)
     }
   }
 
@@ -280,6 +284,8 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
       fetchEntityItems(libraryID: libraryID, category: category)
     case .collection(let id):
       fetchCollectionItems(collectionID: id)
+    case .folders(let libraryID, let path):
+      fetchFolderItems(libraryID: libraryID, path: path)
     }
   }
 
@@ -332,6 +338,74 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
         self.error = error
       }
     }
+  }
+
+  private func fetchFolderItems(libraryID: String, path: String) {
+    fetchTask?.cancel()
+    fetchTask = Task { @MainActor in
+      defer { if !Task.isCancelled { self.fetchTask = nil } }
+
+      do {
+        let (fetched, _) = try await connectionService.fetchItems(
+          in: libraryID,
+          limit: 0,
+          page: 0,
+          sortBy: nil,
+          desc: nil,
+          filter: nil
+        )
+
+        loadLocalItems(Self.folderLevelItems(from: fetched, at: path, libraryId: libraryID))
+      } catch let error where error.isCancellation {
+        // ignore
+      } catch {
+        guard !Task.isCancelled else { return }
+        self.error = error
+      }
+    }
+  }
+
+  /// Reduces the library's full book list to one folder level: subfolders of
+  /// `path` (with recursive book counts) followed by the books sitting
+  /// directly in it, both in name order. Books without a `relPath` under
+  /// `path` are left out here but remain reachable from the Books tab.
+  private static func folderLevelItems(
+    from books: [AudiobookShelfLibraryItem],
+    at path: String,
+    libraryId: String
+  ) -> [AudiobookShelfLibraryItem] {
+    let prefix = path.isEmpty ? "" : path + "/"
+    var folderBookCounts: [String: Int] = [:]
+    var levelBooks: [(folderName: String, item: AudiobookShelfLibraryItem)] = []
+
+    for book in books {
+      guard let relPath = book.relPath, relPath.hasPrefix(prefix) else { continue }
+      let remainder = relPath.dropFirst(prefix.count)
+      guard !remainder.isEmpty else { continue }
+
+      if let slash = remainder.firstIndex(of: "/") {
+        folderBookCounts[String(remainder[..<slash]), default: 0] += 1
+      } else {
+        levelBooks.append((String(remainder), book))
+      }
+    }
+
+    let folders = folderBookCounts
+      .sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
+      .map { name, count in
+        AudiobookShelfLibraryItem(
+          folderName: name,
+          path: prefix + name,
+          libraryId: libraryId,
+          bookCount: count
+        )
+      }
+
+    let sortedBooks = levelBooks
+      .sorted { $0.folderName.localizedStandardCompare($1.folderName) == .orderedAscending }
+      .map(\.item)
+
+    return folders + sortedBooks
   }
 
   private func fetchCollectionItems(collectionID: String) {
@@ -501,6 +575,12 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   }
 
   private func sortItems(_ items: [AudiobookShelfLibraryItem]) -> [AudiobookShelfLibraryItem] {
+    // Folder levels arrive pre-ordered (folders first, then books, by disk
+    // name); the global sortBy preference must not reshuffle them.
+    if case .folders = source {
+      return items
+    }
+
     if let seriesID = activeSeriesID {
       return items.sorted { lhs, rhs in
         compareSeriesItems(lhs, rhs, seriesID: seriesID)
