@@ -16,6 +16,7 @@ struct ItemListView: View {
   @StateObject var model: ItemListViewModel
 
   @State var activeAlert: ItemListAlert?
+  @State var pendingAlert: ItemListAlert?
   @State var activeSheet: ItemListSheet?
   @State var activeConfirmationDialog: ConfirmationDialogType?
   @State var folderInput = FolderCreationInput()
@@ -332,6 +333,9 @@ struct ItemListView: View {
     .task(id: importOperationState.alertParameters) {
       await presentImportCompletionAlertWhenHostable()
     }
+    .task(id: pendingAlert) {
+      await presentPendingAlertWhenHostable()
+    }
   }
 
   /// Convert pending `alertParameters` into the import-completion alert once
@@ -364,6 +368,25 @@ struct ItemListView: View {
       }
 
       /// `Task.sleep` throws immediately on cancellation; the loop condition exits.
+      try? await Task.sleep(nanoseconds: Self.importAlertRetryNanoseconds)
+    }
+  }
+
+  /// Present an alert queued by an action in the currently displayed alert.
+  /// UIKit must finish dismissing the first alert before SwiftUI can host the next one.
+  private func presentPendingAlertWhenHostable() async {
+    while !Task.isCancelled {
+      guard let pendingAlert else { return }
+
+      if activeAlert == nil,
+         activeConfirmationDialog == nil,
+         activeSheet == nil,
+         WindowHelper.isMainContentFrontmost {
+        activeAlert = pendingAlert
+        self.pendingAlert = nil
+        return
+      }
+
       try? await Task.sleep(nanoseconds: Self.importAlertRetryNanoseconds)
     }
   }

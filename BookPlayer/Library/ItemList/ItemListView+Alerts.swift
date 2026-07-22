@@ -61,15 +61,14 @@ extension ItemListView {
     
     Button("new_playlist_button") {
       folderInput.prepareForFolder(title: suggestedFolderName, placeholder: suggestedFolderName)
-      model.selectedSetItems = Set(alertParameters.itemIdentifiers.map({ $0.relativePath }))
-      activeAlert = nil
-      Task { @MainActor in
-        activeAlert = .createFolder(
+      model.selectedSetItems.removeAll()
+      queueAlertAfterCurrentDismissal(
+        .createFolder(
           type: .folder,
           placeholder: suggestedFolderName,
           items: alertParameters.itemIdentifiers
         )
-      }
+      )
     }
 
     Button("existing_playlist_button") {
@@ -82,15 +81,14 @@ extension ItemListView {
     Button("bound_books_create_button") {
       if alertParameters.hasOnlyBooks {
         folderInput.prepareForBound(title: suggestedFolderName, placeholder: suggestedFolderName)
-        model.selectedSetItems = Set(alertParameters.itemIdentifiers.map({ $0.relativePath }))
-        activeAlert = nil
-        Task { @MainActor in
-          activeAlert = .createFolder(
+        model.selectedSetItems.removeAll()
+        queueAlertAfterCurrentDismissal(
+          .createFolder(
             type: .bound,
             placeholder: suggestedFolderName,
             items: alertParameters.itemIdentifiers
           )
-        }
+        )
       } else if let singleFolder = alertParameters.singleFolder {
         model.updateFolders([singleFolder], type: .bound)
       }
@@ -110,10 +108,9 @@ extension ItemListView {
     
     Button("new_playlist_button") {
       folderInput.reset()
-      activeAlert = nil
-      Task { @MainActor in
-        activeAlert = .createFolder(type: .folder, placeholder: "", items: nil)
-      }
+      queueAlertAfterCurrentDismissal(
+        .createFolder(type: .folder, placeholder: "", items: nil)
+      )
     }
     
     Button("existing_playlist_button") {
@@ -124,16 +121,20 @@ extension ItemListView {
     Button("bound_books_create_button") {
       let suggestedFolderName = ((model.selectedItems.first?.title ?? "") as NSString).deletingPathExtension
       folderInput.prepareForBound(title: suggestedFolderName, placeholder: suggestedFolderName)
-      activeAlert = nil
-      Task { @MainActor in
-        activeAlert = .createFolder(type: .bound, placeholder: suggestedFolderName, items: nil)
-      }
+      queueAlertAfterCurrentDismissal(
+        .createFolder(type: .bound, placeholder: suggestedFolderName, items: nil)
+      )
     }
     .disabled(!model.selectedItems.allSatisfy { $0.type == .book })
 
     Button("cancel_button", role: .cancel) {}
   }
-  
+
+  private func queueAlertAfterCurrentDismissal(_ alert: ItemListAlert) {
+    pendingAlert = alert
+    activeAlert = nil
+  }
+
   @ViewBuilder
   func createFolderAlert(type: SimpleItemType, placeholder: String, items: [LibraryItemRef]?) -> some View {
     let placeholderText = !placeholder.isEmpty
@@ -141,12 +142,6 @@ extension ItemListView {
       : type == .folder
         ? "new_playlist_button".localized
         : "bound_books_new_title_placeholder".localized
-
-    let selectedItems = !model.selectedSetItems.isEmpty
-      ? Array(model.selectedSetItems).sorted {
-        $0.localizedStandardCompare($1) == ComparisonResult.orderedAscending
-      }
-      : nil
 
     TextField(placeholderText, text: $folderInput.name)
 
