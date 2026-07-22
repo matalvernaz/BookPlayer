@@ -474,7 +474,7 @@ struct ItemListView: View {
       /// Clean up just in case due to how List(selection:) works under the hood
       model.selectedSetItems.removeAll()
       folderInput.prepareForFolder()
-      activeAlert = .createFolder(type: folderInput.type, placeholder: folderInput.placeholder)
+      activeAlert = .createFolder(type: folderInput.type, placeholder: folderInput.placeholder, items: nil)
     }
   }
 
@@ -873,7 +873,7 @@ extension ItemListView {
           model.updateFolders(model.selectedItems, type: .bound)
         } else {
           folderInput.prepareForBound(title: item?.title)
-          activeAlert = .createFolder(type: folderInput.type, placeholder: folderInput.placeholder)
+          activeAlert = .createFolder(type: folderInput.type, placeholder: folderInput.placeholder, items: nil)
         }
       } label: {
         Label("bound_books_create_button", systemImage: "books.vertical")

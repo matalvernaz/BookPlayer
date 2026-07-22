@@ -20,8 +20,8 @@ extension ItemListView {
       importCompletionAlert(for: parameters)
     case .moveOptions:
       moveOptionsAlert()
-    case .createFolder(let type, let placeholder):
-      createFolderAlert(type: type, placeholder: placeholder)
+    case .createFolder(let type, let placeholder, let items):
+      createFolderAlert(type: type, placeholder: placeholder, items: items)
     case .delete:
       deleteAlert()
     case .cancelDownload(let item):
@@ -64,24 +64,32 @@ extension ItemListView {
       model.selectedSetItems = Set(alertParameters.itemIdentifiers.map({ $0.relativePath }))
       activeAlert = nil
       Task { @MainActor in
-        activeAlert = .createFolder(type: .folder, placeholder: suggestedFolderName)
+        activeAlert = .createFolder(
+          type: .folder,
+          placeholder: suggestedFolderName,
+          items: alertParameters.itemIdentifiers
+        )
       }
     }
-    
+
     Button("existing_playlist_button") {
       model.pendingMoveItemIdentifiers = alertParameters.itemIdentifiers
       model.selectedSetItems = Set(alertParameters.itemIdentifiers.map({ $0.relativePath }))
       activeSheet = .foldersSelection
     }
     .disabled(alertParameters.availableFolders.isEmpty)
-    
+
     Button("bound_books_create_button") {
       if alertParameters.hasOnlyBooks {
         folderInput.prepareForBound(title: suggestedFolderName, placeholder: suggestedFolderName)
         model.selectedSetItems = Set(alertParameters.itemIdentifiers.map({ $0.relativePath }))
         activeAlert = nil
         Task { @MainActor in
-          activeAlert = .createFolder(type: .bound, placeholder: suggestedFolderName)
+          activeAlert = .createFolder(
+            type: .bound,
+            placeholder: suggestedFolderName,
+            items: alertParameters.itemIdentifiers
+          )
         }
       } else if let singleFolder = alertParameters.singleFolder {
         model.updateFolders([singleFolder], type: .bound)
@@ -104,7 +112,7 @@ extension ItemListView {
       folderInput.reset()
       activeAlert = nil
       Task { @MainActor in
-        activeAlert = .createFolder(type: .folder, placeholder: "")
+        activeAlert = .createFolder(type: .folder, placeholder: "", items: nil)
       }
     }
     
@@ -118,7 +126,7 @@ extension ItemListView {
       folderInput.prepareForBound(title: suggestedFolderName, placeholder: suggestedFolderName)
       activeAlert = nil
       Task { @MainActor in
-        activeAlert = .createFolder(type: .bound, placeholder: suggestedFolderName)
+        activeAlert = .createFolder(type: .bound, placeholder: suggestedFolderName, items: nil)
       }
     }
     .disabled(!model.selectedItems.allSatisfy { $0.type == .book })
@@ -127,25 +135,25 @@ extension ItemListView {
   }
   
   @ViewBuilder
-  func createFolderAlert(type: SimpleItemType, placeholder: String) -> some View {
+  func createFolderAlert(type: SimpleItemType, placeholder: String, items: [LibraryItemRef]?) -> some View {
     let placeholderText = !placeholder.isEmpty
       ? placeholder
       : type == .folder
         ? "new_playlist_button".localized
         : "bound_books_new_title_placeholder".localized
-    
+
     let selectedItems = !model.selectedSetItems.isEmpty
       ? Array(model.selectedSetItems).sorted {
         $0.localizedStandardCompare($1) == ComparisonResult.orderedAscending
       }
       : nil
-    
+
     TextField(placeholderText, text: $folderInput.name)
-    
+
     Button("create_button") {
       model.createFolder(
         with: folderInput.name,
-        items: model.selectedItems.map { item in
+        items: items ?? model.selectedItems.map { item in
           LibraryItemRef(relativePath: item.relativePath, uuid: item.uuid)
         },
         type: folderInput.type
@@ -153,7 +161,7 @@ extension ItemListView {
       folderInput.reset()
     }
     .disabled(folderInput.name.isEmpty)
-    
+
     Button("cancel_button", role: .cancel) {
       folderInput.reset()
     }
@@ -224,7 +232,7 @@ extension ItemListView {
       return String.localizedStringWithFormat("import_alert_title".localized, filesCount)
     case .moveOptions:
       return "choose_destination_title".localized
-    case .createFolder(let type, _):
+    case .createFolder(let type, _, _):
       return type == .folder
         ? "create_playlist_title".localized
         : "bound_books_create_alert_title".localized
@@ -243,7 +251,7 @@ extension ItemListView {
     switch alert {
     case .delete:
       return model.deleteActionDetails()?.message
-    case .createFolder(let type, _) where type == .bound:
+    case .createFolder(let type, _, _) where type == .bound:
       return "bound_books_create_alert_description".localized
     default:
       return nil

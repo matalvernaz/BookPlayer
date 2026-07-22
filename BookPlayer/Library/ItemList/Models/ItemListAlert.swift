@@ -14,7 +14,10 @@ enum ItemListAlert: Identifiable, Equatable {
   case queuedTasks
   case importCompletion(ImportOperationState.AlertParameters)
   case moveOptions
-  case createFolder(type: SimpleItemType, placeholder: String)
+  /// `items` carries race-safe refs from import flows; the freshly imported
+  /// items may not be in the loaded list yet, so deriving them from the
+  /// UI selection at creation time would come up empty.
+  case createFolder(type: SimpleItemType, placeholder: String, items: [LibraryItemRef]?)
   case delete
   case cancelDownload(SimpleLibraryItem)
   case warningOffload(SimpleLibraryItem)
