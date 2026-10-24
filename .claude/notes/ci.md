@@ -21,11 +21,14 @@ needed.
 - `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8` — App Store
   Connect API key, used both for `xcodebuild -allowProvisioningUpdates`
   and for the post-upload `testflight-add-to-group.py` helper.
-- `~/.config/bookplayer-deploy/Debug.xcconfig` (chmod 600) — canonical
-  `Debug.xcconfig` with real bundle IDs and `DEVELOPMENT_TEAM`. The
-  workflow copies it into the runner's checkout. The in-repo
-  `BuildConfiguration/Debug.template.xcconfig` has `com.replace.me*`
-  placeholders that won't pass automatic provisioning.
+- `~/.config/bookplayer-deploy/Debug.xcconfig` (chmod 600) — the real
+  config values: bundle IDs, `DEVELOPMENT_TEAM`, API host, RevenueCat and
+  Sentry keys (BP_* keys only, despite the name). The workflow copies it
+  into the runner's checkout for the Debug configuration, and the Release
+  archive applies it with `-xcconfig`, over the placeholders
+  (`replace.me`) in the tracked `BuildConfiguration/Release.xcconfig`. The
+  in-repo `Debug.template.xcconfig` has `com.replace.me*` placeholders
+  that won't pass automatic provisioning.
 - `~/bookplayer-deploy/testflight-add-to-group.py` — Python helper that
   polls App Store Connect for processing, sets the localized
   `What to Test` notes, submits for beta review, and attaches to the
@@ -52,6 +55,44 @@ The "What to Test" field that testers see is resolved in this order:
 Not enforced. A commit without a trailer ships fine and gets the subject
 as its note.
 
+## Build configuration and Xcode
+
+TestFlight builds are **Release** builds made with **Xcode 27.1**
+(`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`, set on the
+job, because the Mac's `xcode-select` default can differ while other apps
+move over).
+
+From 05-19 to 07-25 every build was archived with `-configuration Debug`,
+because the real values only existed in the Debug xcconfig. That shipped
+unoptimised builds, left framework and extension dSYMs out (Debug uses
+`DEBUG_INFORMATION_FORMAT = dwarf`), and, since `AppEnvironment.isTestFlight`
+is `#if DEBUG return false`, turned off every TestFlight-only feature: the
+media-server progress sync gate, the icon/theme unlocks, the purchase
+block. `.github/scripts/testflight-checks.sh` now guards both ends:
+`settings` fails before archiving if the Release settings for the app or
+BookPlayerKit would set DEBUG or `-Onone`; `archive` fails after
+archiving unless every bundle's `BP_BUNDLE_IDENTIFIER` is the real bundle
+id (the tracked Release.xcconfig says `com.replace.me`), and unless the
+app and watch app are signed with `group.<bundle id>.files`. The private
+`deploy.sh` fallback runs the same script.
+
+`BP_API_DOMAIN`, `BP_REVENUECAT_KEY` and `BP_SENTRY_DSN` are
+`replace.me` in the off-repo xcconfig on purpose, and have been in every
+build: this fork doesn't use the BookPlayer server, in-app purchases or
+BookPlayer's Sentry. The keys only have to exist (the app reads them with
+`try!`), not be real.
+
+The Release configuration pins the "Apple Distribution" identity for
+manual signing. The archive forces `CODE_SIGN_STYLE=Automatic` and
+`CODE_SIGN_IDENTITY="Apple Development"` (automatic archives sign for
+development), and `-exportArchive` re-signs for distribution.
+
+iOS 27 SDK trap: an `if`, or more than one statement, inside a `ForEach`
+that builds rotor or toolbar content compiles fine but aborts at launch
+on iOS 26 and earlier (upstream 5.22.1). Keep that content a single
+entry per element and filter the data before the `ForEach` (upstream
+`d351aaa7`, cherry-picked here).
+
 ## Gotchas
 
 ### `xcodebuild archive` and Xcode Accounts
@@ -74,8 +115,10 @@ live in one shell step so the unlock survives.
 
 ### "Upload Symbols Failed" warnings
 
-Every TestFlight upload emits cosmetic "Upload Symbols Failed" warnings
-for embedded frameworks. Noise. Only worry if `EXPORT` itself fails.
+These came from the Debug archives: frameworks and extensions built
+without dSYMs. Release archives should carry them; if the warnings come
+back for BookPlayerKit or the extensions, check that the archive really
+ran as Release. They never blocked an upload.
 
 ### Build numbering
 

@@ -30,6 +30,11 @@ jobs:
     # on that Mac -- nothing sensitive crosses GitHub Secrets.
     runs-on: [self-hosted, macos, bookplayer]
     timeout-minutes: 60
+    env:
+      # Xcode 27.1, the App Store copy. Pinned here because the Mac's system
+      # default (xcode-select) may point at an older Xcode while other apps
+      # move over, and this build needs the iOS 27 SDK.
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
 
@@ -37,15 +42,23 @@ jobs:
         run: xcodebuild -version
 
       - name: Install Debug.xcconfig with real bundle IDs
-        # The canonical Debug.xcconfig (real DEVELOPMENT_TEAM + bundle id) is
-        # NOT in git -- it sits beside the deploy secrets on the Mac at
-        # ~/.config/bookplayer-deploy/. Without this the checkout's
-        # Debug.template.xcconfig leaves bundle ids as `com.replace.me*` and
-        # provisioning registration fails.
+        # The canonical xcconfig (real DEVELOPMENT_TEAM, bundle id and config
+        # values) is NOT in git -- it sits beside the deploy secrets on the
+        # Mac at ~/.config/bookplayer-deploy/. The project's Debug
+        # configuration reads it from BuildConfiguration/, so copy it there;
+        # the Release archive below applies the same file with -xcconfig
+        # instead, since the tracked Release.xcconfig only holds placeholders.
         run: cp ~/.config/bookplayer-deploy/Debug.xcconfig ./BuildConfiguration/Debug.xcconfig
 
       - name: Resolve SPM dependencies
         run: xcodebuild -resolvePackageDependencies
+
+      - name: Check this is a Release build
+        # Every build from 05-19 to 07-25 was archived as Debug: unoptimised,
+        # and with DEBUG set AppEnvironment.isTestFlight is false, which
+        # turned off the TestFlight-only features. Fail before archiving if
+        # the settings the archive will use would do that again.
+        run: .github/scripts/testflight-checks.sh settings ~/.config/bookplayer-deploy/Debug.xcconfig
 
       # Build, archive, export, and upload in one shell step so the keychain
       # stays unlocked across `xcodebuild archive` and `xcodebuild
@@ -84,10 +97,17 @@ jobs:
           # via Xcode's GUI-keychain "Accounts" mechanism. The latter isn't
           # reachable from a launchd-spawned process and fails with
           # "No Accounts: Add a new account in Accounts settings."
+          #
+          # Release, with the real config values from the off-repo xcconfig
+          # layered over the placeholders in BuildConfiguration/Release.xcconfig.
+          # The Release configuration pins the "Apple Distribution" identity
+          # for manual signing; automatic signing archives with a development
+          # identity, and -exportArchive below re-signs for distribution.
           xcodebuild archive \
             -project BookPlayer.xcodeproj \
             -scheme BookPlayer \
-            -configuration Debug \
+            -configuration Release \
+            -xcconfig ~/.config/bookplayer-deploy/Debug.xcconfig \
             -destination 'generic/platform=iOS' \
             -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
             -allowProvisioningUpdates \
@@ -95,8 +115,13 @@ jobs:
             -authenticationKeyID "${ASC_KEY_ID}" \
             -authenticationKeyIssuerID "${ASC_ISSUER_ID}" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
             CURRENT_PROJECT_VERSION="${BUILD_NUMBER}"
+
+          echo "Checking the archive..."
+          .github/scripts/testflight-checks.sh archive \
+            "${BUILD_DIR}/BookPlayer.xcarchive" "${ASC_BUNDLE_ID}"
 
           cat > "${BUILD_DIR}/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
