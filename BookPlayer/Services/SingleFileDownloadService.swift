@@ -23,15 +23,23 @@ final class SingleFileDownloadService: ObservableObject {
   }
 
   public var eventsPublisher = PassthroughSubject<Events, Never>()
+  /// A finished download's file, now at `destination` under Documents. Sent only after the move
+  /// succeeded, so it never reports a failed download (`.finished` is sent for those too).
+  public var savedFilesPublisher = PassthroughSubject<(task: URLSessionTask, destination: URL), Never>()
 
   private let networkClient: NetworkClientProtocol
   private var progressDelegate = BPTaskDownloadDelegate()
   private var disposeBag = Set<AnyCancellable>()
 
   public var isDownloading: Bool { !downloadQueue.isEmpty || currentTask != nil }
-  public private(set) var downloadQueue: [(request: URLRequest, folderName: String?)] = []
 
-  private var currentTask: (task: URLSessionTask, folderName: String?)?
+  /// Whether a queued or running download saves into `folderName` under Documents
+  public func hasQueuedDownloads(inFolder folderName: String) -> Bool {
+    currentTask?.folderName == folderName || downloadQueue.contains { $0.folderName == folderName }
+  }
+  public private(set) var downloadQueue: [(request: URLRequest, folderName: String?, fileName: String?)] = []
+
+  private var currentTask: (task: URLSessionTask, folderName: String?, fileName: String?)?
   private lazy var downloadSession: URLSession = {
     URLSession(
       configuration: URLSessionConfiguration.background(withIdentifier: "SingleFileDownloadService"),
@@ -67,22 +75,34 @@ final class SingleFileDownloadService: ObservableObject {
   }
 
   public func handleDownload(_ request: URLRequest) {
-    downloadQueue.append((request: request, folderName: nil))
+    downloadQueue.append((request: request, folderName: nil, fileName: nil))
     processNextDownload()
   }
 
   public func handleDownload(_ requests: [URLRequest]) {
-    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: nil) })
+    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: nil, fileName: nil) })
     processNextDownload()
   }
 
   public func handleDownload(_ request: URLRequest, folderName: String) {
-    downloadQueue.append((request: request, folderName: folderName))
+    downloadQueue.append((request: request, folderName: folderName, fileName: nil))
     processNextDownload()
   }
 
   public func handleDownload(_ requests: [URLRequest], folderName: String) {
-    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: folderName) })
+    downloadQueue.append(contentsOf: requests.map { (request: $0, folderName: folderName, fileName: nil) })
+    processNextDownload()
+  }
+
+  /// Downloads into `folderName`, each file saved under the matching `fileNames` entry instead of
+  /// the server's name: for files whose URLs all end the same way, or whose order lives in their
+  /// names. `fileNames` lines up 1:1 with `requests`; a request without one keeps the default name.
+  public func handleDownload(_ requests: [URLRequest], folderName: String, fileNames: [String]) {
+    let items: [(request: URLRequest, folderName: String?, fileName: String?)] =
+      requests.enumerated().map { index, request in
+        (request: request, folderName: folderName, fileName: index < fileNames.count ? fileNames[index] : nil)
+      }
+    downloadQueue.append(contentsOf: items)
     processNextDownload()
   }
 
@@ -101,7 +121,7 @@ final class SingleFileDownloadService: ObservableObject {
         taskDescription: "SingleFileDownload-\(url.absoluteString)",
         session: downloadSession
       )
-      currentTask = (task: task, folderName: downloadItem.folderName)
+      currentTask = (task: task, folderName: downloadItem.folderName, fileName: downloadItem.fileName)
     }
   }
 
@@ -117,12 +137,13 @@ final class SingleFileDownloadService: ObservableObject {
     progressDelegate.didFinishDownloadingTask = { [weak self] task, fileURL, error in
       guard let self, fileURL != nil || error != nil else { return }
 
-      self.sendEvent(.finished(task: task))
-      if let error {
-        self.sendEvent(.error(.network, task: task, underlyingError: error))
-      } else if let fileURL {
-        self.handleSingleDownloadTaskFinished(task, fileURL: fileURL)
-      }
+      self.finishDownload(
+        task,
+        fileURL: fileURL,
+        error: error,
+        folderName: self.currentTask?.folderName,
+        fileName: self.currentTask?.fileName
+      )
 
       if task === self.currentTask?.task {
         Task { @MainActor in
@@ -133,14 +154,37 @@ final class SingleFileDownloadService: ObservableObject {
     }
   }
 
-  private func handleSingleDownloadTaskFinished(_ task: URLSessionTask, fileURL: URL) {
+  /// What a finished download does: `.finished`, then `.error` or the move into Documents.
+  /// Internal so tests can drive it without a session.
+  func finishDownload(
+    _ task: URLSessionTask,
+    fileURL: URL?,
+    error: Error?,
+    folderName: String?,
+    fileName: String?
+  ) {
+    sendEvent(.finished(task: task))
+    if let error {
+      sendEvent(.error(.network, task: task, underlyingError: error))
+    } else if let fileURL {
+      handleSingleDownloadTaskFinished(task, fileURL: fileURL, folderName: folderName, fileName: fileName)
+    }
+  }
+
+  private func handleSingleDownloadTaskFinished(
+    _ task: URLSessionTask,
+    fileURL: URL,
+    folderName: String?,
+    fileName: String?
+  ) {
     let filename =
-      task.response?.suggestedFilename
+      fileName
+      ?? task.response?.suggestedFilename
       ?? task.originalRequest?.url?.lastPathComponent
       ?? fileURL.lastPathComponent
 
     var destinationURL: URL
-    if let folderName = currentTask?.folderName {
+    if let folderName {
       let folderURL = DataManager.getDocumentsFolderURL().appendingPathComponent(folderName)
       destinationURL = folderURL.appendingPathComponent(filename)
 
@@ -157,6 +201,9 @@ final class SingleFileDownloadService: ObservableObject {
       try FileManager.default.moveItem(at: fileURL, to: destinationURL)
     } catch {
       sendEvent(.error(.general, task: task, underlyingError: error))
+      return
     }
+
+    savedFilesPublisher.send((task: task, destination: destinationURL))
   }
 }

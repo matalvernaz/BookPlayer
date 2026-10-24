@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Nepodporovaný typ súboru";
 "transfer_web_done_hint" = "Keď skončíte, potvrďte import súborov v BookPlayeri.";
 "transfer_web_load_error" = "BookPlayer nie je dostupný. Skontrolujte, či je v ňom stále otvorená obrazovka prenosu.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Odkaz na zdieľanie";
+"share_link_expiry_title" = "Odkaz vyprší";
+"share_link_expiry_week" = "O 1 týždeň";
+"share_link_expiry_month" = "O 1 mesiac";
+"share_link_expiry_three_months" = "O 3 mesiace";
+"share_link_expiry_never" = "Nikdy";
+"share_link_create_button" = "Vytvoriť odkaz";
+"share_link_creating_message" = "Vytvára sa odkaz…";
+"share_link_revoking_message" = "Ruší sa odkaz…";
+"share_link_resolving_message" = "Hľadá sa kniha na vašom serveri…";
+"share_link_setup_footer" = "Vytvorí verejný odkaz na vašom serveri Audiobookshelf. Ktokoľvek s odkazom môže počúvať, kým nevyprší, bez účtu. Otvorí sa v BookPlayeri, ak je aplikácia nainštalovaná, inak sa kniha prehrá v prehliadači.";
+"share_link_match_footer_format" = "Na vašom serveri nájdené ako „%@“.";
+"share_link_url_accessibility_label" = "Adresa odkazu";
+"share_link_share_button" = "Zdieľať…";
+"share_link_copy_button" = "Kopírovať odkaz";
+"share_link_copied_announcement" = "Odkaz skopírovaný";
+"share_link_revoke_button" = "Zrušiť odkaz";
+"share_link_revoke_footer" = "Po zrušení odkaz okamžite prestane fungovať, aj pre tých, ktorým ste ho už poslali.";
+"share_link_revoked_announcement" = "Odkaz zrušený";
+"share_link_expires_format" = "Vyprší %@.";
+"share_link_no_expiry" = "Tento odkaz nevyprší.";
+"share_link_error_already_shared" = "Táto kniha už má odkaz na zdieľanie, ktorý nebol vytvorený v tomto zariadení. Spravujte ho vo webovom rozhraní Audiobookshelf.";
+"share_link_error_not_permitted" = "Váš účet Audiobookshelf nemôže vytvárať odkazy na zdieľanie. Server povoľuje zdieľanie iba účtom správcov.";
+"share_link_no_match_format" = "„%@“ sa na vašom serveri Audiobookshelf nenašlo. Odkazy na zdieľanie možno vytvoriť iba pre knihy, ktoré sú na serveri.";
+"share_link_no_connection_message" = "Nie je pripojený žiadny server Audiobookshelf.";
+"shared_import_expired_alert" = "Platnosť tohto odkazu vypršala alebo bol zrušený.";
+"shared_import_failed_alert" = "Zdieľanú knihu sa nepodarilo načítať: %@";
+"shared_import_empty_alert" = "Toto zdieľanie neobsahuje žiadny zvuk na stiahnutie.";
+"shared_import_already_in_library" = "Už je vo vašej knižnici. Otvára sa.";
+"shared_import_started_announcement" = "Sťahuje sa „%@“.";

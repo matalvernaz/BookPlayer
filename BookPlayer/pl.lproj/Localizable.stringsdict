@@ -102,5 +102,25 @@
         <string>Pobieranie %d plików</string>
       </dict>
     </dict>
+    <key>integration_folder_book_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d książka</string>
+        <key>few</key>
+        <string>%d książki</string>
+        <key>many</key>
+        <string>%d książek</string>
+        <key>other</key>
+        <string>%d książki</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

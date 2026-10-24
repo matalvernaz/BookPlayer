@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Nem támogatott fájltípus";
 "transfer_web_done_hint" = "Ha végeztél, erősítsd meg a BookPlayerben a fájlok importálásához.";
 "transfer_web_load_error" = "A BookPlayer nem érhető el. Ellenőrizd, hogy az átviteli képernyője még nyitva van-e.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Megosztási link";
+"share_link_expiry_title" = "Link lejárata";
+"share_link_expiry_week" = "1 hét múlva";
+"share_link_expiry_month" = "1 hónap múlva";
+"share_link_expiry_three_months" = "3 hónap múlva";
+"share_link_expiry_never" = "Soha";
+"share_link_create_button" = "Link létrehozása";
+"share_link_creating_message" = "Link létrehozása…";
+"share_link_revoking_message" = "Link visszavonása…";
+"share_link_resolving_message" = "A könyv keresése a kiszolgálón…";
+"share_link_setup_footer" = "Nyilvános linket hoz létre az Audiobookshelf-kiszolgálóján. Bárki, akinek megvan a link, meghallgathatja a könyvet a lejáratig, fiók nélkül. Ha a BookPlayer telepítve van, az alkalmazásban nyílik meg, egyébként a böngészőben játszható le.";
+"share_link_match_footer_format" = "Találat a kiszolgálón: „%@”.";
+"share_link_url_accessibility_label" = "Link címe";
+"share_link_share_button" = "Megosztás…";
+"share_link_copy_button" = "Link másolása";
+"share_link_copied_announcement" = "Link másolva";
+"share_link_revoke_button" = "Link visszavonása";
+"share_link_revoke_footer" = "A visszavonás után a link azonnal megszűnik működni, azoknak is, akiknek már elküldte.";
+"share_link_revoked_announcement" = "Link visszavonva";
+"share_link_expires_format" = "Lejár: %@.";
+"share_link_no_expiry" = "Ez a link nem jár le.";
+"share_link_error_already_shared" = "Ehhez a könyvhöz már tartozik egy megosztási link, amelyet nem ezen az eszközön hoztak létre. Kezelje az Audiobookshelf webes felületén.";
+"share_link_error_not_permitted" = "Az Audiobookshelf-fiókja nem hozhat létre megosztási linket. A kiszolgáló csak rendszergazdai fiókoknak engedi a megosztást.";
+"share_link_no_match_format" = "„%@” nem található az Audiobookshelf-kiszolgálóján. Megosztási linket csak a kiszolgálón lévő könyvekhez lehet létrehozni.";
+"share_link_no_connection_message" = "Nincs csatlakoztatott Audiobookshelf-kiszolgáló.";
+"shared_import_expired_alert" = "Ez a megosztási link lejárt, vagy visszavonták.";
+"shared_import_failed_alert" = "A megosztott könyv nem tölthető be: %@";
+"shared_import_empty_alert" = "Ebben a megosztásban nincs letölthető hang.";
+"shared_import_already_in_library" = "Már szerepel a könyvtárában. Megnyitás.";
+"shared_import_started_announcement" = "„%@” letöltése.";

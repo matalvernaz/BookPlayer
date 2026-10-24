@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Nieobsługiwany typ pliku";
 "transfer_web_done_hint" = "Gdy skończysz, potwierdź w BookPlayer, aby zaimportować pliki.";
 "transfer_web_load_error" = "Nie można połączyć się z BookPlayer. Sprawdź, czy ekran przesyłania jest nadal otwarty.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Link do udostępniania";
+"share_link_expiry_title" = "Link wygasa";
+"share_link_expiry_week" = "Za 1 tydzień";
+"share_link_expiry_month" = "Za 1 miesiąc";
+"share_link_expiry_three_months" = "Za 3 miesiące";
+"share_link_expiry_never" = "Nigdy";
+"share_link_create_button" = "Utwórz link";
+"share_link_creating_message" = "Tworzenie linku…";
+"share_link_revoking_message" = "Unieważnianie linku…";
+"share_link_resolving_message" = "Szukanie tej książki na twoim serwerze…";
+"share_link_setup_footer" = "Tworzy publiczny link na twoim serwerze Audiobookshelf. Każdy, kto ma link, może słuchać do jego wygaśnięcia, bez konta. Otwiera się w BookPlayerze, jeśli aplikacja jest zainstalowana, a w przeciwnym razie odtwarza się w przeglądarce.";
+"share_link_match_footer_format" = "Znaleziono na twoim serwerze jako „%@”.";
+"share_link_url_accessibility_label" = "Adres linku";
+"share_link_share_button" = "Udostępnij…";
+"share_link_copy_button" = "Kopiuj link";
+"share_link_copied_announcement" = "Skopiowano link";
+"share_link_revoke_button" = "Unieważnij link";
+"share_link_revoke_footer" = "Po unieważnieniu link od razu przestaje działać, także dla osób, którym już go wysłano.";
+"share_link_revoked_announcement" = "Unieważniono link";
+"share_link_expires_format" = "Wygasa %@.";
+"share_link_no_expiry" = "Ten link nie wygasa.";
+"share_link_error_already_shared" = "Ta książka ma już link do udostępniania, który nie został utworzony na tym urządzeniu. Zarządzaj nim w interfejsie webowym Audiobookshelf.";
+"share_link_error_not_permitted" = "Twoje konto Audiobookshelf nie może tworzyć linków do udostępniania. Serwer pozwala udostępniać tylko kontom administratorów.";
+"share_link_no_match_format" = "Nie znaleziono „%@” na twoim serwerze Audiobookshelf. Linki można tworzyć tylko dla książek, które są na serwerze.";
+"share_link_no_connection_message" = "Nie połączono z żadnym serwerem Audiobookshelf.";
+"shared_import_expired_alert" = "Ten link wygasł lub został unieważniony.";
+"shared_import_failed_alert" = "Nie udało się wczytać udostępnionej książki: %@";
+"shared_import_empty_alert" = "To udostępnienie nie zawiera dźwięku do pobrania.";
+"shared_import_already_in_library" = "Już jest w twojej bibliotece. Otwieranie.";
+"shared_import_started_announcement" = "Pobieranie „%@”.";

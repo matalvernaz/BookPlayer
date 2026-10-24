@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "نوع الملف غير مدعوم";
 "transfer_web_done_hint" = "عند الانتهاء، أكّد في BookPlayer لاستيراد الملفات.";
 "transfer_web_load_error" = "تعذّر الوصول إلى BookPlayer. تحقق من أن شاشة النقل فيه لا تزال مفتوحة.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "رابط المشاركة";
+"share_link_expiry_title" = "انتهاء صلاحية الرابط";
+"share_link_expiry_week" = "بعد أسبوع";
+"share_link_expiry_month" = "بعد شهر";
+"share_link_expiry_three_months" = "بعد 3 أشهر";
+"share_link_expiry_never" = "أبدًا";
+"share_link_create_button" = "إنشاء الرابط";
+"share_link_creating_message" = "جارٍ إنشاء الرابط…";
+"share_link_revoking_message" = "جارٍ إلغاء الرابط…";
+"share_link_resolving_message" = "جارٍ البحث عن هذا الكتاب على خادمك…";
+"share_link_setup_footer" = "ينشئ رابطًا عامًا على خادم Audiobookshelf الخاص بك. يمكن لأي شخص لديه الرابط الاستماع حتى تنتهي صلاحيته، دون الحاجة إلى حساب. يُفتح الرابط في BookPlayer إذا كان التطبيق مثبتًا، وإلا فيُشغَّل الكتاب في المتصفح.";
+"share_link_match_footer_format" = "تمت مطابقته على خادمك باسم «%@».";
+"share_link_url_accessibility_label" = "عنوان الرابط";
+"share_link_share_button" = "مشاركة…";
+"share_link_copy_button" = "نسخ الرابط";
+"share_link_copied_announcement" = "تم نسخ الرابط";
+"share_link_revoke_button" = "إلغاء الرابط";
+"share_link_revoke_footer" = "عند إلغاء الرابط، يتوقف عن العمل فورًا، حتى لمن أرسلته إليهم.";
+"share_link_revoked_announcement" = "تم إلغاء الرابط";
+"share_link_expires_format" = "تنتهي صلاحيته في %@.";
+"share_link_no_expiry" = "لا تنتهي صلاحية هذا الرابط.";
+"share_link_error_already_shared" = "لهذا الكتاب رابط مشاركة لم يُنشأ على هذا الجهاز. يمكنك إدارته من واجهة الويب في Audiobookshelf.";
+"share_link_error_not_permitted" = "لا يمكن لحسابك في Audiobookshelf إنشاء روابط مشاركة. يسمح الخادم بالمشاركة لحسابات المسؤولين فقط.";
+"share_link_no_match_format" = "تعذّر العثور على «%@» على خادم Audiobookshelf الخاص بك. لا يمكن إنشاء روابط المشاركة إلا للكتب الموجودة على الخادم.";
+"share_link_no_connection_message" = "لا يوجد خادم Audiobookshelf متصل.";
+"shared_import_expired_alert" = "انتهت صلاحية رابط المشاركة هذا أو تم إلغاؤه.";
+"shared_import_failed_alert" = "تعذّر تحميل الكتاب المُشارَك: %@";
+"shared_import_empty_alert" = "لا تحتوي هذه المشاركة على صوت للتنزيل.";
+"shared_import_already_in_library" = "موجود بالفعل في مكتبتك. جارٍ فتحه.";
+"shared_import_started_announcement" = "جارٍ تنزيل «%@».";

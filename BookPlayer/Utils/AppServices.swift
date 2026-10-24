@@ -40,6 +40,9 @@ final class AppServices: BPLogger {
   let uploadContinuation = UploadContinuationController()
   /// Feeds the playback suggestions the system shows while nothing plays
   let mediaSuggestions = MediaSuggestionsController()
+  /// Which library items were downloaded from a media server (fork): the one store the app uses.
+  /// LibraryService keeps it in step with moves and deletes, background launches included
+  let mediaServerSourceStore = MediaServerSourceStore.shared
   /// The Wi-Fi-only transfer setting needs to know the current network
   private let networkMonitor = NetworkMonitor()
 
@@ -310,6 +313,7 @@ final class AppServices: BPLogger {
   ) -> LibraryService {
     let service = LibraryService()
     service.setup(dataManager: dataManager, audioMetadataService: audioMetadataService)
+    service.mediaServerSourceStore = mediaServerSourceStore
     return service
   }
 

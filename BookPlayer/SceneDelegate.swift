@@ -27,8 +27,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     if let activity = connectionOptions.userActivities.first {
       if activity.activityType == Constants.UserActivityPlayback {
         playLastBook()
-      } else if activity.interaction?.intent is INPlayMediaIntent {
-        /// Launched with a media intent: `scene(_:continue:)` only gets the ones that arrive later
+      } else if activity.interaction?.intent is INPlayMediaIntent
+        || activity.activityType == NSUserActivityTypeBrowsingWeb
+      {
+        /// Launched with a media intent or a universal link: `scene(_:continue:)` only gets the
+        /// ones that arrive later
         ActionParserService.process(activity)
       }
     }

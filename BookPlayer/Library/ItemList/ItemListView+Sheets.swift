@@ -25,6 +25,10 @@ extension ItemListView {
       foldersSelectionSheet()
     case .libraryOptions:
       libraryOptionsSheet()
+    case .shareLink(let item, let sourceInfo):
+      NavigationStack {
+        ShareLinkSheetView(item: item, sourceInfo: sourceInfo)
+      }
     }
   }
 

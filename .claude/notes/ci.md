@@ -153,9 +153,9 @@ the same scheme.
 External-tester builds need Apple's beta review (~24h) before testers
 can install. Rapid commits don't bypass this. The concurrency setting
 on the workflow (`cancel-in-progress: true`, group
-`testflight-deploy`) ensures rapid commits cancel in-flight builds so
-only the latest commit ends up uploaded — but testers still wait on
-Apple's review queue.
+`testflight-deploy-<ref>`, one per branch) means rapid commits to
+`test/all-changes` cancel in-flight builds so only the latest one is
+uploaded, but testers still wait on Apple's review queue.
 
 ## Updating an already-shipped build's notes
 

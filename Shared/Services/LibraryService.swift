@@ -224,6 +224,9 @@ public protocol LibraryServiceProtocol: AnyObject {
 public final class LibraryService: LibraryServiceProtocol, BPLogger, @unchecked Sendable {
   var dataManager: DataManager!
   var audioMetadataService: AudioMetadataServiceProtocol!
+  /// Which items came from a media server, keyed by path: kept in step here, where every move,
+  /// folder rename and delete passes. Set by the app; nil on the watch and in extensions.
+  public var mediaServerSourceStore: MediaServerSourceStore?
   /// Sticky-sort preference resolver. Injected after construction to break the
   /// circular dependency with `PreferencesSyncService`.
   public weak var preferencesService: SortPreferencesResolving?
@@ -1240,6 +1243,10 @@ extension LibraryService {
         library.addToItems(libraryItem)
       }
 
+      /// Per item, now that its file has moved: a later item's failure throws out of the loop,
+      /// and this one has moved all the same. A folder's contents follow by path prefix
+      mediaServerSourceStore?.moveSources(from: itemPath.relativePath, to: destinationPath)
+
       moved.append(itemPath)
     }
 
@@ -1398,6 +1405,9 @@ extension LibraryService {
 
       /// Clean up artwork cache
       ArtworkService.removeCache(for: item.relativePath)
+      /// And its media-server provenance, per item as each delete succeeds (a shallow delete has
+      /// already moved the children, with theirs, out of the folder)
+      mediaServerSourceStore?.removeSources(under: item.relativePath)
     }
 
     /// Prune deleted items (and their descendants) from the Last Played widget snapshot.
@@ -2619,6 +2629,9 @@ extension LibraryService {
     /// The old folder path and all its descendants are now stale in the Last Played
     /// widget snapshot; prune them via the path-prefix rule using the old path.
     SharedWidgetStore.removeItems(matching: [relativePath])
+    /// Media-server provenance follows the same way: the folder's entry and its contents', by
+    /// the old path's prefix
+    mediaServerSourceStore?.moveSources(from: relativePath, to: newRelativePath)
 
     return newRelativePath
   }

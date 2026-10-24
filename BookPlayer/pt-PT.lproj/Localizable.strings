@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Tipo de ficheiro não suportado";
 "transfer_web_done_hint" = "Quando terminar, confirme no BookPlayer para importar os ficheiros.";
 "transfer_web_load_error" = "Não é possível contactar o BookPlayer. Verifique se o ecrã de transferência ainda está aberto.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Ligação de partilha";
+"share_link_expiry_title" = "A ligação expira";
+"share_link_expiry_week" = "Daqui a 1 semana";
+"share_link_expiry_month" = "Daqui a 1 mês";
+"share_link_expiry_three_months" = "Daqui a 3 meses";
+"share_link_expiry_never" = "Nunca";
+"share_link_create_button" = "Criar ligação";
+"share_link_creating_message" = "A criar a ligação…";
+"share_link_revoking_message" = "A revogar a ligação…";
+"share_link_resolving_message" = "A procurar este livro no seu servidor…";
+"share_link_setup_footer" = "Cria uma ligação pública no seu servidor Audiobookshelf. Quem tiver a ligação pode ouvir até ela expirar, sem precisar de conta. Abre-se no BookPlayer se a app estiver instalada; caso contrário, é reproduzida no navegador.";
+"share_link_match_footer_format" = "Encontrado no seu servidor como “%@”.";
+"share_link_url_accessibility_label" = "Endereço da ligação";
+"share_link_share_button" = "Partilhar…";
+"share_link_copy_button" = "Copiar ligação";
+"share_link_copied_announcement" = "Ligação copiada";
+"share_link_revoke_button" = "Revogar ligação";
+"share_link_revoke_footer" = "Ao revogá-la, a ligação deixa de funcionar de imediato, incluindo para quem já a recebeu.";
+"share_link_revoked_announcement" = "Ligação revogada";
+"share_link_expires_format" = "Expira a %@.";
+"share_link_no_expiry" = "Esta ligação não expira.";
+"share_link_error_already_shared" = "Este livro já tem uma ligação de partilha que não foi criada neste dispositivo. Faça a gestão na interface web do Audiobookshelf.";
+"share_link_error_not_permitted" = "A sua conta do Audiobookshelf não pode criar ligações de partilha. No servidor, só as contas de administrador podem partilhar.";
+"share_link_no_match_format" = "Não foi possível encontrar “%@” no seu servidor Audiobookshelf. Só é possível criar ligações para livros que estejam no servidor.";
+"share_link_no_connection_message" = "Nenhum servidor Audiobookshelf ligado.";
+"shared_import_expired_alert" = "Esta ligação de partilha expirou ou foi revogada.";
+"shared_import_failed_alert" = "Não foi possível carregar o livro partilhado: %@";
+"shared_import_empty_alert" = "Esta partilha não tem áudio para transferir.";
+"shared_import_already_in_library" = "Já está na sua biblioteca. A abrir.";
+"shared_import_started_announcement" = "A transferir “%@”.";

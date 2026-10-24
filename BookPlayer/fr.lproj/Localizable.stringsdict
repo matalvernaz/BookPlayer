@@ -82,5 +82,21 @@
         <string>Téléchargement de %d fichiers</string>
       </dict>
     </dict>
+    <key>integration_folder_book_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d livre</string>
+        <key>other</key>
+        <string>%d livres</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

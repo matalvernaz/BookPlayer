@@ -32,6 +32,12 @@ class MainCoordinator: NSObject {
   let syncQueueService: SyncQueueService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
+  /// Which library items came from a media server (fork); owned by `AppServices`
+  let mediaServerSourceStore: MediaServerSourceStore
+  /// Lands a download's provenance once its file is saved
+  private let mediaServerSourceTracker: MediaServerSourceTracker
+  /// Binds bind-flagged folder downloads into books
+  private let boundBookCompleter: MediaServerBoundBookCompleter
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -47,7 +53,12 @@ class MainCoordinator: NSObject {
   ) {
     self.navigationController = navigationController
     self.libraryService = coreServices.libraryService
-    self.importManager = ImportManager(libraryService: coreServices.libraryService)
+    let sourceStore = AppServices.shared.mediaServerSourceStore
+    self.mediaServerSourceStore = sourceStore
+    self.importManager = ImportManager(
+      libraryService: coreServices.libraryService,
+      mediaServerSourceStore: sourceStore
+    )
     self.accountService = coreServices.accountService
     self.syncService = coreServices.syncService
     self.playbackService = coreServices.playbackService
@@ -65,11 +76,23 @@ class MainCoordinator: NSObject {
     self.watchConnectivityService = coreServices.watchService
     let jellyfinService = JellyfinConnectionService()
     jellyfinService.setup()
+    jellyfinService.mediaServerSourceStore = sourceStore
     self.jellyfinConnectionService = jellyfinService
 
     let audiobookshelfService = AudiobookShelfConnectionService()
     audiobookshelfService.setup()
+    audiobookshelfService.mediaServerSourceStore = sourceStore
     self.audiobookshelfConnectionService = audiobookshelfService
+
+    self.mediaServerSourceTracker = MediaServerSourceTracker(
+      store: sourceStore,
+      downloadService: singleFileDownloadService
+    )
+    self.boundBookCompleter = MediaServerBoundBookCompleter(
+      sourceStore: sourceStore,
+      libraryService: coreServices.libraryService,
+      downloadService: singleFileDownloadService
+    )
 
     self.hardcoverService = coreServices.hardcoverService
     self.preferencesService = coreServices.preferencesService
@@ -106,6 +129,7 @@ class MainCoordinator: NSObject {
       .environment(\.syncService, syncService)
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
+      .environment(\.mediaServerSourceStore, mediaServerSourceStore)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)
       .environment(\.playerLoaderService, playerLoaderService)

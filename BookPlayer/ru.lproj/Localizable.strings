@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Тип файла не поддерживается";
 "transfer_web_done_hint" = "Когда закончите, подтвердите в BookPlayer, чтобы импортировать файлы.";
 "transfer_web_load_error" = "Нет связи с BookPlayer. Проверьте, что экран передачи в нём всё ещё открыт.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Поделиться ссылкой";
+"share_link_expiry_title" = "Срок действия ссылки";
+"share_link_expiry_week" = "1 неделя";
+"share_link_expiry_month" = "1 месяц";
+"share_link_expiry_three_months" = "3 месяца";
+"share_link_expiry_never" = "Бессрочно";
+"share_link_create_button" = "Создать ссылку";
+"share_link_creating_message" = "Создание ссылки…";
+"share_link_revoking_message" = "Отзыв ссылки…";
+"share_link_resolving_message" = "Поиск книги на вашем сервере…";
+"share_link_setup_footer" = "Создаёт публичную ссылку на вашем сервере Audiobookshelf. Любой, у кого есть ссылка, может слушать до окончания её срока, без учётной записи. Если установлен BookPlayer, ссылка откроется в приложении, иначе книга воспроизведётся в браузере.";
+"share_link_match_footer_format" = "Найдено на вашем сервере как «%@».";
+"share_link_url_accessibility_label" = "Адрес ссылки";
+"share_link_share_button" = "Поделиться…";
+"share_link_copy_button" = "Скопировать ссылку";
+"share_link_copied_announcement" = "Ссылка скопирована";
+"share_link_revoke_button" = "Отозвать ссылку";
+"share_link_revoke_footer" = "После отзыва ссылка сразу перестаёт работать, в том числе для тех, кому вы её уже отправили.";
+"share_link_revoked_announcement" = "Ссылка отозвана";
+"share_link_expires_format" = "Действует до %@.";
+"share_link_no_expiry" = "Эта ссылка бессрочная.";
+"share_link_error_already_shared" = "У этой книги уже есть ссылка для доступа, созданная не на этом устройстве. Управляйте ею в веб-интерфейсе Audiobookshelf.";
+"share_link_error_not_permitted" = "Ваша учётная запись Audiobookshelf не может создавать ссылки для доступа. Сервер разрешает делиться только администраторам.";
+"share_link_no_match_format" = "Книга «%@» не найдена на вашем сервере Audiobookshelf. Ссылки можно создавать только для книг, которые есть на сервере.";
+"share_link_no_connection_message" = "Сервер Audiobookshelf не подключён.";
+"shared_import_expired_alert" = "Срок действия ссылки истёк, или она была отозвана.";
+"shared_import_failed_alert" = "Не удалось загрузить книгу по ссылке: %@";
+"shared_import_empty_alert" = "По этой ссылке нет аудио для скачивания.";
+"shared_import_already_in_library" = "Уже есть в вашей библиотеке. Открывается.";
+"shared_import_started_announcement" = "Скачивается «%@».";

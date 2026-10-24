@@ -23,6 +23,8 @@ public struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable
     case collection = "collection"
     case author = "author"
     case narrator = "narrator"
+    /// A folder of the library's on-disk tree (fork's Folders tab), built from item paths
+    case folder = "folder"
   }
 
   public let id: String
@@ -57,6 +59,10 @@ public struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable
   public let browseCategory: AudiobookShelfBrowseCategory?
   public let filter: AudiobookShelfItemFilter?
 
+  /// Path relative to the library folder's root. Books carry the server's `relPath`; `.folder`
+  /// rows carry the folder's own path, which is what drilling into them browses.
+  public let relPath: String?
+
   public init(
     id: String,
     title: String,
@@ -76,7 +82,8 @@ public struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable
     chapters: [ChapterMetadata] = [],
     streamFiles: [ExternalStreamFile] = [],
     browseCategory: AudiobookShelfBrowseCategory? = nil,
-    filter: AudiobookShelfItemFilter? = nil
+    filter: AudiobookShelfItemFilter? = nil,
+    relPath: String? = nil
   ) {
     self.id = id
     self.title = title
@@ -97,6 +104,7 @@ public struct AudiobookShelfLibraryItem: IntegrationLibraryItemProtocol, Codable
     self.streamFiles = streamFiles
     self.browseCategory = browseCategory
     self.filter = filter
+    self.relPath = relPath
   }
 }
 
@@ -128,6 +136,7 @@ extension AudiobookShelfLibraryItem {
     case .collection: "square.stack.3d.up"
     case .author: "person"
     case .narrator: "mic"
+    case .folder: "folder"
     }
   }
 
@@ -189,6 +198,17 @@ extension AudiobookShelfLibraryItem {
     )
   }
 
+  public init(folderName: String, path: String, libraryId: String, bookCount: Int) {
+    self.init(
+      id: path,
+      title: folderName,
+      kind: .folder,
+      libraryId: libraryId,
+      subtitle: String.localizedStringWithFormat("integration_folder_book_count".localized, bookCount),
+      relPath: path
+    )
+  }
+
   public init(collection: AudiobookShelfCollection) {
     self.init(
       id: collection.id,
@@ -220,7 +240,8 @@ extension AudiobookShelfLibraryItem {
       updatedAt: apiItem.updatedAt,
       coverPath: apiItem.media.coverPath,
       chapters: Self.chapterMetadata(from: apiItem.media.chapters, duration: apiItem.media.duration),
-      streamFiles: AudiobookShelfAPIItem.Media.Track.streamFiles(itemId: apiItem.id, tracks: apiItem.media.tracks)
+      streamFiles: AudiobookShelfAPIItem.Media.Track.streamFiles(itemId: apiItem.id, tracks: apiItem.media.tracks),
+      relPath: apiItem.relPath
     )
   }
 

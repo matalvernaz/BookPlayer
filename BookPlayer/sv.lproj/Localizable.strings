@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Filtypen stöds inte";
 "transfer_web_done_hint" = "Bekräfta i BookPlayer när du är klar för att importera filerna.";
 "transfer_web_load_error" = "Kan inte nå BookPlayer. Kontrollera att dess överföringsskärm fortfarande är öppen.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Delningslänk";
+"share_link_expiry_title" = "Länken går ut";
+"share_link_expiry_week" = "Om 1 vecka";
+"share_link_expiry_month" = "Om 1 månad";
+"share_link_expiry_three_months" = "Om 3 månader";
+"share_link_expiry_never" = "Aldrig";
+"share_link_create_button" = "Skapa länk";
+"share_link_creating_message" = "Skapar länk…";
+"share_link_revoking_message" = "Återkallar länk…";
+"share_link_resolving_message" = "Söker efter boken på din server…";
+"share_link_setup_footer" = "Skapar en offentlig länk på din Audiobookshelf-server. Alla med länken kan lyssna tills den går ut, utan konto. Den öppnas i BookPlayer om appen finns, annars spelas boken upp i webbläsaren.";
+"share_link_match_footer_format" = "Hittades på din server som ”%@”.";
+"share_link_url_accessibility_label" = "Länkadress";
+"share_link_share_button" = "Dela…";
+"share_link_copy_button" = "Kopiera länk";
+"share_link_copied_announcement" = "Länken kopierades";
+"share_link_revoke_button" = "Återkalla länk";
+"share_link_revoke_footer" = "När länken återkallas slutar den fungera direkt, även för dem du redan har skickat den till.";
+"share_link_revoked_announcement" = "Länken återkallades";
+"share_link_expires_format" = "Går ut %@.";
+"share_link_no_expiry" = "Länken går inte ut.";
+"share_link_error_already_shared" = "Boken har redan en delningslänk som inte skapades på den här enheten. Hantera den i Audiobookshelfs webbgränssnitt.";
+"share_link_error_not_permitted" = "Ditt Audiobookshelf-konto kan inte skapa delningslänkar. Servern låter bara administratörskonton dela.";
+"share_link_no_match_format" = "Hittade inte ”%@” på din Audiobookshelf-server. Delningslänkar kan bara skapas för böcker som finns på servern.";
+"share_link_no_connection_message" = "Ingen Audiobookshelf-server är ansluten.";
+"shared_import_expired_alert" = "Delningslänken har gått ut eller återkallats.";
+"shared_import_failed_alert" = "Kunde inte läsa in den delade boken: %@";
+"shared_import_empty_alert" = "Delningen innehåller inget ljud att ladda ner.";
+"shared_import_already_in_library" = "Finns redan i ditt bibliotek. Öppnar den.";
+"shared_import_started_announcement" = "Laddar ner ”%@”.";

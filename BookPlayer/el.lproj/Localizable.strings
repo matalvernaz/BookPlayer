@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Μη υποστηριζόμενος τύπος αρχείου";
 "transfer_web_done_hint" = "Όταν τελειώσετε, επιβεβαιώστε στο BookPlayer για να εισαγάγετε τα αρχεία.";
 "transfer_web_load_error" = "Δεν είναι δυνατή η σύνδεση με το BookPlayer. Ελέγξτε ότι η οθόνη μεταφοράς του είναι ακόμα ανοιχτή.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Σύνδεσμος κοινής χρήσης";
+"share_link_expiry_title" = "Λήξη συνδέσμου";
+"share_link_expiry_week" = "Σε 1 εβδομάδα";
+"share_link_expiry_month" = "Σε 1 μήνα";
+"share_link_expiry_three_months" = "Σε 3 μήνες";
+"share_link_expiry_never" = "Ποτέ";
+"share_link_create_button" = "Δημιουργία συνδέσμου";
+"share_link_creating_message" = "Δημιουργία συνδέσμου…";
+"share_link_revoking_message" = "Ανάκληση συνδέσμου…";
+"share_link_resolving_message" = "Αναζήτηση του βιβλίου στον διακομιστή σας…";
+"share_link_setup_footer" = "Δημιουργεί έναν δημόσιο σύνδεσμο στον διακομιστή Audiobookshelf σας. Όποιος έχει τον σύνδεσμο μπορεί να ακούει μέχρι να λήξει, χωρίς λογαριασμό. Ανοίγει στο BookPlayer, αν η εφαρμογή είναι εγκατεστημένη, αλλιώς το βιβλίο αναπαράγεται στο πρόγραμμα περιήγησης.";
+"share_link_match_footer_format" = "Βρέθηκε στον διακομιστή σας ως «%@».";
+"share_link_url_accessibility_label" = "Διεύθυνση συνδέσμου";
+"share_link_share_button" = "Κοινή χρήση…";
+"share_link_copy_button" = "Αντιγραφή συνδέσμου";
+"share_link_copied_announcement" = "Ο σύνδεσμος αντιγράφηκε";
+"share_link_revoke_button" = "Ανάκληση συνδέσμου";
+"share_link_revoke_footer" = "Μετά την ανάκληση, ο σύνδεσμος σταματά αμέσως να λειτουργεί, ακόμη και για όσους τον έχετε ήδη στείλει.";
+"share_link_revoked_announcement" = "Ο σύνδεσμος ανακλήθηκε";
+"share_link_expires_format" = "Λήγει στις %@.";
+"share_link_no_expiry" = "Αυτός ο σύνδεσμος δεν λήγει.";
+"share_link_error_already_shared" = "Αυτό το βιβλίο έχει ήδη σύνδεσμο κοινής χρήσης που δεν δημιουργήθηκε σε αυτήν τη συσκευή. Διαχειριστείτε τον από τη διαδικτυακή διεπαφή του Audiobookshelf.";
+"share_link_error_not_permitted" = "Ο λογαριασμός σας στο Audiobookshelf δεν μπορεί να δημιουργήσει συνδέσμους κοινής χρήσης. Ο διακομιστής επιτρέπει την κοινή χρήση μόνο σε λογαριασμούς διαχειριστή.";
+"share_link_no_match_format" = "Το «%@» δεν βρέθηκε στον διακομιστή Audiobookshelf σας. Σύνδεσμοι κοινής χρήσης δημιουργούνται μόνο για βιβλία που υπάρχουν στον διακομιστή.";
+"share_link_no_connection_message" = "Δεν υπάρχει συνδεδεμένος διακομιστής Audiobookshelf.";
+"shared_import_expired_alert" = "Αυτός ο σύνδεσμος έχει λήξει ή έχει ανακληθεί.";
+"shared_import_failed_alert" = "Δεν ήταν δυνατή η φόρτωση του κοινόχρηστου βιβλίου: %@";
+"shared_import_empty_alert" = "Αυτή η κοινή χρήση δεν περιέχει ήχο για λήψη.";
+"shared_import_already_in_library" = "Υπάρχει ήδη στη βιβλιοθήκη σας. Άνοιγμα.";
+"shared_import_started_announcement" = "Λήψη του «%@».";

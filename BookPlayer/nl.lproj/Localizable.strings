@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Bestandstype niet ondersteund";
 "transfer_web_done_hint" = "Bevestig in BookPlayer als je klaar bent om de bestanden te importeren.";
 "transfer_web_load_error" = "Kan BookPlayer niet bereiken. Controleer of het overzetscherm nog open is.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Deellink";
+"share_link_expiry_title" = "Link verloopt";
+"share_link_expiry_week" = "Over 1 week";
+"share_link_expiry_month" = "Over 1 maand";
+"share_link_expiry_three_months" = "Over 3 maanden";
+"share_link_expiry_never" = "Nooit";
+"share_link_create_button" = "Link maken";
+"share_link_creating_message" = "Link maken…";
+"share_link_revoking_message" = "Link intrekken…";
+"share_link_resolving_message" = "Dit boek zoeken op je server…";
+"share_link_setup_footer" = "Maakt een openbare link op je Audiobookshelf-server. Iedereen met de link kan luisteren tot hij verloopt, zonder account. Met BookPlayer opent hij in de app, anders wordt hij in de browser afgespeeld.";
+"share_link_match_footer_format" = "Op je server gevonden als “%@”.";
+"share_link_url_accessibility_label" = "Linkadres";
+"share_link_share_button" = "Deel…";
+"share_link_copy_button" = "Kopieer link";
+"share_link_copied_announcement" = "Link gekopieerd";
+"share_link_revoke_button" = "Link intrekken";
+"share_link_revoke_footer" = "Na het intrekken werkt de link meteen niet meer, ook niet voor wie hem al heeft gekregen.";
+"share_link_revoked_announcement" = "Link ingetrokken";
+"share_link_expires_format" = "Verloopt op %@.";
+"share_link_no_expiry" = "Deze link verloopt niet.";
+"share_link_error_already_shared" = "Dit boek heeft al een deellink die niet op dit apparaat is gemaakt. Beheer hem in de webinterface van Audiobookshelf.";
+"share_link_error_not_permitted" = "Je Audiobookshelf-account kan geen deellinks maken. Op de server mogen alleen beheerdersaccounts delen.";
+"share_link_no_match_format" = "“%@” is niet gevonden op je Audiobookshelf-server. Deellinks kunnen alleen worden gemaakt voor boeken die op de server staan.";
+"share_link_no_connection_message" = "Er is geen Audiobookshelf-server verbonden.";
+"shared_import_expired_alert" = "Deze deellink is verlopen of ingetrokken.";
+"shared_import_failed_alert" = "Kan het gedeelde boek niet laden: %@";
+"shared_import_empty_alert" = "Deze deellink bevat geen audio om te downloaden.";
+"shared_import_already_in_library" = "Staat al in je bibliotheek. Wordt geopend.";
+"shared_import_started_announcement" = "“%@” wordt gedownload.";

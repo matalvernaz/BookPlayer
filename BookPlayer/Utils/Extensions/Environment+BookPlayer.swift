@@ -20,6 +20,10 @@ extension EnvironmentValues {
   @Entry var uploadContinuation: UploadContinuationController = .init()
   @Entry var jellyfinService: JellyfinConnectionService = .init()
   @Entry var audiobookshelfService: AudiobookShelfConnectionService = .init()
+  /// Which library items came from a media server (fork). Unlike the placeholders here, the default
+  /// is the real store: a second instance would cache what it read and miss the other's writes.
+  /// `MainCoordinator` injects the same one
+  @Entry var mediaServerSourceStore: MediaServerSourceStore = .shared
   /// Closes the whole media-server flow: Media Servers and the server browser on top of it. Set
   /// by whoever presents Media Servers (the library's sheet, an item's details), so the browser's
   /// Close, and the close after a confirmed import, end the flow they belong to.

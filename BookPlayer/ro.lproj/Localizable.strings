@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Tip de fișier neacceptat";
 "transfer_web_done_hint" = "Când ați terminat, confirmați în BookPlayer pentru a importa fișierele.";
 "transfer_web_load_error" = "BookPlayer nu poate fi accesat. Verificați dacă ecranul de transfer este încă deschis.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Link de partajare";
+"share_link_expiry_title" = "Linkul expiră";
+"share_link_expiry_week" = "Peste 1 săptămână";
+"share_link_expiry_month" = "Peste 1 lună";
+"share_link_expiry_three_months" = "Peste 3 luni";
+"share_link_expiry_never" = "Niciodată";
+"share_link_create_button" = "Creați linkul";
+"share_link_creating_message" = "Se creează linkul…";
+"share_link_revoking_message" = "Se revocă linkul…";
+"share_link_resolving_message" = "Se caută cartea pe server…";
+"share_link_setup_footer" = "Creează un link public pe serverul dvs. Audiobookshelf. Oricine are linkul poate asculta până când expiră, fără cont. Se deschide în BookPlayer dacă aplicația este instalată; altfel, cartea se redă în browser.";
+"share_link_match_footer_format" = "Găsită pe serverul dvs. ca „%@”.";
+"share_link_url_accessibility_label" = "Adresa linkului";
+"share_link_share_button" = "Partajați…";
+"share_link_copy_button" = "Copiați linkul";
+"share_link_copied_announcement" = "Link copiat";
+"share_link_revoke_button" = "Revocați linkul";
+"share_link_revoke_footer" = "După revocare, linkul nu mai funcționează imediat, inclusiv pentru cei cărora l-ați trimis deja.";
+"share_link_revoked_announcement" = "Link revocat";
+"share_link_expires_format" = "Expiră pe %@.";
+"share_link_no_expiry" = "Acest link nu expiră.";
+"share_link_error_already_shared" = "Această carte are deja un link de partajare care nu a fost creat pe acest dispozitiv. Gestionați-l din interfața web Audiobookshelf.";
+"share_link_error_not_permitted" = "Contul dvs. Audiobookshelf nu poate crea linkuri de partajare. Serverul permite partajarea doar conturilor de administrator.";
+"share_link_no_match_format" = "„%@” nu a fost găsită pe serverul dvs. Audiobookshelf. Linkurile de partajare se pot crea doar pentru cărțile aflate pe server.";
+"share_link_no_connection_message" = "Niciun server Audiobookshelf conectat.";
+"shared_import_expired_alert" = "Acest link de partajare a expirat sau a fost revocat.";
+"shared_import_failed_alert" = "Cartea partajată nu a putut fi încărcată: %@";
+"shared_import_empty_alert" = "Această partajare nu conține audio de descărcat.";
+"shared_import_already_in_library" = "Este deja în biblioteca dvs. Se deschide.";
+"shared_import_started_announcement" = "Se descarcă „%@”.";

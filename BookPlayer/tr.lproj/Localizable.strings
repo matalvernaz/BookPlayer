@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Dosya türü desteklenmiyor";
 "transfer_web_done_hint" = "İşiniz bitince dosyaları içe aktarmak için BookPlayer'da onaylayın.";
 "transfer_web_load_error" = "BookPlayer'a ulaşılamıyor. Aktarım ekranının hâlâ açık olduğundan emin olun.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Paylaşım bağlantısı";
+"share_link_expiry_title" = "Geçerlilik süresi";
+"share_link_expiry_week" = "1 hafta";
+"share_link_expiry_month" = "1 ay";
+"share_link_expiry_three_months" = "3 ay";
+"share_link_expiry_never" = "Süresiz";
+"share_link_create_button" = "Bağlantı oluştur";
+"share_link_creating_message" = "Bağlantı oluşturuluyor…";
+"share_link_revoking_message" = "Bağlantı iptal ediliyor…";
+"share_link_resolving_message" = "Kitap sunucunuzda aranıyor…";
+"share_link_setup_footer" = "Audiobookshelf sunucunuzda herkese açık bir bağlantı oluşturur. Bağlantıya sahip herkes, süresi dolana kadar hesap olmadan dinleyebilir. BookPlayer yüklüyse uygulamada açılır, değilse tarayıcıda çalınır.";
+"share_link_match_footer_format" = "Sunucunuzda “%@” olarak bulundu.";
+"share_link_url_accessibility_label" = "Bağlantı adresi";
+"share_link_share_button" = "Paylaş…";
+"share_link_copy_button" = "Bağlantıyı kopyala";
+"share_link_copied_announcement" = "Bağlantı kopyalandı";
+"share_link_revoke_button" = "Bağlantıyı iptal et";
+"share_link_revoke_footer" = "İptal edilen bağlantı, gönderdiğiniz herkes için hemen çalışmaz hale gelir.";
+"share_link_revoked_announcement" = "Bağlantı iptal edildi";
+"share_link_expires_format" = "Son geçerlilik: %@.";
+"share_link_no_expiry" = "Bu bağlantının süresi dolmaz.";
+"share_link_error_already_shared" = "Bu kitabın bu cihazda oluşturulmamış bir paylaşım bağlantısı zaten var. Bunu Audiobookshelf web arayüzünden yönetin.";
+"share_link_error_not_permitted" = "Audiobookshelf hesabınız paylaşım bağlantısı oluşturamıyor. Sunucu yalnızca yönetici hesaplarının paylaşmasına izin veriyor.";
+"share_link_no_match_format" = "“%@” Audiobookshelf sunucunuzda bulunamadı. Paylaşım bağlantıları yalnızca sunucuda bulunan kitaplar için oluşturulabilir.";
+"share_link_no_connection_message" = "Bağlı bir Audiobookshelf sunucusu yok.";
+"shared_import_expired_alert" = "Bu paylaşım bağlantısının süresi dolmuş veya bağlantı iptal edilmiş.";
+"shared_import_failed_alert" = "Paylaşılan kitap yüklenemedi: %@";
+"shared_import_empty_alert" = "Bu paylaşımda indirilecek ses yok.";
+"shared_import_already_in_library" = "Zaten kitaplığınızda. Açılıyor.";
+"shared_import_started_announcement" = "“%@” indiriliyor.";

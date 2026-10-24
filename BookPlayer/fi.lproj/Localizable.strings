@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Tiedostotyyppiä ei tueta";
 "transfer_web_done_hint" = "Kun olet valmis, vahvista BookPlayerissa tuodaksesi tiedostot.";
 "transfer_web_load_error" = "BookPlayeriin ei saada yhteyttä. Tarkista, että sen siirtonäyttö on yhä auki.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Jakolinkki";
+"share_link_expiry_title" = "Linkki vanhenee";
+"share_link_expiry_week" = "1 viikon kuluttua";
+"share_link_expiry_month" = "1 kuukauden kuluttua";
+"share_link_expiry_three_months" = "3 kuukauden kuluttua";
+"share_link_expiry_never" = "Ei koskaan";
+"share_link_create_button" = "Luo linkki";
+"share_link_creating_message" = "Luodaan linkkiä…";
+"share_link_revoking_message" = "Perutaan linkkiä…";
+"share_link_resolving_message" = "Etsitään kirjaa palvelimeltasi…";
+"share_link_setup_footer" = "Luo julkisen linkin Audiobookshelf-palvelimellesi. Kuka tahansa, jolla on linkki, voi kuunnella kirjaa linkin vanhenemiseen asti ilman tiliä. Linkki avautuu BookPlayerissa, jos sovellus on asennettu, muuten kirja toistetaan selaimessa.";
+"share_link_match_footer_format" = "Löytyi palvelimeltasi nimellä ”%@”.";
+"share_link_url_accessibility_label" = "Linkin osoite";
+"share_link_share_button" = "Jaa…";
+"share_link_copy_button" = "Kopioi linkki";
+"share_link_copied_announcement" = "Linkki kopioitu";
+"share_link_revoke_button" = "Peru linkki";
+"share_link_revoke_footer" = "Perumisen jälkeen linkki lakkaa toimimasta heti, myös niille, joille olet jo lähettänyt sen.";
+"share_link_revoked_announcement" = "Linkki peruttu";
+"share_link_expires_format" = "Vanhenee %@.";
+"share_link_no_expiry" = "Tämä linkki ei vanhene.";
+"share_link_error_already_shared" = "Kirjalla on jo jakolinkki, jota ei luotu tällä laitteella. Hallitse sitä Audiobookshelfin verkkokäyttöliittymässä.";
+"share_link_error_not_permitted" = "Audiobookshelf-tililläsi ei voi luoda jakolinkkejä. Palvelin sallii jakamisen vain ylläpitäjätileille.";
+"share_link_no_match_format" = "Kirjaa ”%@” ei löytynyt Audiobookshelf-palvelimeltasi. Jakolinkkejä voi luoda vain palvelimella oleville kirjoille.";
+"share_link_no_connection_message" = "Audiobookshelf-palvelinta ei ole yhdistetty.";
+"shared_import_expired_alert" = "Jakolinkki on vanhentunut tai peruttu.";
+"shared_import_failed_alert" = "Jaettua kirjaa ei voitu ladata: %@";
+"shared_import_empty_alert" = "Jaossa ei ole ladattavaa ääntä.";
+"shared_import_already_in_library" = "On jo kirjastossasi. Avataan.";
+"shared_import_started_announcement" = "Ladataan ”%@”.";

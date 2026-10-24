@@ -102,5 +102,25 @@
         <string>Sťahovanie %d súborov</string>
       </dict>
     </dict>
+    <key>integration_folder_book_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d kniha</string>
+        <key>few</key>
+        <string>%d knihy</string>
+        <key>many</key>
+        <string>%d knihy</string>
+        <key>other</key>
+        <string>%d kníh</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

@@ -10,6 +10,7 @@ import BookPlayerKit
 import Foundation
 import IDZSwiftCommonCrypto
 import Sentry
+import UniformTypeIdentifiers
 import ZipArchive
 
 /// Reference: https://www.avanderlee.com/swift/asynchronous-operations/
@@ -21,6 +22,12 @@ public class ImportOperation: Operation {
   /// A folder the files come from that this import owns, like the Transfer from Computer flow's
   /// holding folder: it never suggests a folder name, and it's removed when the import finishes.
   private let ownedSourceRoot: URL?
+  /// Media-server provenance of downloaded files, brought into the library with them (fork).
+  /// Nil for imports that can't carry any (Transfer from Computer) and in tests that don't need it
+  private let mediaServerSourceStore: MediaServerSourceStore?
+  /// What a downloaded zip's provenance goes to: each extracted audio file or wrapping folder,
+  /// by its URL in the extraction folder, until it lands in the library
+  private var zipExtractedSources = [URL: MediaServerSourceInfo]()
 
   private let lockQueue = DispatchQueue(label: "com.bookplayer.asyncoperation", attributes: .concurrent)
 
@@ -62,10 +69,12 @@ public class ImportOperation: Operation {
 
   init(files: [URL],
        libraryService: LibraryServiceProtocol,
-       ownedSourceRoot: URL? = nil) {
+       ownedSourceRoot: URL? = nil,
+       mediaServerSourceStore: MediaServerSourceStore? = nil) {
     self.files = files
     self.libraryService = libraryService
     self.ownedSourceRoot = ownedSourceRoot
+    self.mediaServerSourceStore = mediaServerSourceStore
   }
 
   public override func start() {
@@ -121,6 +130,12 @@ public class ImportOperation: Operation {
       create: true
     )
 
+    /// A downloaded zip's provenance goes to what's extracted from it: the zip itself is removed
+    /// below and never reaches the library
+    let zipSource = MediaServerSourceStore.documentsRelativePath(of: file).flatMap {
+      mediaServerSourceStore?.takeLandedSource(at: $0)
+    }
+
     SSZipArchive.unzipFile(atPath: file.path, toDestination: tempDirectoryURL.path, progressHandler: nil) { _, success, error in
       try? FileManager.default.removeItem(at: file)
 
@@ -142,7 +157,37 @@ public class ImportOperation: Operation {
         files.append(fileURL)
       }
 
+      if let zipSource {
+        for fileURL in files where Self.carriesZipProvenance(fileURL) {
+          self.zipExtractedSources[fileURL] = zipSource
+        }
+      }
+
       self.processFile(from: remainingFiles + files)
+    }
+  }
+
+  /// Extracted entries that take a zip's provenance: audio files, and folders (a zip that wraps its
+  /// tracks in a folder lands that folder as one item). Covers and other sidecars don't, so they
+  /// leave no entries behind.
+  private static func carriesZipProvenance(_ url: URL) -> Bool {
+    if url.isDirectoryFolder {
+      return true
+    }
+    return UTType(filenameExtension: url.pathExtension)?.conforms(to: .audio) ?? false
+  }
+
+  /// Records a file's provenance under the library path it landed at: a zip's, for its extracted
+  /// contents, or the landed entries of a download in Documents (a folder brings its contents').
+  /// `documentsRelativePath` is read before the file is copied, since an app-managed source is
+  /// removed afterwards.
+  private func resolveProvenance(of file: URL, documentsRelativePath: String?, at libraryRelativePath: String) {
+    guard let mediaServerSourceStore else { return }
+
+    if let zipSource = zipExtractedSources.removeValue(forKey: file) {
+      mediaServerSourceStore.setSource(zipSource, for: libraryRelativePath)
+    } else if let documentsRelativePath {
+      mediaServerSourceStore.resolveLandedSources(from: documentsRelativePath, to: libraryRelativePath)
     }
   }
 
@@ -181,6 +226,9 @@ public class ImportOperation: Operation {
       !FileManager.default.fileExists(atPath: existingFileURL.path)
     else { return false }
 
+    let documentsRelativePath = MediaServerSourceStore.documentsRelativePath(of: fileURL)
+    let existingRelativePath = existingBook.relativePath
+
     // Add support for iCloud documents
     let accessGranted = fileURL.startAccessingSecurityScopedResource()
 
@@ -212,6 +260,11 @@ public class ImportOperation: Operation {
       }
       SentrySDK.flush(timeout: 2)
       fatalError("Existing book, fail to move file from \(fileURL) to \(existingFileURL). Error: \(error.localizedDescription)")
+    }
+
+    /// The file refills the existing book, so its provenance goes there too
+    if let existingRelativePath {
+      resolveProvenance(of: fileURL, documentsRelativePath: documentsRelativePath, at: existingRelativePath)
     }
 
     return true
@@ -272,6 +325,7 @@ public class ImportOperation: Operation {
     defer { currentFile.stopAccessingSecurityScopedResource() }
 
     let destinationURL = self.getNextAvailableURL(for: currentFile)
+    let documentsRelativePath = MediaServerSourceStore.documentsRelativePath(of: currentFile)
 
     do {
       try FileManager.default.copyItem(at: currentFile, to: destinationURL)
@@ -293,6 +347,10 @@ public class ImportOperation: Operation {
       SentrySDK.flush(timeout: 2)
       fatalError("Fail to move file from \(currentFile) to \(destinationURL). Error: \(error.localizedDescription)")
     }
+
+    /// Items land at the library root, so the landed name is the whole relativePath; a later move
+    /// out of the root re-keys it in LibraryService
+    resolveProvenance(of: currentFile, documentsRelativePath: documentsRelativePath, at: destinationURL.lastPathComponent)
 
     self.processedFiles.append(destinationURL)
     self.processFile(from: mutableFiles)

@@ -110,7 +110,10 @@ security-critical Python surfaces.
 - **META-1**: `MediaServerSourceStore` should disappear; provenance moves
   onto `LibraryItem` as `originAuthority: MediaOrigin` + `externalId:
   String?`. Both AIs converged independently. Fixes the structural cause
-  of 5 Criticals plus several Highs.
+  of 5 Criticals plus several Highs. On the 6.0 base streamed items carry
+  upstream's `ExternalResource`; downloads still use the store (slice 1,
+  which also moved its path upkeep into `LibraryService`). Whether
+  downloads become `ExternalResource` links is the slice 4 question.
 - **META-2**: VoiceOver silence is architectural — replace per-screen
   `UIAccessibility.post` patches with one `.announceStateChanges(of:)`
   modifier hooked into `.onChange(of: viewModel.state)`. Collapses ~8
@@ -364,10 +367,22 @@ reset). Still open.
 - **ABS/JF folder-download provenance.** `MediaServerSourceTracker`
   predicts root-landed filenames; folder downloads need a folder-aware
   finalize before they can register. Same shape as the old follow-up.
+  **Done on the 6.0 base (slice 1):** the landed stage keys a download by
+  its real path under Documents and the import resolves it to the name it
+  gets in the library; see architecture.md, "Media-server provenance
+  store".
 - **Bound-book completer batch verification** (promotes on first file
   event). Needs an expected-file-count in the pending record — small data
-  model change, do with the folder-provenance work.
+  model change, do with the folder-provenance work. Still open on the 6.0
+  base, and it now covers share-link imports too: a folder imported
+  before all its tracks arrived binds what's there, and the late tracks
+  land as a second folder.
 - **SoundBooth progress write-back** — seed-only by design.
+- **Two downloads of the same server item at once** (a double tap, a
+  retry before the first finishes) share one pending provenance entry,
+  keyed by request URL: the first to land takes it and the other copy gets
+  none, silently. Small; would need a per-task key (6.0 base, slice 1
+  review).
 - **`TagsFlowLayout` infinite-width** on unbounded proposals — latent,
   constrained by the details VStack today.
 - **Per-kind row labels** (folder vs author vs series) — shipped a generic

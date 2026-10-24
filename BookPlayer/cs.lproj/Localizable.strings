@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Nepodporovaný typ souboru";
 "transfer_web_done_hint" = "Až budete hotovi, potvrďte import souborů v BookPlayeru.";
 "transfer_web_load_error" = "BookPlayer není dostupný. Zkontrolujte, že je v něm stále otevřená obrazovka přenosu.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Odkaz ke sdílení";
+"share_link_expiry_title" = "Odkaz vyprší";
+"share_link_expiry_week" = "Za 1 týden";
+"share_link_expiry_month" = "Za 1 měsíc";
+"share_link_expiry_three_months" = "Za 3 měsíce";
+"share_link_expiry_never" = "Nikdy";
+"share_link_create_button" = "Vytvořit odkaz";
+"share_link_creating_message" = "Vytváření odkazu…";
+"share_link_revoking_message" = "Rušení odkazu…";
+"share_link_resolving_message" = "Hledání knihy na vašem serveru…";
+"share_link_setup_footer" = "Vytvoří veřejný odkaz na vašem serveru Audiobookshelf. Kdokoli s odkazem může poslouchat až do jeho vypršení, bez účtu. Otevře se v BookPlayeru, pokud je aplikace nainstalovaná, jinak se kniha přehraje v prohlížeči.";
+"share_link_match_footer_format" = "Na vašem serveru nalezeno jako „%@“.";
+"share_link_url_accessibility_label" = "Adresa odkazu";
+"share_link_share_button" = "Sdílet…";
+"share_link_copy_button" = "Kopírovat odkaz";
+"share_link_copied_announcement" = "Odkaz zkopírován";
+"share_link_revoke_button" = "Zrušit odkaz";
+"share_link_revoke_footer" = "Po zrušení odkaz okamžitě přestane fungovat, i pro ty, kterým jste ho už poslali.";
+"share_link_revoked_announcement" = "Odkaz zrušen";
+"share_link_expires_format" = "Vyprší %@.";
+"share_link_no_expiry" = "Platnost tohoto odkazu nevyprší.";
+"share_link_error_already_shared" = "Tato kniha už má odkaz ke sdílení, který nebyl vytvořen na tomto zařízení. Spravujte ho ve webovém rozhraní Audiobookshelf.";
+"share_link_error_not_permitted" = "Váš účet Audiobookshelf nemůže vytvářet odkazy ke sdílení. Server povoluje sdílení jen účtům správců.";
+"share_link_no_match_format" = "„%@“ se na vašem serveru Audiobookshelf nepodařilo najít. Odkazy ke sdílení lze vytvořit jen pro knihy, které na serveru jsou.";
+"share_link_no_connection_message" = "Není připojen žádný server Audiobookshelf.";
+"shared_import_expired_alert" = "Platnost tohoto odkazu vypršela nebo byl zrušen.";
+"shared_import_failed_alert" = "Sdílenou knihu se nepodařilo načíst: %@";
+"shared_import_empty_alert" = "Toto sdílení neobsahuje žádný zvuk ke stažení.";
+"shared_import_already_in_library" = "Už je ve vaší knihovně. Otevírá se.";
+"shared_import_started_announcement" = "Stahuje se „%@“.";

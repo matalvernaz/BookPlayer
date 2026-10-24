@@ -93,6 +93,10 @@ public class JellyfinConnectionService: BPLogger {
 
   public var activeConnectionID: String? { store.activeConnectionID }
 
+  /// Download requests built here register what they fetch, so the downloaded file remembers its
+  /// server item (fork; progress). Set by the app.
+  @ObservationIgnored public var mediaServerSourceStore: MediaServerSourceStore?
+
   public nonisolated init(keychainService: KeychainServiceProtocol = KeychainService()) {
     self.store = IntegrationConnectionStore(
       keychainKey: .jellyfinConnection,
@@ -941,6 +945,12 @@ public class JellyfinConnectionService: BPLogger {
     var request = wrapWithCustomHeaders(url)
     if let accessToken = client?.accessToken {
       request.setValue("MediaBrowser Token=\"\(accessToken)\"", forHTTPHeaderField: "Authorization")
+    }
+    if let connection {
+      mediaServerSourceStore?.registerPendingDownload(
+        url,
+        info: MediaServerSourceInfo(kind: .jellyfin, connectionId: connection.id, itemId: item.id)
+      )
     }
     return request
   }

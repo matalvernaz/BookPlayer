@@ -21,4 +21,7 @@ extension Notification.Name {
   /// Posted to deep-link into Settings → Media Servers (e.g. from the missing-server
   /// prompt when a synced-down external resource has no matching connection on this device).
   static let showMediaServers = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).show.mediaservers")
+  /// Posted once an import's items are in the library (fork): a media-server folder download marked
+  /// bind-on-complete can be bound then, not at the next launch
+  static let importItemsInserted = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).import.inserted")
 }

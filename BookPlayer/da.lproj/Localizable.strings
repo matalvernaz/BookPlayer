@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Filtypen understøttes ikke";
 "transfer_web_done_hint" = "Bekræft i BookPlayer, når du er færdig, for at importere filerne.";
 "transfer_web_load_error" = "Kan ikke nå BookPlayer. Tjek, at dens overførselsskærm stadig er åben.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Delingslink";
+"share_link_expiry_title" = "Linket udløber";
+"share_link_expiry_week" = "Om 1 uge";
+"share_link_expiry_month" = "Om 1 måned";
+"share_link_expiry_three_months" = "Om 3 måneder";
+"share_link_expiry_never" = "Aldrig";
+"share_link_create_button" = "Opret link";
+"share_link_creating_message" = "Opretter link…";
+"share_link_revoking_message" = "Tilbagekalder link…";
+"share_link_resolving_message" = "Finder bogen på din server…";
+"share_link_setup_footer" = "Opretter et offentligt link på din Audiobookshelf-server. Alle med linket kan lytte, indtil det udløber, uden en konto. Det åbner i BookPlayer, hvis appen er installeret, og ellers afspilles bogen i browseren.";
+"share_link_match_footer_format" = "Fundet på din server som »%@«.";
+"share_link_url_accessibility_label" = "Linkadresse";
+"share_link_share_button" = "Del…";
+"share_link_copy_button" = "Kopiér link";
+"share_link_copied_announcement" = "Link kopieret";
+"share_link_revoke_button" = "Tilbagekald link";
+"share_link_revoke_footer" = "Når linket tilbagekaldes, holder det straks op med at virke, også for dem, du allerede har sendt det til.";
+"share_link_revoked_announcement" = "Link tilbagekaldt";
+"share_link_expires_format" = "Udløber %@.";
+"share_link_no_expiry" = "Dette link udløber ikke.";
+"share_link_error_already_shared" = "Bogen har allerede et delingslink, som ikke blev oprettet på denne enhed. Administrer det i Audiobookshelfs webgrænseflade.";
+"share_link_error_not_permitted" = "Din Audiobookshelf-konto kan ikke oprette delingslinks. Serveren lader kun administratorkonti dele.";
+"share_link_no_match_format" = "Kunne ikke finde »%@« på din Audiobookshelf-server. Delingslinks kan kun oprettes for bøger, der findes på serveren.";
+"share_link_no_connection_message" = "Ingen Audiobookshelf-server er forbundet.";
+"shared_import_expired_alert" = "Delingslinket er udløbet eller tilbagekaldt.";
+"shared_import_failed_alert" = "Kunne ikke indlæse den delte bog: %@";
+"shared_import_empty_alert" = "Delingen indeholder ingen lyd at downloade.";
+"shared_import_already_in_library" = "Findes allerede i dit bibliotek. Åbner den.";
+"shared_import_started_announcement" = "Downloader »%@«.";

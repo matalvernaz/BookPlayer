@@ -18,6 +18,9 @@ import Foundation
 final class ImportManager: ObservableObject {
   let queue = OperationQueue()
   private let libraryService: LibraryServiceProtocol
+  /// Media-server provenance of downloaded files (fork): imports bring it into the library, and a
+  /// file discarded here takes its entry with it
+  private let mediaServerSourceStore: MediaServerSourceStore?
   private let timeout = 2.0
   private var subscription: AnyCancellable?
   private var timer: Timer?
@@ -29,8 +32,12 @@ final class ImportManager: ObservableObject {
   /// started under it is dropped.
   @Published var isImportScreenShown = false
 
-  init(libraryService: LibraryServiceProtocol) {
+  init(
+    libraryService: LibraryServiceProtocol,
+    mediaServerSourceStore: MediaServerSourceStore? = nil
+  ) {
     self.libraryService = libraryService
+    self.mediaServerSourceStore = mediaServerSourceStore
   }
 
   public func process(_ fileUrl: URL) {
@@ -55,6 +62,11 @@ final class ImportManager: ObservableObject {
   }
 
   public func removeFile(_ item: URL, updateCollection: Bool = true) throws {
+    /// A discarded download mustn't leave provenance for a later file with the same name
+    if let documentsRelativePath = MediaServerSourceStore.documentsRelativePath(of: item) {
+      mediaServerSourceStore?.removeLandedSources(under: documentsRelativePath)
+    }
+
     if FileManager.default.fileExists(atPath: item.path),
        FileManager.default.isDeletableFile(atPath: item.path) {
       try FileManager.default.removeItem(at: item)
@@ -90,7 +102,8 @@ final class ImportManager: ObservableObject {
     // swiftlint:enable force_cast
 
     let operation = ImportOperation(files: sortedFiles,
-                                    libraryService: self.libraryService)
+                                    libraryService: self.libraryService,
+                                    mediaServerSourceStore: self.mediaServerSourceStore)
 
     self.files.value = []
 

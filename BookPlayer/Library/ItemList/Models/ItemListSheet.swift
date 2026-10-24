@@ -15,6 +15,9 @@ enum ItemListSheet: Identifiable {
   case queuedTasks
   case foldersSelection
   case libraryOptions
+  /// A public share link for an Audiobookshelf book (fork). `nil` source: nothing records which
+  /// server book it is, so the sheet finds it on the active server by title
+  case shareLink(SimpleLibraryItem, MediaServerSourceInfo?)
 
   var id: String {
     switch self {
@@ -26,6 +29,8 @@ enum ItemListSheet: Identifiable {
       return "foldersSelection"
     case .libraryOptions:
       return "libraryOptions"
+    case .shareLink(let item, _):
+      return "shareLink-\(item.id)"
     }
   }
 }

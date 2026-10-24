@@ -92,5 +92,23 @@
         <string>Se descarcă %d fișiere</string>
       </dict>
     </dict>
+    <key>integration_folder_book_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d carte</string>
+        <key>few</key>
+        <string>%d cărți</string>
+        <key>other</key>
+        <string>%d de cărți</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

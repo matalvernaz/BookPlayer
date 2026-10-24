@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Tipus de fitxer no compatible";
 "transfer_web_done_hint" = "Quan acabis, confirma-ho al BookPlayer per importar els fitxers.";
 "transfer_web_load_error" = "No es pot connectar amb el BookPlayer. Comprova que la pantalla de transferència encara estigui oberta.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Enllaç per compartir";
+"share_link_expiry_title" = "Caducitat de l’enllaç";
+"share_link_expiry_week" = "D’aquí a 1 setmana";
+"share_link_expiry_month" = "D’aquí a 1 mes";
+"share_link_expiry_three_months" = "D’aquí a 3 mesos";
+"share_link_expiry_never" = "Mai";
+"share_link_create_button" = "Crea l’enllaç";
+"share_link_creating_message" = "S’està creant l’enllaç…";
+"share_link_revoking_message" = "S’està revocant l’enllaç…";
+"share_link_resolving_message" = "S’està cercant el llibre al vostre servidor…";
+"share_link_setup_footer" = "Crea un enllaç públic al vostre servidor d’Audiobookshelf. Qualsevol persona amb l’enllaç pot escoltar fins que caduqui, sense compte. S’obre al BookPlayer si l’aplicació està instal·lada; si no, es reprodueix al navegador.";
+"share_link_match_footer_format" = "S’ha trobat al vostre servidor com a «%@».";
+"share_link_url_accessibility_label" = "Adreça de l’enllaç";
+"share_link_share_button" = "Comparteix…";
+"share_link_copy_button" = "Copia l’enllaç";
+"share_link_copied_announcement" = "S’ha copiat l’enllaç";
+"share_link_revoke_button" = "Revoca l’enllaç";
+"share_link_revoke_footer" = "En revocar-lo, l’enllaç deixa de funcionar de seguida, també per a les persones a qui ja l’heu enviat.";
+"share_link_revoked_announcement" = "S’ha revocat l’enllaç";
+"share_link_expires_format" = "Caduca el %@.";
+"share_link_no_expiry" = "Aquest enllaç no caduca.";
+"share_link_error_already_shared" = "Aquest llibre ja té un enllaç per compartir que no s’ha creat en aquest dispositiu. Gestioneu-lo des de la interfície web d’Audiobookshelf.";
+"share_link_error_not_permitted" = "El vostre compte d’Audiobookshelf no pot crear enllaços per compartir. El servidor només permet compartir als comptes d’administrador.";
+"share_link_no_match_format" = "No s’ha trobat «%@» al vostre servidor d’Audiobookshelf. Només es poden crear enllaços per a llibres que siguin al servidor.";
+"share_link_no_connection_message" = "No hi ha cap servidor d’Audiobookshelf connectat.";
+"shared_import_expired_alert" = "Aquest enllaç ha caducat o s’ha revocat.";
+"shared_import_failed_alert" = "No s’ha pogut carregar el llibre compartit: %@";
+"shared_import_empty_alert" = "Aquest enllaç no té àudio per baixar.";
+"shared_import_already_in_library" = "Ja és a la vostra biblioteca. S’està obrint.";
+"shared_import_started_announcement" = "S’està baixant «%@».";

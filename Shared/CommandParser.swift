@@ -12,9 +12,34 @@ public class CommandParser {
   /// The playback activity plays the last book: no longer donated, but Siri shortcuts saved from it still
   /// open the app with it. A media intent's activity never gets here (`ActionParserService` plays it)
   public class func parse(_ activity: NSUserActivity) -> Action? {
+    /// A universal link (fork): an Audiobookshelf share link the app's associated domains claim
+    if activity.activityType == NSUserActivityTypeBrowsingWeb {
+      return activity.webpageURL.flatMap(parseUniversalLink)
+    }
+
     guard activity.activityType == Constants.UserActivityPlayback else { return nil }
 
     return Action(command: .play)
+  }
+
+  /// An Audiobookshelf public share page (`…/share/<slug>`, under the server's router base path if
+  /// it has one) as a shared import (fork). The associated-domains entitlement decides which hosts
+  /// ever get here; anything that isn't a share page is left to the browser.
+  public class func parseUniversalLink(_ url: URL) -> Action? {
+    let components = url.pathComponents
+    guard
+      url.scheme == "https",
+      components.count >= 3,
+      components[components.count - 2] == "share",
+      !components[components.count - 1].isEmpty
+    else {
+      return nil
+    }
+
+    return Action(
+      command: .sharedImport,
+      parameters: [URLQueryItem(name: "url", value: url.absoluteString)]
+    )
   }
 
   public class func parse(_ url: URL) -> Action? {
@@ -30,7 +55,9 @@ public class CommandParser {
       return nil
     }
 
-    guard let command = Command(rawValue: host) else { return nil }
+    /// A shared import only comes from a universal link: through the URL scheme any page could start
+    /// a download from any server
+    guard let command = Command(rawValue: host), command != .sharedImport else { return nil }
 
     if command == .download {
       guard let query = url.query, let parameter = query.components(separatedBy: "url=").last else { return nil }
@@ -140,6 +167,8 @@ public enum Command: String {
   case fileImport
   case boostVolume
   case chapter
+  /// Import a book from an Audiobookshelf share link (fork). Universal links only
+  case sharedImport
 }
 
 public struct Action: Equatable {

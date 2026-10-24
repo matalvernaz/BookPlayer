@@ -10,6 +10,7 @@
 @testable import BookPlayerKit
 import Combine
 import XCTest
+import ZipArchive
 
 // MARK: - processFiles()
 
@@ -1531,3 +1532,130 @@ final class MediaServerChapterMappingTests: XCTestCase {
     XCTAssertEqual(chapters.map(\.title), ["One"])
   }
 }
+
+// MARK: - Media-server provenance through an import
+
+/// A downloaded file's provenance waits under its Documents path and goes to the library path the
+/// import really gives it (fork)
+final class ImportOperationProvenanceTests: XCTestCase {
+  private let suiteName = "ImportOperationProvenanceTests"
+  private var userDefaults: UserDefaults!
+  private var store: MediaServerSourceStore!
+  private var libraryService: LibraryService!
+
+  override func setUp() {
+    super.setUp()
+    DataTestUtils.clearFolderContents(url: DataManager.getDocumentsFolderURL())
+    DataTestUtils.clearFolderContents(url: DataManager.getProcessedFolderURL())
+    userDefaults = UserDefaults(suiteName: suiteName)!
+    userDefaults.removePersistentDomain(forName: suiteName)
+    store = MediaServerSourceStore(userDefaults: userDefaults)
+    let dataManager = DataManager(coreDataStack: CoreDataStack(testPath: "/dev/null"))
+    libraryService = LibraryService()
+    libraryService.setup(dataManager: dataManager, audioMetadataService: AudioMetadataService())
+  }
+
+  override func tearDown() {
+    DataTestUtils.clearFolderContents(url: DataManager.getDocumentsFolderURL())
+    DataTestUtils.clearFolderContents(url: DataManager.getProcessedFolderURL())
+    userDefaults.removePersistentDomain(forName: suiteName)
+    libraryService = nil
+    store = nil
+    userDefaults = nil
+    super.tearDown()
+  }
+
+  private func info(_ itemId: String, bind: Bool? = nil) -> MediaServerSourceInfo {
+    MediaServerSourceInfo(kind: .audiobookshelf, connectionId: "conn-1", itemId: itemId, shouldBindFolder: bind)
+  }
+
+  private func runImport(_ files: [URL]) {
+    let operation = ImportOperation(files: files, libraryService: libraryService, mediaServerSourceStore: store)
+    let done = XCTestExpectation(description: "import finished")
+    operation.completionBlock = { done.fulfill() }
+    operation.start()
+    wait(for: [done], timeout: 15)
+  }
+
+  func testAnImportedDownloadKeepsItsProvenance() {
+    let file = DataTestUtils.generateTestFile(name: "prov-a.mp3", contents: Data("a".utf8), destinationFolder: DataManager.getDocumentsFolderURL())
+    store.registerLandingSource(info("li_a"), at: "prov-a.mp3")
+
+    runImport([file])
+
+    XCTAssertEqual(store.source(for: "prov-a.mp3"), info("li_a"))
+    XCTAssertNil(store.takeLandedSource(at: "prov-a.mp3"))
+  }
+
+  /// On a name clash the import renames the file, and the provenance goes with the new name, not onto
+  /// the item that already had it
+  func testANameClashKeepsProvenanceWithTheRenamedFile() {
+    _ = DataTestUtils.generateTestFile(name: "prov-b.mp3", contents: Data("old".utf8), destinationFolder: DataManager.getProcessedFolderURL())
+    store.setSource(info("li_old"), for: "prov-b.mp3")
+    let file = DataTestUtils.generateTestFile(name: "prov-b.mp3", contents: Data("new".utf8), destinationFolder: DataManager.getDocumentsFolderURL())
+    store.registerLandingSource(info("li_new"), at: "prov-b.mp3")
+
+    runImport([file])
+
+    XCTAssertEqual(store.source(for: "prov-b-1.mp3"), info("li_new"))
+    XCTAssertEqual(store.source(for: "prov-b.mp3"), info("li_old"))
+  }
+
+  func testAnImportedFolderBringsItsFilesProvenance() throws {
+    let folder = try DataTestUtils.generateTestFolder(name: "Prov Folder", destinationFolder: DataManager.getDocumentsFolderURL())
+    _ = DataTestUtils.generateTestFile(name: "01.mp3", contents: Data("1".utf8), destinationFolder: folder)
+    _ = DataTestUtils.generateTestFile(name: "02.mp3", contents: Data("2".utf8), destinationFolder: folder)
+    store.registerLandingSource(info("li_f", bind: true), at: "Prov Folder")
+    store.registerLandingSource(info("li_f"), at: "Prov Folder/01.mp3")
+
+    runImport([folder])
+
+    XCTAssertEqual(store.source(for: "Prov Folder"), info("li_f", bind: true))
+    XCTAssertEqual(store.source(for: "Prov Folder/01.mp3"), info("li_f"))
+    XCTAssertNil(store.source(for: "Prov Folder/02.mp3"))
+  }
+
+  /// An Audiobookshelf multi-file download is one zip, extracted and removed: its provenance goes to
+  /// the audio files that come out of it, not to the cover beside them
+  func testAZipsProvenanceGoesToItsAudioFiles() throws {
+    let documents = DataManager.getDocumentsFolderURL()
+    let staging = FileManager.default.temporaryDirectory.appendingPathComponent("prov-zip-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: staging) }
+    _ = DataTestUtils.generateTestFile(name: "track1.mp3", contents: Data("one".utf8), destinationFolder: staging)
+    _ = DataTestUtils.generateTestFile(name: "track2.mp3", contents: Data("two".utf8), destinationFolder: staging)
+    _ = DataTestUtils.generateTestFile(name: "cover.jpg", contents: Data("img".utf8), destinationFolder: staging)
+    let zip = documents.appendingPathComponent("Some Book.zip")
+    XCTAssertTrue(SSZipArchive.createZipFile(atPath: zip.path, withContentsOfDirectory: staging.path))
+    store.registerLandingSource(info("li_z"), at: "Some Book.zip")
+
+    runImport([zip])
+
+    XCTAssertEqual(store.source(for: "track1.mp3"), info("li_z"))
+    XCTAssertEqual(store.source(for: "track2.mp3"), info("li_z"))
+    XCTAssertNil(store.source(for: "cover.jpg"))
+    XCTAssertNil(store.source(for: "Some Book.zip"))
+    XCTAssertNil(store.takeLandedSource(at: "Some Book.zip"))
+  }
+
+  func testAFileWithoutProvenanceRecordsNone() {
+    let file = DataTestUtils.generateTestFile(name: "plain.mp3", contents: Data("p".utf8), destinationFolder: DataManager.getDocumentsFolderURL())
+
+    runImport([file])
+
+    XCTAssertTrue(store.allResolved.isEmpty)
+  }
+
+  /// A download discarded on the import screen takes its landed entry with it, so a later file with the
+  /// same name can't pick it up
+  func testADiscardedDownloadTakesItsLandedEntry() throws {
+    let file = DataTestUtils.generateTestFile(name: "discarded.mp3", contents: Data("d".utf8), destinationFolder: DataManager.getDocumentsFolderURL())
+    store.registerLandingSource(info("li_d"), at: "discarded.mp3")
+    let importManager = ImportManager(libraryService: libraryService, mediaServerSourceStore: store)
+
+    try importManager.removeFile(file)
+
+    XCTAssertNil(store.takeLandedSource(at: "discarded.mp3"))
+  }
+}
+

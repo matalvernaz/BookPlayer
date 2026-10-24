@@ -61,6 +61,8 @@ struct ItemListView: View {
   @Environment(\.hardcoverService) var hardcoverService
   @Environment(\.playerLoaderService) private var playerLoaderService
   @Environment(\.preferencesService) var preferencesService
+  @Environment(\.audiobookshelfService) private var audiobookshelfService
+  @Environment(\.mediaServerSourceStore) private var mediaServerSourceStore
   @Environment(\.listState) var listState
   @Environment(\.playerState) private var playerState
   @Environment(\.loadingState) private var loadingState
@@ -706,6 +708,7 @@ extension ItemListView {
     detailsOption(for: items, forMenu: false)
     moveOption(for: items, forMenu: false)
     shareOption(for: items, forMenu: false)
+    shareLinkOption(for: items, forMenu: false)
     jumpToStartOption(for: items, forMenu: false)
     markFinishedOption(for: items, forMenu: false)
     boundBooksOption(for: items, forMenu: false)
@@ -722,6 +725,7 @@ extension ItemListView {
     boundBooksOption(for: items, forMenu: true)
     markFinishedOption(for: items, forMenu: true)
     jumpToStartOption(for: items, forMenu: true)
+    shareLinkOption(for: items, forMenu: true)
     shareOption(for: items, forMenu: true)
     moveOption(for: items, forMenu: true)
     detailsOption(for: items, forMenu: true)
@@ -736,6 +740,7 @@ extension ItemListView {
     detailsOption(for: items, forMenu: false)
     moveOption(for: items, forMenu: false)
     shareOption(for: items, forMenu: false)
+    shareLinkOption(for: items, forMenu: false)
     jumpToStartOption(for: items, forMenu: false)
     markFinishedOption(for: items, forMenu: false)
     boundBooksOption(for: items, forMenu: false)
@@ -782,16 +787,60 @@ extension ItemListView {
     let isSingle = items.count == 1
 
     if isSingle, let item {
+      let canExport = canExport(item)
+
       ShareLink(
         item: item,
         preview: SharePreview(
-          item.relativePath,
+          item.title,
           image: Image(systemName: item.type == .book ? "waveform" : "folder")
         )
       ) {
         Label("export_button", systemImage: "square.and.arrow.up")
       }
-      .menuTint(theme.primaryColor, enabled: forMenu)
+      .menuTint(theme.primaryColor.opacity(!canExport ? 0.3 : 1.0), enabled: forMenu)
+      .disabled(!canExport)
+    }
+  }
+
+  /// Only what's on this device can be handed over (fork): a book that streams, or one in the
+  /// cloud that isn't downloaded, has no file, and a folder needs all of its books
+  private func canExport(_ item: SimpleLibraryItem) -> Bool {
+    guard FileManager.default.fileExists(atPath: item.fileURL.path) else { return false }
+
+    switch item.type {
+    case .book:
+      return true
+    case .folder, .bound:
+      return syncService.getDownloadState(for: item) == .downloaded
+    }
+  }
+
+  /// A public link to an Audiobookshelf book, instead of its files (fork). Which items get the
+  /// row, and which server book it opens, is `ShareLinkSource`'s call
+  @ViewBuilder
+  private func shareLinkOption(for items: [SimpleLibraryItem], forMenu: Bool) -> some View {
+    if items.count == 1, let item = items.first {
+      let source = ShareLinkSource.resolve(
+        for: item,
+        store: mediaServerSourceStore,
+        connections: audiobookshelfService.connections,
+        hasActiveConnection: audiobookshelfService.connection != nil
+      )
+
+      if source != .none {
+        Button {
+          select(items)
+          if case .known(let info) = source {
+            activeSheet = .shareLink(item, info)
+          } else {
+            activeSheet = .shareLink(item, nil)
+          }
+        } label: {
+          Label("share_link_title", systemImage: "link")
+        }
+        .menuTint(theme.primaryColor, enabled: forMenu)
+      }
     }
   }
 

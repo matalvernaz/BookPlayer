@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "Dateityp nicht unterstützt";
 "transfer_web_done_hint" = "Bestätige danach in BookPlayer, um die Dateien zu importieren.";
 "transfer_web_load_error" = "BookPlayer ist nicht erreichbar. Prüfe, ob der Übertragungsbildschirm noch geöffnet ist.";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "Link teilen";
+"share_link_expiry_title" = "Link läuft ab";
+"share_link_expiry_week" = "In 1 Woche";
+"share_link_expiry_month" = "In 1 Monat";
+"share_link_expiry_three_months" = "In 3 Monaten";
+"share_link_expiry_never" = "Nie";
+"share_link_create_button" = "Link erstellen";
+"share_link_creating_message" = "Link wird erstellt …";
+"share_link_revoking_message" = "Link wird widerrufen …";
+"share_link_resolving_message" = "Buch wird auf deinem Server gesucht …";
+"share_link_setup_footer" = "Erstellt einen öffentlichen Link auf deinem Audiobookshelf-Server. Alle mit dem Link können bis zum Ablauf zuhören, ganz ohne Konto. Wer BookPlayer hat, öffnet ihn in der App, alle anderen hören im Browser.";
+"share_link_match_footer_format" = "Auf deinem Server gefunden als „%@“.";
+"share_link_url_accessibility_label" = "Link-Adresse";
+"share_link_share_button" = "Teilen …";
+"share_link_copy_button" = "Link kopieren";
+"share_link_copied_announcement" = "Link kopiert";
+"share_link_revoke_button" = "Link widerrufen";
+"share_link_revoke_footer" = "Nach dem Widerrufen funktioniert der Link sofort nicht mehr, auch für alle, denen du ihn geschickt hast.";
+"share_link_revoked_announcement" = "Link widerrufen";
+"share_link_expires_format" = "Läuft am %@ ab.";
+"share_link_no_expiry" = "Dieser Link läuft nicht ab.";
+"share_link_error_already_shared" = "Für dieses Buch gibt es bereits einen Link, der nicht auf diesem Gerät erstellt wurde. Verwalte ihn in der Weboberfläche von Audiobookshelf.";
+"share_link_error_not_permitted" = "Dein Audiobookshelf-Konto kann keine Links erstellen. Der Server erlaubt das Teilen nur Administratorkonten.";
+"share_link_no_match_format" = "„%@“ wurde auf deinem Audiobookshelf-Server nicht gefunden. Links lassen sich nur für Bücher erstellen, die auf dem Server sind.";
+"share_link_no_connection_message" = "Kein Audiobookshelf-Server verbunden.";
+"shared_import_expired_alert" = "Dieser Link ist abgelaufen oder wurde widerrufen.";
+"shared_import_failed_alert" = "Das geteilte Buch konnte nicht geladen werden: %@";
+"shared_import_empty_alert" = "Diese Freigabe enthält keine Audiodateien zum Herunterladen.";
+"shared_import_already_in_library" = "Schon in deiner Bibliothek. Wird geöffnet.";
+"shared_import_started_announcement" = "„%@“ wird heruntergeladen.";

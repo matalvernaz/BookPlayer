@@ -270,6 +270,7 @@ struct LibraryRootView: View {
 
       /// Nothing created (no item in the batch could become a book): nothing to place
       guard !processedItems.isEmpty else { return }
+      NotificationCenter.default.post(name: .importItemsInserted, object: nil)
 
       var itemIdentifiers = processedItems.map({ $0.relativePath })
       let itemIdentifiersPairs = processedItems.map({ LibraryItemRef(relativePath: $0.relativePath, uuid: $0.uuid) })

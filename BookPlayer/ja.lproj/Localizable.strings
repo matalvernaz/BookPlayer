@@ -597,3 +597,35 @@
 "transfer_web_unsupported" = "サポートされていないファイル形式です";
 "transfer_web_done_hint" = "完了したら、BookPlayerで確定してファイルを読み込んでください。";
 "transfer_web_load_error" = "BookPlayerに接続できません。BookPlayerの転送画面が開いたままか確認してください。";
+
+/* Fork: Audiobookshelf share links and the Folders tab */
+"share_link_title" = "共有リンク";
+"share_link_expiry_title" = "リンクの有効期限";
+"share_link_expiry_week" = "1週間後";
+"share_link_expiry_month" = "1か月後";
+"share_link_expiry_three_months" = "3か月後";
+"share_link_expiry_never" = "なし";
+"share_link_create_button" = "リンクを作成";
+"share_link_creating_message" = "リンクを作成しています…";
+"share_link_revoking_message" = "リンクを取り消しています…";
+"share_link_resolving_message" = "サーバーでこのブックを探しています…";
+"share_link_setup_footer" = "Audiobookshelfサーバーに公開リンクを作成します。リンクを知っている人は、有効期限まではアカウントなしで聴くことができます。BookPlayerがインストールされていればアプリで開き、なければブラウザで再生されます。";
+"share_link_match_footer_format" = "サーバー上の「%@」と一致しました。";
+"share_link_url_accessibility_label" = "リンクのアドレス";
+"share_link_share_button" = "共有…";
+"share_link_copy_button" = "リンクをコピー";
+"share_link_copied_announcement" = "リンクをコピーしました";
+"share_link_revoke_button" = "リンクを取り消す";
+"share_link_revoke_footer" = "取り消すと、すでに送った相手も含めて、リンクはすぐに使えなくなります。";
+"share_link_revoked_announcement" = "リンクを取り消しました";
+"share_link_expires_format" = "%@に期限切れになります。";
+"share_link_no_expiry" = "このリンクに有効期限はありません。";
+"share_link_error_already_shared" = "このブックには、このデバイス以外で作成された共有リンクがすでにあります。AudiobookshelfのWebインターフェイスで管理してください。";
+"share_link_error_not_permitted" = "お使いのAudiobookshelfアカウントでは共有リンクを作成できません。サーバーで共有できるのは管理者アカウントのみです。";
+"share_link_no_match_format" = "Audiobookshelfサーバーに「%@」が見つかりませんでした。共有リンクはサーバー上にあるブックに対してのみ作成できます。";
+"share_link_no_connection_message" = "Audiobookshelfサーバーが接続されていません。";
+"shared_import_expired_alert" = "この共有リンクは期限切れか、取り消されています。";
+"shared_import_failed_alert" = "共有されたブックを読み込めませんでした: %@";
+"shared_import_empty_alert" = "この共有にはダウンロードできるオーディオがありません。";
+"shared_import_already_in_library" = "すでにライブラリにあります。開いています。";
+"shared_import_started_announcement" = "「%@」をダウンロードしています。";

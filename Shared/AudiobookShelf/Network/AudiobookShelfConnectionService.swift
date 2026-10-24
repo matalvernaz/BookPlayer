@@ -49,6 +49,10 @@ public class AudiobookShelfConnectionService: BPLogger {
 
   public var activeConnectionID: String? { store.activeConnectionID }
 
+  /// Download requests built here register what they fetch, so the downloaded file remembers its
+  /// server item (fork; share links, progress). Set by the app.
+  @ObservationIgnored public var mediaServerSourceStore: MediaServerSourceStore?
+
 #if os(watchOS)
   public nonisolated init(
     keychainService: KeychainServiceProtocol = KeychainService(),
@@ -761,6 +765,10 @@ public class AudiobookShelfConnectionService: BPLogger {
     let url = createItemDownloadUrl(item, connection: connection)
     var request = URLRequest(url: url)
     applyAuthenticatedHeaders(to: &request, connection: connection)
+    mediaServerSourceStore?.registerPendingDownload(
+      url,
+      info: MediaServerSourceInfo(kind: .audiobookshelf, connectionId: connection.id, itemId: item.id)
+    )
     return request
   }
 
@@ -849,4 +857,163 @@ public class AudiobookShelfConnectionService: BPLogger {
 
     return components?.url
   }
+}
+
+// MARK: - Public share links (fork)
+
+/// An active ABS media item share, as returned by `POST /api/share/mediaitem`.
+public struct AudiobookShelfMediaItemShare: Decodable {
+  public let id: String
+  public let slug: String
+}
+
+public enum AudiobookShelfShareError: LocalizedError {
+  /// ABS allows one active share per media item; a 409 means one already exists (made outside this
+  /// app, since a share minted here would be in the local cache).
+  case alreadyShared
+  /// Creating shares is admin-only on the server.
+  case notPermitted
+
+  public var errorDescription: String? {
+    switch self {
+    case .alreadyShared:
+      return "share_link_error_already_shared".localized
+    case .notPermitted:
+      return "share_link_error_not_permitted".localized
+    }
+  }
+}
+
+extension AudiobookShelfConnectionService {
+  /// The connection a share call goes to: the one the item's provenance names, and nothing else
+  /// when it names one, since another server would get a library item id it doesn't have (the
+  /// share-link sentinel, a removed server). The active connection only when none is named.
+  private func shareConnection(for connectionId: String?) -> AudiobookShelfConnectionData? {
+    if let connectionId {
+      return connections.first(where: { $0.id == connectionId })
+    }
+    return connection
+  }
+
+  /// One status mapping for the share calls: 403 is the server refusing this account (sharing is
+  /// admin-only), not an expired session, and only a 401 means signing in again.
+  private func validateShareResponse(
+    _ response: HTTPURLResponse,
+    connection: AudiobookShelfConnectionData
+  ) throws {
+    switch response.statusCode {
+    case 200...299:
+      return
+    case 401:
+      throw IntegrationError.sessionExpired(serverName: connection.serverName)
+    case 403:
+      throw AudiobookShelfShareError.notPermitted
+    case 409:
+      throw AudiobookShelfShareError.alreadyShared
+    default:
+      throw IntegrationError.unexpectedResponse(code: response.statusCode)
+    }
+  }
+
+  /// `GET /api/items/:id`, for the id of its *media* item: shares are made for the book's media
+  /// item, while provenance holds the library item id.
+  public func fetchMediaItemId(
+    forLibraryItemId libraryItemId: String,
+    connectionId: String?
+  ) async throws -> String {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("items")
+      .appendingPathComponent(libraryItemId)
+
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+
+    let (data, response) = try await httpClient.data(for: request)
+    try validateShareResponse(response, connection: connection)
+
+    return try JSONDecoder().decode(ItemMediaIdResponse.self, from: data).media.id
+  }
+
+  /// Creates a public share of a book, downloadable so recipients (a browser, or BookPlayer) can
+  /// fetch its audio files.
+  /// - Parameter expiresAt: when the link stops working, or `nil` for never.
+  public func createMediaItemShare(
+    mediaItemId: String,
+    slug: String,
+    expiresAt: Date?,
+    connectionId: String?
+  ) async throws -> AudiobookShelfMediaItemShare {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("share")
+      .appendingPathComponent("mediaitem")
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    // expiresAt is epoch milliseconds; JSON null means no expiry
+    let body: [String: Any] = [
+      "slug": slug,
+      "mediaItemType": "book",
+      "mediaItemId": mediaItemId,
+      "expiresAt": expiresAt.map { Int64(($0.timeIntervalSince1970 * 1000).rounded()) } as Any? ?? NSNull(),
+      "isDownloadable": true,
+    ]
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+    let (data, response) = try await httpClient.data(for: request)
+    try validateShareResponse(response, connection: connection)
+
+    return try JSONDecoder().decode(AudiobookShelfMediaItemShare.self, from: data)
+  }
+
+  /// Revokes a share: its link stops working at once.
+  public func deleteMediaItemShare(shareId: String, connectionId: String?) async throws {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let url = connection.url
+      .appendingPathComponent("api")
+      .appendingPathComponent("share")
+      .appendingPathComponent("mediaitem")
+      .appendingPathComponent(shareId)
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "DELETE"
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+
+    let (_, response) = try await httpClient.data(for: request)
+    try validateShareResponse(response, connection: connection)
+  }
+
+  /// The share page a slug has on its server. This is the URL people are sent: a browser lands on
+  /// the server's share page, while a device with BookPlayer opens it in the app (universal link).
+  public func shareWebURL(slug: String, connectionId: String?) throws -> URL {
+    guard let connection = shareConnection(for: connectionId) else {
+      throw URLError(.userAuthenticationRequired)
+    }
+    return connection.url
+      .appendingPathComponent("share")
+      .appendingPathComponent(slug)
+  }
+}
+
+/// `GET /api/items/:id`, only the media item's id
+private struct ItemMediaIdResponse: Decodable {
+  struct MediaRef: Decodable {
+    let id: String
+  }
+  let media: MediaRef
 }
