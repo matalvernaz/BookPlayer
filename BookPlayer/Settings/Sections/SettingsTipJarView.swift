@@ -118,7 +118,9 @@ private struct TipJarUnlock: ViewModifier {
   func body(content: Content) -> some View {
     content
       .toolbar {
-        if accountService.accessLevel == .free {
+        // Fork: TestFlight builds unlock the extra themes and icons and can't
+        // take purchases, so there is nothing for Unlock to do there.
+        if accountService.accessLevel == .free && !AppEnvironment.isTestFlight {
           ToolbarItem(placement: .primaryAction) {
             Button("unlock_button") {
               showTipJar = true

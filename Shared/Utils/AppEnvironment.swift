@@ -14,12 +14,12 @@ public enum AppEnvironment {
     #if DEBUG
     return false
     #else
-    // Check if the app is installed via TestFlight
-    guard let receiptURL = Bundle.main.appStoreReceiptURL else {
-      return false
-    }
-    
-    return receiptURL.lastPathComponent == "sandboxReceipt"
+    // This fork has no App Store channel: every Release install is a TestFlight
+    // build. TestFlight builds must be archived as Release for this to hold; the
+    // Debug archives shipped from 05-19 to 07-25 made it false, which turned the
+    // TestFlight-only features off (.github/scripts/testflight-checks.sh now
+    // refuses a Debug archive).
+    return true
     #endif
   }
   

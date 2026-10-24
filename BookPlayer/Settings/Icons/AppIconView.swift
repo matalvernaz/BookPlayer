@@ -53,7 +53,7 @@ struct AppIconView: View {
         if appIcon == icon.id {
           Image(systemName: "checkmark")
             .foregroundColor(theme.linkColor)
-        } else if icon.isLocked && accountService.accessLevel == .free {
+        } else if icon.isLocked && accountService.accessLevel == .free && !AppEnvironment.isTestFlight {
           Image(.premiumFeature)
             .foregroundColor(theme.linkColor)
         }
@@ -61,7 +61,7 @@ struct AppIconView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .disabledWithOpacity(icon.isLocked && accountService.accessLevel == .free, opacity: 0.99)
+    .disabledWithOpacity(icon.isLocked && accountService.accessLevel == .free && !AppEnvironment.isTestFlight, opacity: 0.99)
   }
 
   func updateAppIcon(_ icon: Icon) async throws {

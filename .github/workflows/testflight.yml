@@ -1,0 +1,229 @@
+name: Deploy to TestFlight
+
+# Auto-ship every push to the deploy branch. Concurrency cancels an in-flight
+# build when a newer commit lands, so rapid commits don't pile up beta-review
+# requests -- only the latest commit ends up uploaded.
+#
+# Tester notes (the "What to Test" field testers see in TestFlight) come from,
+# in priority order: a manual `notes` input on workflow_dispatch, a
+# `Release-Notes:` trailer in the commit body (multi-line supported), the
+# first line of the commit subject, then a generic fallback. Not enforced --
+# casual commits work fine; add a trailer when you want richer notes.
+on:
+  push:
+    branches: [test/all-changes]
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "What-to-Test notes (overrides commit message)."
+        required: false
+        default: ""
+
+concurrency:
+  # Per ref: a workflow_dispatch from another branch still enters its
+  # concurrency group before the job's `if` skips it, and must not cancel a
+  # deploy that is running on test/all-changes.
+  group: testflight-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Only the deploy branch ships. A workflow_dispatch builds whatever ref it
+    # is pointed at, and other branches (catchup/*, upstream PR branches) hold
+    # incomplete apps.
+    if: github.ref == 'refs/heads/test/all-changes'
+    # Self-hosted macOS runner on matt's Apple Silicon Mac (192.168.31.216).
+    # All signing material, the ASC .p8 key, and the keychain password live
+    # on that Mac -- nothing sensitive crosses GitHub Secrets.
+    runs-on: [self-hosted, macos, bookplayer]
+    timeout-minutes: 60
+    env:
+      # Xcode 27.1, the App Store copy. Pinned here because the Mac's system
+      # default (xcode-select) may point at an older Xcode while other apps
+      # move over, and this build needs the iOS 27 SDK.
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install Debug.xcconfig with real bundle IDs
+        # The canonical xcconfig (real DEVELOPMENT_TEAM, bundle id and config
+        # values) is NOT in git -- it sits beside the deploy secrets on the
+        # Mac at ~/.config/bookplayer-deploy/. The project's Debug
+        # configuration reads it from BuildConfiguration/, so copy it there;
+        # the Release archive below applies the same file with -xcconfig
+        # instead, since the tracked Release.xcconfig only holds placeholders.
+        run: cp ~/.config/bookplayer-deploy/Debug.xcconfig ./BuildConfiguration/Debug.xcconfig
+
+      - name: Resolve SPM dependencies
+        run: xcodebuild -resolvePackageDependencies
+
+      - name: Check this is a Release build
+        # Every build from 05-19 to 07-25 was archived as Debug: unoptimised,
+        # and with DEBUG set AppEnvironment.isTestFlight is false, which
+        # turned off the TestFlight-only features. Fail before archiving if
+        # the settings the archive will use would do that again.
+        run: .github/scripts/testflight-checks.sh settings ~/.config/bookplayer-deploy/Debug.xcconfig
+
+      # Build, archive, export, and upload in one shell step so the keychain
+      # stays unlocked across `xcodebuild archive` and `xcodebuild
+      # -exportArchive`. The login keychain re-locks between separate shell
+      # sessions even with no idle auto-lock, and codesign then fails with
+      # errSecInternalComponent (see deploy.sh for the original incident).
+      - name: Archive, export, and upload to App Store Connect
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1090
+          source ~/.config/bookplayer-deploy/secrets.env
+          # Mask the keychain password in any log output that follows; the
+          # `security` invocations below pass it on the command line, which
+          # GitHub's masker only redacts when told about the value.
+          echo "::add-mask::${MAC_KEYCHAIN_PASSWORD}"
+
+          BUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"
+          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> "${GITHUB_ENV}"
+          echo "::notice::Building CFBundleVersion=${BUILD_NUMBER}"
+
+          BUILD_DIR="${RUNNER_TEMP}/bookplayer-ci"
+          rm -rf "${BUILD_DIR}"
+          mkdir -p "${BUILD_DIR}"
+
+          echo "Unlocking login keychain..."
+          security unlock-keychain -p "${MAC_KEYCHAIN_PASSWORD}" \
+            ~/Library/Keychains/login.keychain-db
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "${MAC_KEYCHAIN_PASSWORD}" \
+            ~/Library/Keychains/login.keychain-db >/dev/null
+
+          echo "Archiving..."
+          # Pass ASC API credentials so -allowProvisioningUpdates can refresh
+          # the team's provisioning profile via App Store Connect instead of
+          # via Xcode's GUI-keychain "Accounts" mechanism. The latter isn't
+          # reachable from a launchd-spawned process and fails with
+          # "No Accounts: Add a new account in Accounts settings."
+          #
+          # Release, with the real config values from the off-repo xcconfig
+          # layered over the placeholders in BuildConfiguration/Release.xcconfig.
+          # The Release configuration pins the "Apple Distribution" identity
+          # for manual signing; automatic signing archives with a development
+          # identity, and -exportArchive below re-signs for distribution.
+          xcodebuild archive \
+            -project BookPlayer.xcodeproj \
+            -scheme BookPlayer \
+            -configuration Release \
+            -xcconfig ~/.config/bookplayer-deploy/Debug.xcconfig \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${ASC_KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+            CURRENT_PROJECT_VERSION="${BUILD_NUMBER}"
+
+          echo "Checking the archive..."
+          .github/scripts/testflight-checks.sh archive \
+            "${BUILD_DIR}/BookPlayer.xcarchive" "${ASC_BUNDLE_ID}"
+
+          cat > "${BUILD_DIR}/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadBitcode</key><false/>
+            <key>uploadSymbols</key><true/>
+            <key>destination</key><string>upload</string>
+          </dict></plist>
+          PLIST
+
+          echo "Exporting + uploading..."
+          xcodebuild -exportArchive \
+            -archivePath "${BUILD_DIR}/BookPlayer.xcarchive" \
+            -exportOptionsPlist "${BUILD_DIR}/ExportOptions.plist" \
+            -exportPath "${BUILD_DIR}/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${ASC_KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}"
+
+      # Wait for processing, attach the build to a beta group, set the
+      # What-to-Test notes and submit for beta review, through asc.py
+      # (~/asc-tools on the Mac, the shared App Store Connect tool). The group
+      # is External Testers unless the head commit carries a
+      # `TestFlight-Group: <name>` trailer, e.g. to give one build to Matt
+      # first. A named group that doesn't exist fails the step: asc.py never
+      # falls back to another group.
+      - name: Attach to the beta group
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          MANUAL_NOTES: ${{ github.event.inputs.notes }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1090
+          source ~/.config/bookplayer-deploy/secrets.env
+
+          # A workflow_dispatch has no head_commit payload. Read the checked-out
+          # commit instead, so a manual re-run keeps its TestFlight-Group trailer
+          # (and its notes) rather than shipping to External Testers.
+          if [[ -z "${COMMIT_MSG:-}" ]]; then
+            COMMIT_MSG="$(git log -1 --format=%B)"
+          fi
+
+          # Resolve What-to-Test notes in priority order:
+          #   1. Manual workflow_dispatch input (explicit override).
+          #   2. `Release-Notes:` trailer in the commit body. Everything
+          #      after the colon on that line through the next blank line
+          #      becomes the notes, so multi-line notes are supported.
+          #   3. First line of the commit message (the subject).
+          #   4. Generic fallback so the field is never empty.
+          notes=""
+          if [[ -n "${MANUAL_NOTES:-}" ]]; then
+            notes="${MANUAL_NOTES}"
+          fi
+          if [[ -z "${notes}" && -n "${COMMIT_MSG:-}" ]]; then
+            notes=$(printf '%s' "${COMMIT_MSG}" | awk '
+              /^[Rr]elease-[Nn]otes:/ {
+                sub(/^[Rr]elease-[Nn]otes:[[:space:]]*/, "")
+                found = 1
+                print
+                next
+              }
+              found && /^$/ { exit }
+              found && /^[Tt]est[Ff]light-[Gg]roup:/ { next }
+              found { print }
+            ')
+          fi
+          if [[ -z "${notes}" ]]; then
+            notes=$(printf '%s' "${COMMIT_MSG}" | head -n1)
+          fi
+          if [[ -z "${notes}" ]]; then
+            notes="New build available."
+          fi
+          echo "::notice::Tester notes: ${notes}"
+
+          group=$(printf '%s\n' "${COMMIT_MSG:-}" \
+            | sed -n 's/^[Tt]est[Ff]light-[Gg]roup:[[:space:]]*//p' \
+            | head -n 1 | sed 's/[[:space:]]*$//')
+          if [[ -n "${group}" ]]; then
+            echo "::notice::Beta group from the commit trailer: ${group}"
+            group_args=(--group "${group}")
+          else
+            group_args=(--group-id "${ASC_BETA_GROUP_ID}")
+          fi
+
+          python3 ~/asc-tools/asc.py \
+            --key-id "${ASC_KEY_ID}" \
+            --issuer-id "${ASC_ISSUER_ID}" \
+            --key-path "${ASC_KEY_PATH}" \
+            ship "${ASC_BUNDLE_ID}" \
+            --build "${BUILD_NUMBER}" \
+            "${group_args[@]}" \
+            --notes "${notes}" \
+            --wait

@@ -823,3 +823,68 @@ The crash surfaces and invariants most likely to be broken by a change. (The ful
 15. **SDK-only result-builder content:** an `if` or several statements inside a `ForEach` that builds rotor or toolbar
     content uses `Optional`/`TupleContent` conformances that, with the iOS 27 SDK, exist only on iOS 27 → launch
     crash on older iOS (5.22.1). Filter the data before the `ForEach` instead.
+
+---
+
+## Fork-specific project notes (matalvernaz/BookPlayer)
+
+This is Matt Alvernaz's fork of TortugaPower/BookPlayer, maintained on the
+long-lived `test/all-changes` branch and shipped to TestFlight from a
+self-hosted GitHub Actions runner. The notes here exist so any Claude
+session opening this repo can pick up the project state without re-deriving
+it from the diff against upstream.
+
+### Where to look
+
+- [`.claude/notes/architecture.md`](.claude/notes/architecture.md) — fork
+  features the upstream code doesn't have: Hummingbird/NNELS and SoundBooth
+  integrations, Audiobookshelf share links and the Folders tab, share-extension
+  web-URL imports, and the media-server progress sync store.
+- [`.claude/notes/audit-backlog.md`](.claude/notes/audit-backlog.md) —
+  remaining items from the May 2026 multi-AI audit of `test/all-changes`.
+  Critical/High items are already shipped; open items are nits and
+  defensive cleanups.
+- [`.claude/notes/dodp-direction.md`](.claude/notes/dodp-direction.md) —
+  long-term plan: BookPlayer should speak DODP directly so it can connect
+  to any DAISY-Online library (NNELS, CELA, Bookshare, Plextalk backends),
+  not just self-hosted Hummingbird. Hummingbird stays as the easy-mode
+  self-hosted backend; DODP joins as a fourth `MediaServerKind`.
+- [`.claude/notes/ci.md`](.claude/notes/ci.md) — self-hosted runner setup,
+  Release builds with Xcode 27.1 and their guards, tester notes and the
+  `TestFlight-Group:` trailer, signing gotchas. No secret IDs — those live in
+  `~/.config/bookplayer-deploy/secrets.env` on the Mac that runs the runner.
+- [`.claude/notes/conventions.md`](.claude/notes/conventions.md) — commit
+  conventions specific to this fork: the `Release-Notes:` trailer that the
+  TestFlight workflow reads, code-style notes, what stays out of git.
+
+### Quick orientation
+
+- **Deploy branch:** `test/all-changes`. Every push triggers a TestFlight
+  build via `.github/workflows/testflight.yml` on the self-hosted Mac
+  runner, and only that branch can ship (the job refuses other refs, so a
+  `workflow_dispatch` from a work branch builds nothing). Concurrency cancels
+  in-flight builds when a newer commit lands.
+- **Base:** in October 2026 the branch was rebuilt on upstream 6.0 (develop
+  `a8e2cac7`) by re-porting the fork's features slice by slice on
+  `catchup/upstream-6.0`, not by merging; the July history stays reachable as
+  a parent of the switch-over merge. Until the switch, `catchup/upstream-6.0`
+  is work in progress and must not be shipped.
+- **Upstream:** TortugaPower/BookPlayer. Merged upstream from this fork:
+  #1491 (multi-server), #1503, #1510, #1524, #1565, #1566 (Jellyfin Quick
+  Connect) and #1567 (Audiobookshelf SSO). Open: #1516 (share-sheet URL
+  import). Still fork-only: Hummingbird/NNELS, SoundBooth, the Audiobookshelf
+  share-link flow and Folders tab, the share-sheet URL import, the library
+  export fix, the media-server progress sync store, the FLAC/bound-book seek
+  stack, and the TestFlight and Pro-gating bypasses — those last ones must
+  never appear in an upstream PR.
+- **Secrets layout:** signing certs, ASC API key, and account identifiers
+  live on the Mac at `~/.appstoreconnect/private_keys/` and
+  `~/.config/bookplayer-deploy/`. Nothing sensitive crosses GitHub Secrets
+  or this repo. See `.claude/notes/ci.md` for the inventory.
+
+### Updating these notes
+
+These files are intended as living project memory. When project state
+changes (audit items closed, architecture changes, conventions evolve),
+update the relevant note in the same commit as the code change. Treat
+stale notes as a bug, not as historical record.
