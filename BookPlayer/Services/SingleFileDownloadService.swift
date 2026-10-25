@@ -26,6 +26,11 @@ final class SingleFileDownloadService: ObservableObject {
   /// A finished download's file, now at `destination` under Documents. Sent only after the move
   /// succeeded, so it never reports a failed download (`.finished` is sent for those too).
   public var savedFilesPublisher = PassthroughSubject<(task: URLSessionTask, destination: URL), Never>()
+  /// A folder under Documents whose downloads have all ended, sent once the last of them is done
+  /// (its file moved, or its failure reported), however each ended. Lets the provenance tracker
+  /// release a folder reservation nothing was saved into. Kept in memory like the queue: downloads
+  /// still running when the app was killed send nothing.
+  public var folderDownloadsEndedPublisher = PassthroughSubject<String, Never>()
 
   private let networkClient: NetworkClientProtocol
   private var progressDelegate = BPTaskDownloadDelegate()
@@ -40,6 +45,8 @@ final class SingleFileDownloadService: ObservableObject {
   public private(set) var downloadQueue: [(request: URLRequest, folderName: String?, fileName: String?)] = []
 
   private var currentTask: (task: URLSessionTask, folderName: String?, fileName: String?)?
+  /// The running download's task, for tests
+  var currentDownloadTask: URLSessionTask? { currentTask?.task }
   private lazy var downloadSession: URLSession = {
     URLSession(
       configuration: URLSessionConfiguration.background(withIdentifier: "SingleFileDownloadService"),
@@ -135,23 +142,41 @@ final class SingleFileDownloadService: ObservableObject {
     }
 
     progressDelegate.didFinishDownloadingTask = { [weak self] task, fileURL, error in
-      guard let self, fileURL != nil || error != nil else { return }
+      self?.downloadEnded(task, fileURL: fileURL, error: error)
+    }
+  }
 
-      self.finishDownload(
-        task,
-        fileURL: fileURL,
-        error: error,
-        folderName: self.currentTask?.folderName,
-        fileName: self.currentTask?.fileName
-      )
+  /// A download's end as the session delegate reports it. Internal so tests can drive it.
+  func downloadEnded(_ task: URLSessionTask, fileURL: URL?, error: Error?) {
+    guard fileURL != nil || error != nil else { return }
 
-      if task === self.currentTask?.task {
-        Task { @MainActor in
-          self.currentTask = nil
-          self.processNextDownload()
+    finishDownload(
+      task,
+      fileURL: fileURL,
+      error: error,
+      folderName: currentTask?.folderName,
+      fileName: currentTask?.fileName
+    )
+
+    if task === currentTask?.task {
+      Task { @MainActor in
+        let endedFolder = self.currentTask?.folderName
+        self.currentTask = nil
+        if let folder = Self.folderToRelease(ended: endedFolder, queued: self.downloadQueue.map(\.folderName)) {
+          self.folderDownloadsEndedPublisher.send(folder)
         }
+        self.processNextDownload()
       }
     }
+  }
+
+  /// The folder to report as finished when a download that saved into `ended` stops: when nothing
+  /// left in the queue saves there. How it stopped (saved, failed, cancelled) doesn't matter: the
+  /// delegate hands every end of a download to the same step, once, after `finishDownload` has
+  /// moved its file or reported its failure.
+  static func folderToRelease(ended: String?, queued: [String?]) -> String? {
+    guard let ended, !queued.contains(ended) else { return nil }
+    return ended
   }
 
   /// What a finished download does: `.finished`, then `.error` or the move into Documents.

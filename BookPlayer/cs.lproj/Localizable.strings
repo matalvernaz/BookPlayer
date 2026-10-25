@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Toto sdílení neobsahuje žádný zvuk ke stažení.";
 "shared_import_already_in_library" = "Už je ve vaší knihovně. Otevírá se.";
 "shared_import_started_announcement" = "Stahuje se „%@“.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Připravuje se stahování…";
+"hummingbird_no_audio" = "Tato kniha neobsahuje zvuk, který BookPlayer umí přehrát.";
+"hummingbird_bookshelf_empty" = "Vaše polička je prázdná. Najděte knihu vyhledáváním v knihovně.";
+"hummingbird_search_no_results" = "Vašemu hledání neodpovídá žádná kniha.";
+"hummingbird_due_today" = "Vrátit dnes";
+"hummingbird_due_format" = "Vrátit %@";
+"hummingbird_overdue_format" = "Po termínu, termín vypršel %@";

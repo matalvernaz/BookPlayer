@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Diese Freigabe enthält keine Audiodateien zum Herunterladen.";
 "shared_import_already_in_library" = "Schon in deiner Bibliothek. Wird geöffnet.";
 "shared_import_started_announcement" = "„%@“ wird heruntergeladen.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Download wird vorbereitet …";
+"hummingbird_no_audio" = "Dieses Buch enthält keine Audiodateien, die BookPlayer abspielen kann.";
+"hummingbird_bookshelf_empty" = "Dein Bücherregal ist leer. Durchsuche die Bibliothek, um ein Buch zu finden.";
+"hummingbird_search_no_results" = "Keine Bücher passen zu deiner Suche.";
+"hummingbird_due_today" = "Heute fällig";
+"hummingbird_due_format" = "Fällig %@";
+"hummingbird_overdue_format" = "Überfällig, war fällig %@";

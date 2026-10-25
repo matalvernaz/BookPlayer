@@ -153,6 +153,10 @@ struct MainView: View {
         listState.reloadAll()
       }
     }
+    // Books the Hummingbird loan scanner took out of the library (fork)
+    .onReceive(NotificationCenter.default.publisher(for: .libraryItemsRemoved).receive(on: DispatchQueue.main)) { _ in
+      listState.reloadAll()
+    }
   }
   
   private var showsMiniPlayer: Bool {

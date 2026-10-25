@@ -56,6 +56,8 @@ struct MediaServersView: View {
 
   @EnvironmentObject private var theme: ThemeViewModel
   @Environment(\.dismiss) private var dismiss
+  /// Hummingbird (fork), from the environment so the init and its call sites stay upstream's
+  @Environment(\.hummingbirdService) private var hummingbirdService
 
   var body: some View {
     Form {
@@ -68,6 +70,11 @@ struct MediaServersView: View {
         title: "Audiobookshelf",
         kind: .audiobookshelf,
         servers: audiobookshelfService.connections.map(ServerRow.init)
+      )
+      section(
+        title: "Hummingbird",
+        kind: .hummingbird,
+        servers: hummingbirdService.connections.map(ServerRow.init)
       )
     }
     .applyListStyle(with: theme, background: theme.systemBackgroundColor)
@@ -205,6 +212,8 @@ struct MediaServersView: View {
       jellyfinService.activateConnection(id: server.id)
     case .audiobookshelf:
       audiobookshelfService.activateConnection(id: server.id)
+    case .hummingbird:
+      hummingbirdService.activateConnection(id: server.id)
     }
     presentedSheet = .library(kind)
   }
@@ -215,6 +224,8 @@ struct MediaServersView: View {
       jellyfinService.deleteConnection(id: server.id)
     case .audiobookshelf:
       audiobookshelfService.deleteConnection(id: server.id)
+    case .hummingbird:
+      hummingbirdService.deleteConnection(id: server.id)
     }
   }
 
@@ -233,6 +244,11 @@ struct MediaServersView: View {
         completedSignInKind = .audiobookshelf
       }
       .environmentObject(theme)
+    case .hummingbird:
+      AddServerHummingbirdSheet(connectionService: hummingbirdService) {
+        completedSignInKind = .hummingbird
+      }
+      .environmentObject(theme)
     }
   }
 
@@ -243,6 +259,8 @@ struct MediaServersView: View {
       JellyfinRootView(connectionService: jellyfinService)
     case .audiobookshelf:
       AudiobookShelfRootView(connectionService: audiobookshelfService)
+    case .hummingbird:
+      HummingbirdRootView(connectionService: hummingbirdService)
     }
   }
 
@@ -258,6 +276,12 @@ struct MediaServersView: View {
     case .audiobookshelf:
       ConnectionDetailsAudiobookShelfSheet(
         connectionService: audiobookshelfService,
+        connectionId: connectionId
+      )
+      .environmentObject(theme)
+    case .hummingbird:
+      ConnectionDetailsHummingbirdSheet(
+        connectionService: hummingbirdService,
         connectionId: connectionId
       )
       .environmentObject(theme)
@@ -288,6 +312,8 @@ private enum SheetRoute: Identifiable {
 enum IntegrationKind: String, Identifiable {
   case jellyfin
   case audiobookshelf
+  /// Fork
+  case hummingbird
   var id: String { rawValue }
 }
 
@@ -307,6 +333,14 @@ private struct ServerRow: Identifiable {
   }
 
   init(_ data: AudiobookShelfConnectionData) {
+    self.id = data.id
+    self.serverName = data.serverName
+    self.serverUrl = data.url.absoluteString
+    self.userName = data.userName
+    self.customHeaders = data.customHeaders
+  }
+
+  init(_ data: HummingbirdConnectionData) {
     self.id = data.id
     self.serverName = data.serverName
     self.serverUrl = data.url.absoluteString
@@ -382,6 +416,36 @@ private struct AddServerAudiobookShelfSheet: View {
   }
 }
 
+private struct AddServerHummingbirdSheet: View {
+  let connectionService: HummingbirdConnectionService
+  @StateObject private var viewModel: HummingbirdConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  var onSignedIn: () -> Void
+
+  init(connectionService: HummingbirdConnectionService, onSignedIn: @escaping () -> Void) {
+    self.connectionService = connectionService
+    self.onSignedIn = onSignedIn
+    self._viewModel = .init(
+      wrappedValue: HummingbirdConnectionViewModel(
+        connectionService: connectionService,
+        mode: .addServer
+      )
+    )
+  }
+
+  var body: some View {
+    IntegrationConnectionFlowView(viewModel: viewModel, kind: .hummingbird, integrationName: "Hummingbird")
+      .environmentObject(theme)
+      .onChange(of: viewModel.signInCompletedAt) { _, newValue in
+        guard newValue != nil else { return }
+        onSignedIn()
+        dismiss()
+      }
+  }
+}
+
 // MARK: - Connection details sheets (per-server, scoped via `connectionId`)
 // Reuses `IntegrationConnectionView`'s saved-list rendering (signInFlow == nil),
 // but the VM is initialized with a specific `connectionId` so the form data and
@@ -441,6 +505,39 @@ private struct ConnectionDetailsAudiobookShelfSheet: View {
   var body: some View {
     NavigationStack {
       IntegrationConnectionView(viewModel: viewModel, integrationName: "Audiobookshelf")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("done_title".localized) { dismiss() }
+              .foregroundStyle(theme.linkColor)
+          }
+        }
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+  }
+}
+
+private struct ConnectionDetailsHummingbirdSheet: View {
+  let connectionService: HummingbirdConnectionService
+  @StateObject private var viewModel: HummingbirdConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  init(connectionService: HummingbirdConnectionService, connectionId: String) {
+    self.connectionService = connectionService
+    self._viewModel = .init(
+      wrappedValue: HummingbirdConnectionViewModel(
+        connectionService: connectionService,
+        mode: .viewDetails,
+        connectionId: connectionId
+      )
+    )
+  }
+
+  var body: some View {
+    NavigationStack {
+      IntegrationConnectionView(viewModel: viewModel, integrationName: "Hummingbird")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .confirmationAction) {

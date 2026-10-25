@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "この共有にはダウンロードできるオーディオがありません。";
 "shared_import_already_in_library" = "すでにライブラリにあります。開いています。";
 "shared_import_started_announcement" = "「%@」をダウンロードしています。";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "ダウンロードを準備中…";
+"hummingbird_no_audio" = "この本にはBookPlayerで再生できるオーディオがありません。";
+"hummingbird_bookshelf_empty" = "本棚は空です。ライブラリを検索して本を探してください。";
+"hummingbird_search_no_results" = "検索に一致する本はありません。";
+"hummingbird_due_today" = "今日が返却期限";
+"hummingbird_due_format" = "返却期限：%@";
+"hummingbird_overdue_format" = "延滞中（返却期限：%@）";

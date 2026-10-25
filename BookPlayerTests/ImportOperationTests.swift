@@ -1646,6 +1646,31 @@ final class ImportOperationProvenanceTests: XCTestCase {
     XCTAssertTrue(store.allResolved.isEmpty)
   }
 
+  /// The provenance moves into the library before the import removes the downloaded folder from
+  /// Documents. `MediaServerSourceTracker` reads a download folder missing from Documents as holding
+  /// nothing and lets go of its entries, so it must never find the folder gone with them still waiting
+  func testProvenanceIsResolvedBeforeTheSourceIsRemoved() throws {
+    let watchingSuite = "ImportOperationProvenanceTests.watching"
+    let watching = try XCTUnwrap(SourceWatchingDefaults(suiteName: watchingSuite))
+    watching.removePersistentDomain(forName: watchingSuite)
+    defer { watching.removePersistentDomain(forName: watchingSuite) }
+    let watchedStore = MediaServerSourceStore(userDefaults: watching)
+    let folder = try DataTestUtils.generateTestFolder(name: "Watched Folder", destinationFolder: DataManager.getDocumentsFolderURL())
+    _ = DataTestUtils.generateTestFile(name: "01.mp3", contents: Data("1".utf8), destinationFolder: folder)
+    watchedStore.registerLandingSource(info("li_w", bind: true), at: "Watched Folder")
+    watching.watchedPath = folder.path
+
+    let operation = ImportOperation(files: [folder], libraryService: libraryService, mediaServerSourceStore: watchedStore)
+    let done = XCTestExpectation(description: "import finished")
+    operation.completionBlock = { done.fulfill() }
+    operation.start()
+    wait(for: [done], timeout: 15)
+
+    XCTAssertEqual(watchedStore.source(for: "Watched Folder"), info("li_w", bind: true))
+    XCTAssertEqual(watching.sourceExistedAtResolve, [true])
+    XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path), "the import removes it afterwards")
+  }
+
   /// A download discarded on the import screen takes its landed entry with it, so a later file with the
   /// same name can't pick it up
   func testADiscardedDownloadTakesItsLandedEntry() throws {
@@ -1659,3 +1684,15 @@ final class ImportOperationProvenanceTests: XCTestCase {
   }
 }
 
+/// Notes, each time resolved provenance is written, whether the watched import source was still there
+private final class SourceWatchingDefaults: UserDefaults {
+  var watchedPath: String?
+  private(set) var sourceExistedAtResolve = [Bool]()
+
+  override func set(_ value: Any?, forKey defaultName: String) {
+    if defaultName == MediaServerSourceStore.Key.resolved, let watchedPath {
+      sourceExistedAtResolve.append(FileManager.default.fileExists(atPath: watchedPath))
+    }
+    super.set(value, forKey: defaultName)
+  }
+}

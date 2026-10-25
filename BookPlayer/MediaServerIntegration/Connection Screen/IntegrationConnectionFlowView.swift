@@ -200,6 +200,7 @@ struct IntegrationAddressScreen<VM: IntegrationConnectionViewModelProtocol>: Vie
     switch kind {
     case .jellyfin: return "8096"
     case .audiobookshelf: return "13378"
+    case .hummingbird: return "8000"
     }
   }
 
@@ -207,6 +208,7 @@ struct IntegrationAddressScreen<VM: IntegrationConnectionViewModelProtocol>: Vie
     switch kind {
     case .jellyfin: return "jellyfin.example.com"
     case .audiobookshelf: return "audiobookshelf.example.com"
+    case .hummingbird: return "hummingbird.example.com"
     }
   }
 

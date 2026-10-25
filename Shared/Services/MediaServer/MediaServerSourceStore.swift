@@ -80,6 +80,13 @@ public final class MediaServerSourceStore: @unchecked Sendable {
     queue.sync { read(Key.resolved) }
   }
 
+  /// The entries of the item at `relativePath` and, for a folder, of everything under it
+  public func sources(under relativePath: String) -> [String: MediaServerSourceInfo] {
+    queue.sync {
+      read(Key.resolved).filter { Self.isSelfOrDescendant($0.key, of: relativePath) }
+    }
+  }
+
   /// Records an item's provenance directly, when its library path is already known.
   public func setSource(_ info: MediaServerSourceInfo, for relativePath: String) {
     queue.sync {

@@ -244,6 +244,12 @@ public class ImportOperation: Operation {
 
       try FileManager.default.copyItem(at: fileURL, to: existingFileURL)
 
+      /// The file refills the existing book, so its provenance goes there too. Before the source
+      /// goes, like `processFile`'s
+      if let existingRelativePath {
+        resolveProvenance(of: fileURL, documentsRelativePath: documentsRelativePath, at: existingRelativePath)
+      }
+
       if DataManager.isAppManagedSource(fileURL) {
         fileURL.disableFileProtection()
         try? FileManager.default.removeItem(at: fileURL)
@@ -260,11 +266,6 @@ public class ImportOperation: Operation {
       }
       SentrySDK.flush(timeout: 2)
       fatalError("Existing book, fail to move file from \(fileURL) to \(existingFileURL). Error: \(error.localizedDescription)")
-    }
-
-    /// The file refills the existing book, so its provenance goes there too
-    if let existingRelativePath {
-      resolveProvenance(of: fileURL, documentsRelativePath: documentsRelativePath, at: existingRelativePath)
     }
 
     return true
@@ -330,6 +331,12 @@ public class ImportOperation: Operation {
     do {
       try FileManager.default.copyItem(at: currentFile, to: destinationURL)
 
+      /// Items land at the library root, so the landed name is the whole relativePath; a later move
+      /// out of the root re-keys it in LibraryService. Recorded before the source goes, so a download
+      /// folder that's gone from Documents never still holds entries the import was about to take
+      /// (`MediaServerSourceTracker` lets go of a missing folder's entries).
+      resolveProvenance(of: currentFile, documentsRelativePath: documentsRelativePath, at: destinationURL.lastPathComponent)
+
       if DataManager.isAppManagedSource(currentFile) {
         currentFile.disableFileProtection()
         try FileManager.default.removeItem(at: currentFile)
@@ -347,10 +354,6 @@ public class ImportOperation: Operation {
       SentrySDK.flush(timeout: 2)
       fatalError("Fail to move file from \(currentFile) to \(destinationURL). Error: \(error.localizedDescription)")
     }
-
-    /// Items land at the library root, so the landed name is the whole relativePath; a later move
-    /// out of the root re-keys it in LibraryService
-    resolveProvenance(of: currentFile, documentsRelativePath: documentsRelativePath, at: destinationURL.lastPathComponent)
 
     self.processedFiles.append(destinationURL)
     self.processFile(from: mutableFiles)

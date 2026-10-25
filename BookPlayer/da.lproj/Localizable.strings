@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Delingen indeholder ingen lyd at downloade.";
 "shared_import_already_in_library" = "Findes allerede i dit bibliotek. Åbner den.";
 "shared_import_started_announcement" = "Downloader »%@«.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Forbereder download…";
+"hummingbird_no_audio" = "Denne bog har ingen lyd, som BookPlayer kan afspille.";
+"hummingbird_bookshelf_empty" = "Din boghylde er tom. Søg i biblioteket for at finde en bog.";
+"hummingbird_search_no_results" = "Ingen bøger matcher din søgning.";
+"hummingbird_due_today" = "Skal afleveres i dag";
+"hummingbird_due_format" = "Skal afleveres %@";
+"hummingbird_overdue_format" = "Forsinket, skulle have været afleveret %@";

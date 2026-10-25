@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Delningen innehåller inget ljud att ladda ner.";
 "shared_import_already_in_library" = "Finns redan i ditt bibliotek. Öppnar den.";
 "shared_import_started_announcement" = "Laddar ner ”%@”.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Förbereder nedladdning…";
+"hummingbird_no_audio" = "Den här boken har inget ljud som BookPlayer kan spela upp.";
+"hummingbird_bookshelf_empty" = "Din bokhylla är tom. Sök i biblioteket för att hitta en bok.";
+"hummingbird_search_no_results" = "Inga böcker matchar din sökning.";
+"hummingbird_due_today" = "Ska lämnas tillbaka i dag";
+"hummingbird_due_format" = "Ska lämnas tillbaka %@";
+"hummingbird_overdue_format" = "Försenad, skulle ha lämnats tillbaka %@";

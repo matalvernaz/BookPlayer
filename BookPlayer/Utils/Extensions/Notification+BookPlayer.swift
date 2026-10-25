@@ -24,4 +24,12 @@ extension Notification.Name {
   /// Posted once an import's items are in the library (fork): a media-server folder download marked
   /// bind-on-complete can be bound then, not at the next launch
   static let importItemsInserted = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).import.inserted")
+  /// Posted when a delete the user asked for left no copy of some media-server items (fork), with
+  /// them under `MediaServerDeletion.entriesKey`: a Hummingbird loan goes back then. Sync and the
+  /// loan scanner delete without it.
+  static let mediaServerItemsDeleted = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).mediaserver.items.deleted")
+  /// Posted after something other than the library screens removed library items (fork: the
+  /// Hummingbird loan scanner), so the lists on screen fetch again instead of showing books that
+  /// are gone
+  static let libraryItemsRemoved = Notification.Name("\(Bundle.main.configurationString(for: .bundleIdentifier)).library.items.removed")
 }

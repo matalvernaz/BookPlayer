@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Jaossa ei ole ladattavaa ääntä.";
 "shared_import_already_in_library" = "On jo kirjastossasi. Avataan.";
 "shared_import_started_announcement" = "Ladataan ”%@”.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Valmistellaan latausta…";
+"hummingbird_no_audio" = "Tässä kirjassa ei ole ääntä, jota BookPlayer voi toistaa.";
+"hummingbird_bookshelf_empty" = "Kirjahyllysi on tyhjä. Etsi kirja kirjastosta.";
+"hummingbird_search_no_results" = "Haullasi ei löytynyt kirjoja.";
+"hummingbird_due_today" = "Erääntyy tänään";
+"hummingbird_due_format" = "Erääntyy %@";
+"hummingbird_overdue_format" = "Myöhässä, erääntyi %@";

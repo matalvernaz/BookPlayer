@@ -518,6 +518,8 @@ extension ItemListViewModel {
     }
 
     let parentFolder = items.first?.parentFolder
+    /// Where the deleted items came from (fork), read before the delete drops it
+    let deletedSources = MediaServerDeletion.snapshot(of: items, mode: mode, store: .shared)
 
     do {
       try libraryService.delete(items, mode: mode)
@@ -530,6 +532,9 @@ extension ItemListViewModel {
     } catch {
       loadingState.error = error
     }
+
+    /// Whatever the delete got through: a server item it left no copy of is reported (fork)
+    MediaServerDeletion.postGone(from: deletedSources, store: .shared)
 
     listState.reloadAll()
     editMode = .inactive

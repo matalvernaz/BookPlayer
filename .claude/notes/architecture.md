@@ -5,8 +5,9 @@
 > code, not here. The other fork features are being re-ported onto 6.0 one
 > slice at a time on `catchup/upstream-6.0`; until a feature's slice lands,
 > its section below still describes the July `test/all-changes` code. Each
-> slice updates its section. Ported so far (slice 1): the Audiobookshelf
-> Folders tab, share links, the provenance store and the library export fix.
+> slice updates its section. Ported so far: the Audiobookshelf Folders tab,
+> share links, the provenance store and the library export fix (slice 1);
+> Hummingbird, without its progress and bookmark sync (slice 2).
 
 The upstream TortugaPower BookPlayer is a local-files audiobook player.
 This fork adds three media-server clients and a share-extension web-URL
@@ -65,29 +66,89 @@ as a cancellation. Stream from a folder level goes through the same
 `onStreamTapped` gate as everywhere else (paid streaming stays gated).
 The tab title is upstream's `folders_title`.
 
-### Hummingbird (`BookPlayer/Hummingbird/`)
+### Hummingbird (`Shared/Hummingbird/`, `BookPlayer/Hummingbird/`)
 
-Talks to a self-hosted Hummingbird server
-(`cobdfamily/hummingbird` docker image) which fronts NNELS via a
-Playwright-based scraper plugin. REST surface for browse + search;
-DODP-shaped `/resources` endpoint for multi-file DAISY downloads with
-503+Retry-After auto-prefetch.
+Talks to a self-hosted Hummingbird server (`cobdfamily/hummingbird`, port
+8000 by default), which puts accessible libraries (NNELS today) behind one
+REST surface through server plugins. 6.0 base since slice 2; the progress
+reporter and bookmark puller come back with slice 4.
 
-**Audio-format filter:** `HummingbirdLibraryItem.audioFormatIds` keeps
-only format ids 1, 2, 4, 10, 11, 13 (DAISY 2.02 / DAISY 3 / MP3 / EPUB 3
-Full-Text+Audio / DAISY 2.02 Audio / DAISY 3 Audio). EPUB, BRF, PDF,
-AZW3, text-only DAISY, and braille editions are dropped at the client
-boundary because BookPlayer can't play them. Server stays
-format-agnostic so future DODP-aware clients can still see the full
-catalog.
+**Where it lives.** The connection data, the library item and
+`HummingbirdConnectionService` are in `Shared/Hummingbird/` (both
+frameworks, like 6.0's Jellyfin and ABS services) because 6.0's
+`IntegrationConnectionStore` and `IntegrationConnectionPayload` are
+internal to BookPlayerKit. The screens, the loan scanner and the
+delete-return observer are in `BookPlayer/Hummingbird/`.
 
-**Bound-book completion:** DAISY 2.02 / 3 archives arrive as multiple
-audio files plus an `.m3u`. `MediaServerBoundBookCompleter` (ported in
-slice 1 for share links, `BookPlayer/Services/`) binds the folder into a
-single audiobook entry once it's in the library. Opt-in
-via `MediaServerSourceInfo.shouldBindFolder = true` (Hummingbird,
-SoundBooth, and ABS share-link imports set it; Jellyfin / ABS folder
-imports stay folder-shaped).
+**Connections.** `IntegrationConnectionStore<HummingbirdConnectionData>`
+under the July Keychain key `hummingbird_connection` and active-id key
+`hummingbird_active_connection_id`, so July installs keep their servers.
+The stored shape is July's six keys (id, url, serverName, userName,
+password, customHeaders): the store's `userID` (the user name), `token`
+(`"user:password"`, so an empty password isn't dropped as unusable at
+launch) and `selectedLibraryId` (always nil) are computed. Auth is HTTP
+Basic on every request, custom headers first and `Authorization` last;
+login credentials go in the POST body, never the URL (0.3.1 dropped the
+query form: it put passwords in access logs). A 401/403 from a saved
+connection is `sessionExpired`; the login's 401 is
+`URLError(.userAuthenticationRequired)`; the ping only checks for
+`{"service": "hummingbird"}`. Every call goes through an injectable
+`IntegrationHTTPClient`.
+
+**Sign-in flow.** `HummingbirdConnectionViewModel` is 6.0's
+`IntegrationConnectionViewModelProtocol` on the ABS view model's pattern:
+`IntegrationConnectionFlowView(kind: .hummingbird)` (port placeholder
+8000), password only so Connect goes straight to the password step,
+credentials only to the URL Connect pinged, `prepareReauth` from the
+session-expired alert, re-auth keeps the connection id. The user name is
+trimmed; the password is sent as typed (Basic replays it every request).
+`MediaServersView` reads the service from the `hummingbirdService`
+environment entry, so upstream's init and its three call sites are
+unchanged; `MainCoordinator` injects it at the root.
+
+**Audio-format filter.** `HummingbirdLibraryItem.audioFormatIds` keeps
+format ids 1, 2, 4, 10, 11, 13 (DAISY 2.02 / DAISY 3 / MP3 / EPUB 3
+text+audio / DAISY 2.02 audio / DAISY 3 audio). The server stays
+format-agnostic.
+
+**Downloads** (`HummingbirdLibraryViewModel`). `/resources/{fmt}/{id}`
+answers 503 + Retry-After while the server fetches the book; the poll
+clamps Retry-After to 1...30 s and gives up after 20 minutes (injectable
+sleeper and clock). The resource list and the file requests name the
+connection the book was listed on, so switching servers during that wait
+can't send one server's files with another's password. Non-audio
+resources are dropped. One audio file is a pending download keyed by its
+request URL (it lands wherever the download service saves it). Several
+take a folder from `MediaServerDownloadFolders.reserveFolder` (shared with
+share links): named after the title, "Dune 2" on a clash, recorded as
+landed with `shouldBindFolder`. Their files are ordered by `localURI`
+(`localizedStandardCompare`, July's order: the server lists zip storage
+order, which DAISY doesn't make the reading order), flattened by
+`volumeChildFileNames` and numbered ("001 - Disc 1 - 01.mp3"), because the
+import orders a folder by name. No playlist file: 6.0's import makes every
+file in a folder a part, so July's `playlist.m3u` became a junk part. The
+real reading order (NCC / OPF spine) is a server follow-up. The banner
+announces each status change to VoiceOver.
+
+**Loans.** `HummingbirdLoanExpiryScanner` (launch and every foreground,
+owned by `MainCoordinator`) takes Hummingbird entries whose due date has
+passed: returns each to its own connection (failure logged, the delete
+still happens), then deletes it like a user's delete (stops the player if
+it's the loaded book, `.deep`, rebuilds the parent, schedules the sync
+delete) and posts `.libraryItemsRemoved`, which `MainView` answers with a
+list reload. A failed delete keeps the entry for the next scan. The entry is
+checked again before the return and after it, and only the same entry at the
+same path is deleted: a book moved (or another put in its place) while the
+return was out is left for the next scan to find where it is now. An expired
+copy of a book that another copy still has on loan (borrowed again) is
+deleted without a return, since a return ends the book's loan on the server.
+NNELS has no due dates, so it does nothing there. A user's delete returns the book
+through `MediaServerDeletion` (see the provenance store section) and
+`HummingbirdLoanReturns`.
+
+**Bound-book completion.** `MediaServerBoundBookCompleter` binds the
+folder into one book once it's in the library (opt-in through
+`shouldBindFolder`; Hummingbird, share links and SoundBooth set it).
 
 ## ABS public share links (universal links)
 
@@ -164,13 +225,23 @@ which server item. Streamed items don't need it: 6.0 links them with
 `ExternalResource`. An entry moves through three stages:
 
 1. pending, by request URL: registered when the ABS or Jellyfin service
-   builds a download request (`createItemDownloadRequest`);
+   builds a download request (`createItemDownloadRequest`), or for a
+   one-file Hummingbird book;
 2. landed, by path under Documents: `MediaServerSourceTracker` moves it
    there when `SingleFileDownloadService.savedFilesPublisher` reports the
    file saved, with its real destination (never on `.finished`, which is
    sent before the move and for failed downloads too; an error drops only
    the pending entry). A multi-file download into a named folder
-   registers the folder as landed up front (`registerLandingSource`);
+   registers the folder as landed up front through
+   `MediaServerDownloadFolders.reserveFolder` (share links, Hummingbird).
+   When the last download into that folder ends
+   (`SingleFileDownloadService.folderDownloadsEndedPublisher`, sent from the
+   completion step after that download's own move), the tracker lets go of
+   the folder's landed entries if the folder is missing or empty (hidden
+   files aside); one that can't be listed keeps them, and the folder itself
+   is never deleted (the import may already hold it). `ImportOperation`
+   records provenance before it removes a source from Documents, so a
+   missing folder never still holds entries the import was about to take;
 3. resolved, by library `relativePath`: `ImportOperation` brings landed
    entries (a folder's with its contents) to the name the import really
    gave the item (`x-1.m4b` on a clash); a downloaded zip's entry goes to
@@ -185,6 +256,16 @@ item's old path, prefix-aware, only for items that really moved), once in
 there). It is not transactional with Core Data: it changes as each file
 operation succeeds, so a failed library save afterwards (a `fatalError`
 anyway) could leave them out of step.
+
+A user's delete (`ItemListViewModel.handleDelete`, two calls around
+upstream's delete) reads `MediaServerDeletion.snapshot` first: the entries
+at and under each deleted item, minus a folder's own entry on "folder
+only". Afterwards, thrown or not, the server items no resolved entry still
+names (kind, connection, item id) are posted once each as
+`.mediaServerItemsDeleted`. Identity, not path: a "folder only" delete's
+moved books, the rest of a batch that failed partway and another copy of
+the same book all keep their entries, so none of them is reported. Sync and
+the loan scanner delete without it.
 
 `AppServices` owns the one instance and gives it to `LibraryService` at
 setup (background launches too); `MainCoordinator` wires it into

@@ -41,10 +41,6 @@ final class SharedLinkImportService: BPLogger {
 
   private static let shareSessionCookieName = "share_session_id"
 
-  /// File names are capped well under the file system's 255 bytes, leaving room for the import's
-  /// `-1` on a clash
-  private static let maxFileNameBytes = 200
-
   private static let urlSession: URLSession = {
     let configuration = URLSessionConfiguration.default
     configuration.timeoutIntervalForRequest = 30
@@ -155,9 +151,8 @@ final class SharedLinkImportService: BPLogger {
     // Recorded before the downloads start, against the folder they land in, so the import that
     // brings the folder into the library finds it with the bind flag. `libraryItemId` keeps the
     // check above working for the next tap on the same link
-    let folderName = reserveFolder(
-      title: title,
-      slug: share.slug,
+    let folderName = MediaServerDownloadFolders.reserveFolder(
+      named: MediaServerDownloadFolders.folderName(title: title, fallback: share.slug),
       info: MediaServerSourceInfo(
         kind: .audiobookshelf,
         connectionId: sharedLinkConnectionId,
@@ -203,39 +198,6 @@ final class SharedLinkImportService: BPLogger {
     return urlComponents.url
   }
 
-  /// The share's title made safe as a folder name, else its slug
-  static func folderName(title: String, slug: String) -> String {
-    limited(MediaServerFileNames.sanitize(title.isEmpty ? slug : title))
-  }
-
-  /// Takes a folder in Documents for one share's tracks and records the share's provenance there.
-  /// Another share with the same title may be downloading or waiting to be imported, so the first
-  /// name nobody holds wins: `Dune`, `Dune 2`, `Dune 3`… A folder is held when it's in Documents,
-  /// when a queued download fills it (`folderInUse`), or when another import recorded it. Not a
-  /// random suffix: the folder's name becomes the book's title.
-  static func reserveFolder(
-    title: String,
-    slug: String,
-    info: MediaServerSourceInfo,
-    store: MediaServerSourceStore,
-    folderInUse: (String) -> Bool
-  ) -> String {
-    let base = folderName(title: title, slug: slug)
-    let documents = DataManager.getDocumentsFolderURL()
-    var candidate = base
-    var number = 2
-    while folderInUse(candidate)
-      || store.hasLandedSource(at: candidate)
-      || FileManager.default.fileExists(atPath: documents.appendingPathComponent(candidate).path)
-    {
-      candidate = "\(base) \(number)"
-      number += 1
-    }
-
-    store.registerLandingSource(info, at: candidate)
-    return candidate
-  }
-
   /// A zero-padded index first: a bound book plays its files in name order, and the server's track
   /// order is the one that counts
   static func trackFileName(for track: PublicShareResponse.AudioTrack) -> String {
@@ -253,17 +215,7 @@ final class SharedLinkImportService: BPLogger {
       ? titleExtension
       : track.mimeType.flatMap { fileExtensionByMimeType[$0.lowercased()] } ?? fallbackFileExtension
 
-    return String(format: "%03d - %@.%@", track.index, limited(stem), fileExtension)
-  }
-
-  /// `name` cut at a whole character to fit `maxFileNameBytes`
-  private static func limited(_ name: String) -> String {
-    var result = ""
-    for character in name {
-      guard result.utf8.count + String(character).utf8.count <= maxFileNameBytes else { break }
-      result.append(character)
-    }
-    return result
+    return String(format: "%03d - %@.%@", track.index, MediaServerDownloadFolders.limited(stem), fileExtension)
   }
 
   private static func shareSessionCookie(from response: HTTPURLResponse, url: URL) -> String? {

@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "По этой ссылке нет аудио для скачивания.";
 "shared_import_already_in_library" = "Уже есть в вашей библиотеке. Открывается.";
 "shared_import_started_announcement" = "Скачивается «%@».";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Подготовка загрузки…";
+"hummingbird_no_audio" = "В этой книге нет аудио, которое BookPlayer может воспроизвести.";
+"hummingbird_bookshelf_empty" = "Ваша полка пуста. Найдите книгу через поиск в библиотеке.";
+"hummingbird_search_no_results" = "По вашему запросу книг не найдено.";
+"hummingbird_due_today" = "Вернуть сегодня";
+"hummingbird_due_format" = "Вернуть %@";
+"hummingbird_overdue_format" = "Просрочено, срок истёк %@";

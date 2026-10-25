@@ -29,6 +29,8 @@ class MainCoordinator: NSObject {
   let watchConnectivityService: PhoneWatchConnectivityService
   let jellyfinConnectionService: JellyfinConnectionService
   let audiobookshelfConnectionService: AudiobookShelfConnectionService
+  /// Hummingbird (fork)
+  let hummingbirdConnectionService: HummingbirdConnectionService
   let syncQueueService: SyncQueueService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
@@ -38,6 +40,10 @@ class MainCoordinator: NSObject {
   private let mediaServerSourceTracker: MediaServerSourceTracker
   /// Binds bind-flagged folder downloads into books
   private let boundBookCompleter: MediaServerBoundBookCompleter
+  /// Returns a Hummingbird book when the user deletes it (fork)
+  private let hummingbirdLoanReturns: HummingbirdLoanReturns
+  /// Returns and deletes Hummingbird books whose loan ran out (fork)
+  private let hummingbirdLoanExpiryScanner: HummingbirdLoanExpiryScanner
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -84,6 +90,18 @@ class MainCoordinator: NSObject {
     audiobookshelfService.mediaServerSourceStore = sourceStore
     self.audiobookshelfConnectionService = audiobookshelfService
 
+    let hummingbirdService = HummingbirdConnectionService()
+    hummingbirdService.setup()
+    self.hummingbirdConnectionService = hummingbirdService
+    self.hummingbirdLoanReturns = HummingbirdLoanReturns(connectionService: hummingbirdService)
+    self.hummingbirdLoanExpiryScanner = HummingbirdLoanExpiryScanner(
+      connectionService: hummingbirdService,
+      sourceStore: sourceStore,
+      libraryService: coreServices.libraryService,
+      playerManager: coreServices.playerManager,
+      syncService: coreServices.syncService
+    )
+
     self.mediaServerSourceTracker = MediaServerSourceTracker(
       store: sourceStore,
       downloadService: singleFileDownloadService
@@ -114,6 +132,9 @@ class MainCoordinator: NSObject {
 
     accountService.loginIfUserExists(delegate: self)
 
+    // Loans that ran out while the app was closed; coming back to the foreground scans again
+    Task { await hummingbirdLoanExpiryScanner.scan() }
+
     let vc = AppHostingViewController(
       rootView: MainView {
         self.showSecondOnboarding()
@@ -129,6 +150,7 @@ class MainCoordinator: NSObject {
       .environment(\.syncService, syncService)
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
+      .environment(\.hummingbirdService, hummingbirdConnectionService)
       .environment(\.mediaServerSourceStore, mediaServerSourceStore)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)

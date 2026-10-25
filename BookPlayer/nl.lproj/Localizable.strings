@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Deze deellink bevat geen audio om te downloaden.";
 "shared_import_already_in_library" = "Staat al in je bibliotheek. Wordt geopend.";
 "shared_import_started_announcement" = "“%@” wordt gedownload.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Download voorbereiden…";
+"hummingbird_no_audio" = "Dit boek bevat geen audio die BookPlayer kan afspelen.";
+"hummingbird_bookshelf_empty" = "Je boekenplank is leeg. Zoek in de bibliotheek om een boek te vinden.";
+"hummingbird_search_no_results" = "Geen boeken gevonden voor je zoekopdracht.";
+"hummingbird_due_today" = "Vandaag inleveren";
+"hummingbird_due_format" = "Inleveren %@";
+"hummingbird_overdue_format" = "Te laat, moest %@ worden ingeleverd";

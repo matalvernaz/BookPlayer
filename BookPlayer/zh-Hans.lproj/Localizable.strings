@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "此共享中没有可下载的音频。";
 "shared_import_already_in_library" = "已在您的有声书库中，正在打开。";
 "shared_import_started_announcement" = "正在下载“%@”。";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "正在准备下载…";
+"hummingbird_no_audio" = "这本书没有 BookPlayer 可以播放的音频。";
+"hummingbird_bookshelf_empty" = "你的书架是空的。在图书馆中搜索以找到图书。";
+"hummingbird_search_no_results" = "没有与你的搜索相符的图书。";
+"hummingbird_due_today" = "今天到期";
+"hummingbird_due_format" = "%@到期";
+"hummingbird_overdue_format" = "已逾期，%@到期";

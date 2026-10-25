@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "لا تحتوي هذه المشاركة على صوت للتنزيل.";
 "shared_import_already_in_library" = "موجود بالفعل في مكتبتك. جارٍ فتحه.";
 "shared_import_started_announcement" = "جارٍ تنزيل «%@».";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "جارٍ تجهيز التنزيل…";
+"hummingbird_no_audio" = "لا يحتوي هذا الكتاب على صوت يمكن لـ BookPlayer تشغيله.";
+"hummingbird_bookshelf_empty" = "رفّ كتبك فارغ. ابحث في المكتبة للعثور على كتاب.";
+"hummingbird_search_no_results" = "لا توجد كتب تطابق بحثك.";
+"hummingbird_due_today" = "موعد الإرجاع اليوم";
+"hummingbird_due_format" = "موعد الإرجاع %@";
+"hummingbird_overdue_format" = "متأخر، كان موعد الإرجاع %@";

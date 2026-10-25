@@ -600,12 +600,12 @@ final class SharedLinkImportNamingTests: XCTestCase {
 
   /// A title can't climb out of Documents or hide itself
   func testTheFolderIsNamedSafelyAfterTheTitle() {
-    XCTAssertEqual(SharedLinkImportService.folderName(title: "Dune", slug: "dune-abc"), "Dune")
-    XCTAssertEqual(SharedLinkImportService.folderName(title: "", slug: "dune-abc"), "dune-abc")
-    XCTAssertEqual(SharedLinkImportService.folderName(title: "..", slug: "s"), "untitled_file")
-    XCTAssertEqual(SharedLinkImportService.folderName(title: "../../Library", slug: "s"), "Library")
-    XCTAssertEqual(SharedLinkImportService.folderName(title: ".hidden", slug: "s"), "hidden")
-    let long = SharedLinkImportService.folderName(title: String(repeating: "書", count: 200), slug: "s")
+    XCTAssertEqual(MediaServerDownloadFolders.folderName(title: "Dune", fallback: "dune-abc"), "Dune")
+    XCTAssertEqual(MediaServerDownloadFolders.folderName(title: "", fallback: "dune-abc"), "dune-abc")
+    XCTAssertEqual(MediaServerDownloadFolders.folderName(title: "..", fallback: "s"), "untitled_file")
+    XCTAssertEqual(MediaServerDownloadFolders.folderName(title: "../../Library", fallback: "s"), "Library")
+    XCTAssertEqual(MediaServerDownloadFolders.folderName(title: ".hidden", fallback: "s"), "hidden")
+    let long = MediaServerDownloadFolders.folderName(title: String(repeating: "書", count: 200), fallback: "s")
     XCTAssertLessThanOrEqual(long.utf8.count, 200)
     XCTAssertFalse(long.isEmpty)
   }
@@ -629,8 +629,8 @@ final class SharedLinkImportNamingTests: XCTestCase {
       MediaServerSourceInfo(kind: .audiobookshelf, connectionId: SharedLinkImportService.sharedLinkConnectionId, itemId: itemId, shouldBindFolder: true)
     }
 
-    let first = SharedLinkImportService.reserveFolder(title: title, slug: "a", info: share("li_a"), store: store, folderInUse: { _ in false })
-    let second = SharedLinkImportService.reserveFolder(title: title, slug: "b", info: share("li_b"), store: store, folderInUse: { _ in false })
+    let first = MediaServerDownloadFolders.reserveFolder(named: title, info: share("li_a"), store: store, folderInUse: { _ in false })
+    let second = MediaServerDownloadFolders.reserveFolder(named: title, info: share("li_b"), store: store, folderInUse: { _ in false })
 
     XCTAssertEqual(first, title)
     XCTAssertEqual(second, "\(title) 2")
@@ -639,9 +639,8 @@ final class SharedLinkImportNamingTests: XCTestCase {
 
     // A folder already in Documents, and one a queued download is filling, are taken too
     try FileManager.default.createDirectory(at: documents.appendingPathComponent(title), withIntermediateDirectories: true)
-    let third = SharedLinkImportService.reserveFolder(
-      title: title,
-      slug: "c",
+    let third = MediaServerDownloadFolders.reserveFolder(
+      named: title,
       info: share("li_c"),
       store: store,
       folderInUse: { $0 == "\(title) 2" }

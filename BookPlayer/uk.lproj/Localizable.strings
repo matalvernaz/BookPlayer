@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "За цим посиланням немає аудіо для завантаження.";
 "shared_import_already_in_library" = "Уже є у вашій бібліотеці. Відкривається.";
 "shared_import_started_announcement" = "Завантажується «%@».";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Підготовка завантаження…";
+"hummingbird_no_audio" = "У цій книзі немає аудіо, яке BookPlayer може відтворити.";
+"hummingbird_bookshelf_empty" = "Ваша полиця порожня. Знайдіть книгу через пошук у бібліотеці.";
+"hummingbird_search_no_results" = "За вашим запитом книг не знайдено.";
+"hummingbird_due_today" = "Повернути сьогодні";
+"hummingbird_due_format" = "Повернути %@";
+"hummingbird_overdue_format" = "Прострочено, термін минув %@";

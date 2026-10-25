@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Bu paylaşımda indirilecek ses yok.";
 "shared_import_already_in_library" = "Zaten kitaplığınızda. Açılıyor.";
 "shared_import_started_announcement" = "“%@” indiriliyor.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "İndirme hazırlanıyor…";
+"hummingbird_no_audio" = "Bu kitapta BookPlayer’ın çalabileceği ses yok.";
+"hummingbird_bookshelf_empty" = "Kitaplığın boş. Bir kitap bulmak için kütüphanede ara.";
+"hummingbird_search_no_results" = "Aramanla eşleşen kitap yok.";
+"hummingbird_due_today" = "Bugün iade edilmeli";
+"hummingbird_due_format" = "İade: %@";
+"hummingbird_overdue_format" = "Gecikmiş, iade tarihi: %@";

@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Esta partilha não tem áudio para transferir.";
 "shared_import_already_in_library" = "Já está na sua biblioteca. A abrir.";
 "shared_import_started_announcement" = "A transferir “%@”.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "A preparar a transferência…";
+"hummingbird_no_audio" = "Este livro não tem áudio que o BookPlayer consiga reproduzir.";
+"hummingbird_bookshelf_empty" = "A sua estante está vazia. Pesquise na biblioteca para encontrar um livro.";
+"hummingbird_search_no_results" = "Nenhum livro corresponde à sua pesquisa.";
+"hummingbird_due_today" = "Expira hoje";
+"hummingbird_due_format" = "Expira %@";
+"hummingbird_overdue_format" = "Em atraso, expirou %@";

@@ -387,3 +387,49 @@ reset). Still open.
   constrained by the details VStack today.
 - **Per-kind row labels** (folder vs author vs series) — shipped a generic
   "opens a folder" hint instead; per-kind needs per-backend cell changes.
+
+# 2026-10-25 catch-up, slice 2 (Hummingbird on the 6.0 base)
+
+## FIXED in the port (July bugs)
+
+- Six string keys the July screens used never existed, so VoiceOver read
+  the raw key names (the banner's dismiss button among them). The banner's
+  X now uses upstream's `voiceover_close_button`; the rest are new
+  `hummingbird_*` keys in every table.
+- The active connection was a computed `UserDefaults` passthrough that
+  `@Observable` couldn't see, so switching servers didn't refresh views.
+  It's 6.0's `IntegrationConnectionStore` now.
+- The ping mapped a 401 to "session expired".
+- DAISY files were saved under their bare names, so two discs' `01.mp3`
+  collided; folders got " (bookId)" appended, which became the book title
+  VoiceOver read; a `playlist.m3u` written first became a junk part of the
+  bound book. See architecture.md, "Hummingbird".
+- A share (or now a DAISY book) whose downloads all failed kept its folder
+  reservation, so the next book with that title became "Dune 2" (Sonnet,
+  slice 1 review): the folder is let go once its last download ends with
+  nothing in it.
+
+## OPEN
+
+- **Relaunch mid-download.** The download queue is in memory, so after the
+  app is killed mid-download nothing reports the folder's end and a stale
+  reservation survives (the next same-title book becomes "Dune 2").
+- **An empty leftover folder still holds its name.** When every move into
+  a folder fails, the folder stays (empty) until the import screen
+  discards or imports it, and `reserveFolder` treats it as taken. Reusing
+  an empty, unreserved folder needs the same care about an import that may
+  already hold it.
+- **"Delete folder only" on a mapped folder the completer hasn't bound
+  yet** leaves loose files with no provenance: the loan isn't returned and
+  the scanner can never expire it. The delete dialog only offers "folder
+  only" for plain folders, so a bound DAISY book can't get here.
+- **Reading order** follows the files' paths in the book (numbers compared
+  as numbers), July's order. The real one is the DAISY NCC (2.02) or OPF
+  spine (3) through SMIL; best read once on the server, which holds the
+  zip. Once the server can say its list is in reading order, the client
+  should use the list's order.
+- **One-file books take the server's file name** (Content-Disposition, or
+  the URL's last component), so an MP3 without a title tag imports as
+  "01". July did the same; naming the file after the title needs a
+  root-level `fileName` on the single-file download path.
+

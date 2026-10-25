@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Αυτή η κοινή χρήση δεν περιέχει ήχο για λήψη.";
 "shared_import_already_in_library" = "Υπάρχει ήδη στη βιβλιοθήκη σας. Άνοιγμα.";
 "shared_import_started_announcement" = "Λήψη του «%@».";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Προετοιμασία λήψης…";
+"hummingbird_no_audio" = "Αυτό το βιβλίο δεν έχει ήχο που μπορεί να αναπαραγάγει το BookPlayer.";
+"hummingbird_bookshelf_empty" = "Το ράφι σας είναι άδειο. Αναζητήστε στη βιβλιοθήκη για να βρείτε ένα βιβλίο.";
+"hummingbird_search_no_results" = "Κανένα βιβλίο δεν ταιριάζει με την αναζήτησή σας.";
+"hummingbird_due_today" = "Λήγει σήμερα";
+"hummingbird_due_format" = "Λήγει %@";
+"hummingbird_overdue_format" = "Εκπρόθεσμο, έληξε %@";

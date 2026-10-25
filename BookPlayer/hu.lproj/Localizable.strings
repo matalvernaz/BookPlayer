@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Ebben a megosztásban nincs letölthető hang.";
 "shared_import_already_in_library" = "Már szerepel a könyvtárában. Megnyitás.";
 "shared_import_started_announcement" = "„%@” letöltése.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Letöltés előkészítése…";
+"hummingbird_no_audio" = "Ebben a könyvben nincs olyan hang, amelyet a BookPlayer le tud játszani.";
+"hummingbird_bookshelf_empty" = "A könyvespolcod üres. Keress a könyvtárban, hogy könyvet találj.";
+"hummingbird_search_no_results" = "Egy könyv sem felel meg a keresésnek.";
+"hummingbird_due_today" = "Ma jár le";
+"hummingbird_due_format" = "Lejár: %@";
+"hummingbird_overdue_format" = "Késésben, lejárt: %@";

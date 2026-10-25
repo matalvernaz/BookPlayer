@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Aquest enllaç no té àudio per baixar.";
 "shared_import_already_in_library" = "Ja és a la vostra biblioteca. S’està obrint.";
 "shared_import_started_announcement" = "S’està baixant «%@».";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "S’està preparant la baixada…";
+"hummingbird_no_audio" = "Aquest llibre no té cap àudio que BookPlayer pugui reproduir.";
+"hummingbird_bookshelf_empty" = "La teva prestatgeria és buida. Cerca a la biblioteca per trobar un llibre.";
+"hummingbird_search_no_results" = "Cap llibre coincideix amb la cerca.";
+"hummingbird_due_today" = "Venç avui";
+"hummingbird_due_format" = "Venç %@";
+"hummingbird_overdue_format" = "Vençut, va vèncer %@";

@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Toto zdieľanie neobsahuje žiadny zvuk na stiahnutie.";
 "shared_import_already_in_library" = "Už je vo vašej knižnici. Otvára sa.";
 "shared_import_started_announcement" = "Sťahuje sa „%@“.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Pripravuje sa sťahovanie…";
+"hummingbird_no_audio" = "Táto kniha neobsahuje zvuk, ktorý BookPlayer dokáže prehrať.";
+"hummingbird_bookshelf_empty" = "Vaša polica je prázdna. Nájdite knihu vyhľadávaním v knižnici.";
+"hummingbird_search_no_results" = "Vášmu vyhľadávaniu nezodpovedá žiadna kniha.";
+"hummingbird_due_today" = "Vrátiť dnes";
+"hummingbird_due_format" = "Vrátiť %@";
+"hummingbird_overdue_format" = "Po termíne, termín uplynul %@";

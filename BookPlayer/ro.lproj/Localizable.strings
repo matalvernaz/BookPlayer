@@ -629,3 +629,12 @@
 "shared_import_empty_alert" = "Această partajare nu conține audio de descărcat.";
 "shared_import_already_in_library" = "Este deja în biblioteca dvs. Se deschide.";
 "shared_import_started_announcement" = "Se descarcă „%@”.";
+
+/* Fork: Hummingbird */
+"hummingbird_preparing_download" = "Se pregătește descărcarea…";
+"hummingbird_no_audio" = "Această carte nu conține audio pe care BookPlayer îl poate reda.";
+"hummingbird_bookshelf_empty" = "Raftul tău este gol. Caută în bibliotecă pentru a găsi o carte.";
+"hummingbird_search_no_results" = "Nicio carte nu se potrivește căutării tale.";
+"hummingbird_due_today" = "Scadent azi";
+"hummingbird_due_format" = "Scadent %@";
+"hummingbird_overdue_format" = "Întârziat, scadent %@";
