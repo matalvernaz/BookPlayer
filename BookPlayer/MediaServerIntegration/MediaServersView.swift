@@ -56,8 +56,10 @@ struct MediaServersView: View {
 
   @EnvironmentObject private var theme: ThemeViewModel
   @Environment(\.dismiss) private var dismiss
-  /// Hummingbird (fork), from the environment so the init and its call sites stay upstream's
+  /// Hummingbird and SoundBooth (fork), from the environment so the init and its call sites stay
+  /// upstream's
   @Environment(\.hummingbirdService) private var hummingbirdService
+  @Environment(\.soundboothService) private var soundboothService
 
   var body: some View {
     Form {
@@ -75,6 +77,11 @@ struct MediaServersView: View {
         title: "Hummingbird",
         kind: .hummingbird,
         servers: hummingbirdService.connections.map(ServerRow.init)
+      )
+      section(
+        title: "SoundBooth",
+        kind: .soundbooth,
+        servers: soundboothService.connections.map(ServerRow.init)
       )
     }
     .applyListStyle(with: theme, background: theme.systemBackgroundColor)
@@ -214,6 +221,8 @@ struct MediaServersView: View {
       audiobookshelfService.activateConnection(id: server.id)
     case .hummingbird:
       hummingbirdService.activateConnection(id: server.id)
+    case .soundbooth:
+      soundboothService.activateConnection(id: server.id)
     }
     presentedSheet = .library(kind)
   }
@@ -226,6 +235,8 @@ struct MediaServersView: View {
       audiobookshelfService.deleteConnection(id: server.id)
     case .hummingbird:
       hummingbirdService.deleteConnection(id: server.id)
+    case .soundbooth:
+      soundboothService.deleteConnection(id: server.id)
     }
   }
 
@@ -249,6 +260,11 @@ struct MediaServersView: View {
         completedSignInKind = .hummingbird
       }
       .environmentObject(theme)
+    case .soundbooth:
+      AddServerSoundBoothSheet(connectionService: soundboothService) {
+        completedSignInKind = .soundbooth
+      }
+      .environmentObject(theme)
     }
   }
 
@@ -261,6 +277,8 @@ struct MediaServersView: View {
       AudiobookShelfRootView(connectionService: audiobookshelfService)
     case .hummingbird:
       HummingbirdRootView(connectionService: hummingbirdService)
+    case .soundbooth:
+      SoundBoothRootView(connectionService: soundboothService)
     }
   }
 
@@ -282,6 +300,12 @@ struct MediaServersView: View {
     case .hummingbird:
       ConnectionDetailsHummingbirdSheet(
         connectionService: hummingbirdService,
+        connectionId: connectionId
+      )
+      .environmentObject(theme)
+    case .soundbooth:
+      ConnectionDetailsSoundBoothSheet(
+        connectionService: soundboothService,
         connectionId: connectionId
       )
       .environmentObject(theme)
@@ -314,6 +338,8 @@ enum IntegrationKind: String, Identifiable {
   case audiobookshelf
   /// Fork
   case hummingbird
+  /// Fork
+  case soundbooth
   var id: String { rawValue }
 }
 
@@ -346,6 +372,15 @@ private struct ServerRow: Identifiable {
     self.serverUrl = data.url.absoluteString
     self.userName = data.userName
     self.customHeaders = data.customHeaders
+  }
+
+  /// One hosted service: the account's email is what tells two rows apart
+  init(_ data: SoundBoothConnectionData) {
+    self.id = data.id
+    self.serverName = data.serverName
+    self.serverUrl = SoundBoothAPIClient.Configuration.production.baseURL.absoluteString
+    self.userName = data.userName
+    self.customHeaders = [:]
   }
 }
 
@@ -545,6 +580,68 @@ private struct ConnectionDetailsHummingbirdSheet: View {
               .foregroundStyle(theme.linkColor)
           }
         }
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+  }
+}
+
+// MARK: - SoundBooth sheets (fork)
+// SoundBooth signs in with an emailed code, not the shared server-and-password flow, so its sheets
+// show its own screens.
+
+private struct AddServerSoundBoothSheet: View {
+  let connectionService: SoundBoothConnectionService
+  @StateObject private var viewModel: SoundBoothConnectionViewModel
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  var onSignedIn: () -> Void
+
+  init(connectionService: SoundBoothConnectionService, onSignedIn: @escaping () -> Void) {
+    self.connectionService = connectionService
+    self.onSignedIn = onSignedIn
+    self._viewModel = .init(wrappedValue: SoundBoothConnectionViewModel(connectionService: connectionService))
+  }
+
+  var body: some View {
+    NavigationStack {
+      SoundBoothConnectionView(viewModel: viewModel)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("cancel_button".localized) { dismiss() }
+              .foregroundStyle(theme.linkColor)
+          }
+        }
+    }
+    .tint(theme.linkColor)
+    .environmentObject(theme)
+    .onChange(of: viewModel.signInCompletedAt) { _, newValue in
+      guard newValue != nil else { return }
+      // Recorded first, so the new account's library opens once this sheet has closed
+      onSignedIn()
+      dismiss()
+    }
+  }
+}
+
+private struct ConnectionDetailsSoundBoothSheet: View {
+  let connectionService: SoundBoothConnectionService
+  let connectionId: String
+  @EnvironmentObject private var theme: ThemeViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    NavigationStack {
+      SoundBoothAccountDetailsView(connectionService: connectionService, connectionId: connectionId) {
+        dismiss()
+      }
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("done_title".localized) { dismiss() }
+            .foregroundStyle(theme.linkColor)
+        }
+      }
     }
     .tint(theme.linkColor)
     .environmentObject(theme)

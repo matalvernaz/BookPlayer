@@ -1,0 +1,415 @@
+//
+//  SoundBoothModels.swift
+//  BookPlayer
+//
+//  Copyright © 2026 BookPlayer LLC. All rights reserved.
+//
+
+import Foundation
+
+// The reverse-engineered SoundBooth (soundbooth.app, "Soundbooth Theater") API surface (fork):
+// what its private API returns, decoded leniently. BookPlayer's side (Keychain, observable state,
+// IntegrationError) lives in `SoundBoothConnectionService` and the view models.
+
+// MARK: - Audio quality
+
+/// SoundBooth serves each resource at two fixed bitrates. The values are the literal
+/// `quality` query parameter the API expects (recovered from the web player's
+/// `resources/play?id=…&quality=…` call); they are not display strings.
+public enum SoundBoothQuality: String, Codable, CaseIterable, Sendable {
+  case standard = "96k"
+  case high = "192k"
+}
+
+// MARK: - Response envelope
+
+/// Every SoundBooth endpoint wraps its payload in `{ success, message, code, data }`.
+/// A failed call sets `success = false` and carries a human-ish `message` plus a numeric
+/// `code` (e.g. `50230` for an invalid session).
+struct SoundBoothEnvelope<Payload: Decodable>: Decodable {
+  let success: Bool
+  let message: String?
+  let code: String?
+  let data: Payload?
+}
+
+/// Envelope used when a call is made only for its `success`/`message` (no data payload),
+/// e.g. requesting a login code.
+struct SoundBoothStatusEnvelope: Decodable {
+  let success: Bool
+  let message: String?
+  let code: String?
+}
+
+/// Shared shape of the paginated list endpoints (`/functions/u/*/list`). `docs` decodes
+/// lossily: a single malformed/incomplete entry (e.g. a refunded purchase whose `element` is
+/// `null`) is skipped rather than failing the whole list. Paging fields are kept for a future
+/// "load more".
+struct SoundBoothPage<Doc: Decodable>: Decodable {
+  let docs: [Doc]
+  let totalDocs: Int?
+  let totalPages: Int?
+  let page: Int?
+  let hasNextPage: Bool?
+
+  enum CodingKeys: String, CodingKey {
+    case docs, totalDocs, totalPages, page, hasNextPage
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([SoundBoothFailable<Doc>].self, forKey: .docs) ?? []
+    self.docs = raw.compactMap { $0.value }
+    self.totalDocs = try container.decodeIfPresent(Int.self, forKey: .totalDocs)
+    self.totalPages = try container.decodeIfPresent(Int.self, forKey: .totalPages)
+    self.page = try container.decodeIfPresent(Int.self, forKey: .page)
+    self.hasNextPage = try container.decodeIfPresent(Bool.self, forKey: .hasNextPage)
+  }
+}
+
+/// Decodes `T` when possible, otherwise captures `nil` instead of throwing — an array of these
+/// skips individual malformed elements without failing the whole decode.
+struct SoundBoothFailable<T: Decodable>: Decodable {
+  let value: T?
+  init(from decoder: Decoder) throws {
+    self.value = try? T(from: decoder)
+  }
+}
+
+// MARK: - Session
+
+/// The authenticated session returned by `code/verify`. `jwt` is the 30-day bearer sent
+/// as `Authorization: Token <jwt>` on every user-scoped call; `sessionCookie` is the
+/// `iglu.sid` cookie the same response sets (kept as a fallback credential). `userId` is
+/// the SoundBooth account's own `_id`.
+public struct SoundBoothSession: Codable, Equatable, Sendable {
+  public let jwt: String
+  public let userId: String
+  public let email: String
+  public let sessionCookie: String?
+
+  public init(jwt: String, userId: String, email: String, sessionCookie: String? = nil) {
+    self.jwt = jwt
+    self.userId = userId
+    self.email = email
+    self.sessionCookie = sessionCookie
+  }
+}
+
+/// Decoded from `code/verify` `data`. Only the fields the client needs are modelled;
+/// the response also carries billing/profile/firebase blocks that are intentionally ignored.
+struct SoundBoothVerifyResponse: Decodable {
+  let id: String
+  let email: String
+  let jwt: String
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case email
+    case jwt
+  }
+}
+
+// MARK: - Library
+
+/// One entry in the owned library (`/functions/u/library-elements/list`). `type` is
+/// `"Group"` (a season/bundle) or `"Item"` (a single book or episode). The playable and
+/// display data lives on the nested `element`.
+public struct SoundBoothLibraryElement: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let type: String
+  public let element: SoundBoothElement
+
+  public var isGroup: Bool { type == "Group" }
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case type
+    case element
+  }
+}
+
+/// The product an owned entry (or catalog row) points at. `subtype` (`__t`) distinguishes
+/// `"book"` from `"episode"` for Items; Groups leave it nil.
+public struct SoundBoothElement: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let name: String
+  public let subtype: String?
+  /// Series this element belongs to (id only; resolve the name via `SoundBoothSeries`).
+  public let seriesId: String?
+  /// Season (`Group`) this item belongs to, when it's an episode of a season.
+  public let groupId: String?
+  /// Production format: `audiobook`, `cinematic`, `immersion`, or `bonus`.
+  public let format: String?
+  /// ISO-8601 release timestamps; used to order episodes chronologically.
+  public let releaseAt: String?
+  public let originalReleaseAt: String?
+  public let displayOptions: SoundBoothDisplayOptions?
+  /// Series/season names carried by a POPULATED reference (as `u/items/list` returns them); nil when
+  /// the reference arrived as a bare id string. Lets orphan series/seasons that `series/list` and
+  /// `groups/list` omit stay nameable.
+  public let seriesName: String?
+  public let groupName: String?
+  /// Season index from a populated `groupId` reference, for ordering; nil when not populated.
+  public let groupIndex: Int?
+
+  /// Best available cover art for this element, preferring the full image over the thumbnail.
+  public var coverURL: URL? {
+    displayOptions?.image?.attachment?.bestURL
+  }
+
+  /// Sort key for chronological ordering (ISO-8601 strings compare lexicographically). Missing
+  /// dates sort last.
+  public var releaseSortKey: String {
+    releaseAt ?? originalReleaseAt ?? "\u{FFFF}"
+  }
+
+  /// Parsed release date, when present. SoundBooth sends ISO 8601 both with and without fractional
+  /// seconds, and this one strategy reads both (iOS 26's Foundation; July tried two, the second was dead
+  /// code). A nil parse falls through to `isReleased == true` and would un-gate a preorder episode, so
+  /// the tests cover both forms.
+  public var releaseDate: Date? {
+    guard let releaseAt else { return nil }
+    return try? Date(releaseAt, strategy: Self.isoParser)
+  }
+
+  /// Whether the title's audio is out yet. Season bundles sell as preorders whose episodes
+  /// release on a weekly schedule; unreleased episodes are visible but not downloadable.
+  public var isReleased: Bool {
+    guard let releaseDate else { return true }
+    return releaseDate <= Date()
+  }
+
+  private static let isoParser = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
+    case subtype = "__t"
+    case seriesId
+    case groupId
+    case format
+    case releaseAt
+    case originalReleaseAt
+    case displayOptions
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try container.decode(String.self, forKey: .name)
+    subtype = try container.decodeIfPresent(String.self, forKey: .subtype)
+    // Reference fields arrive as bare id strings from some endpoints and populated objects from
+    // others (e.g. `u/items/list` populates both); accept either, and keep the name off a populated
+    // ref so orphan series/seasons (absent from series/list & groups/list) stay nameable.
+    let seriesRef = Self.ref(container, .seriesId)
+    let groupRef = Self.ref(container, .groupId)
+    seriesId = seriesRef?.id
+    groupId = groupRef?.id
+    seriesName = seriesRef?.name
+    groupName = groupRef?.name
+    groupIndex = groupRef?.displayOptions?.index
+    format = try container.decodeIfPresent(String.self, forKey: .format)
+    releaseAt = try container.decodeIfPresent(String.self, forKey: .releaseAt)
+    originalReleaseAt = try container.decodeIfPresent(String.self, forKey: .originalReleaseAt)
+    displayOptions = try container.decodeIfPresent(SoundBoothDisplayOptions.self, forKey: .displayOptions)
+  }
+
+  /// Decode a reference that may be a populated object (`{_id, name, …}`) or a bare id string.
+  /// Populated form first so its name survives; a bare string becomes a name-less ref; absent → nil.
+  private static func ref(
+    _ container: KeyedDecodingContainer<CodingKeys>,
+    _ key: CodingKeys
+  ) -> SoundBoothIDRef? {
+    if let ref = try? container.decode(SoundBoothIDRef.self, forKey: key) { return ref }
+    if let id = try? container.decode(String.self, forKey: key) {
+      return SoundBoothIDRef(id: id, name: nil, displayOptions: nil)
+    }
+    return nil
+  }
+}
+
+/// A reference that some endpoints return fully populated (`{"_id": "…", "name": "…", …}`, notably
+/// `u/items/list`) and others send as a bare id string. Keeps the id plus any `name`/`displayOptions`
+/// so a populated ref can supply a name the list endpoints omit for orphan series.
+struct SoundBoothIDRef: Decodable, Sendable {
+  let id: String
+  let name: String?
+  let displayOptions: SoundBoothDisplayOptions?
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
+    case displayOptions
+  }
+
+  init(id: String, name: String?, displayOptions: SoundBoothDisplayOptions?) {
+    self.id = id
+    self.name = name
+    self.displayOptions = displayOptions
+  }
+
+  /// Optional fields decode defensively: a malformed `name`/`displayOptions` must not throw away the
+  /// whole ref (and with it the id), only that field.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try? container.decode(String.self, forKey: .name)
+    displayOptions = try? container.decode(SoundBoothDisplayOptions.self, forKey: .displayOptions)
+  }
+}
+
+/// A series (`/functions/u/series/list`), used to name the series a library item belongs to —
+/// library-elements carry only the `seriesId`, not its name.
+public struct SoundBoothSeries: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let name: String
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
+  }
+}
+
+/// A season (`Group`, from `/functions/u/groups/list`). Names and orders the seasons a series'
+/// episodes belong to — including seasons the user doesn't own as an object (their episodes still
+/// carry the season's `groupId`). Note: this endpoint populates `seriesId` as a full object, so
+/// it's deliberately not decoded here (each doc would fail lossy decoding as a `String`).
+public struct SoundBoothGroup: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let name: String
+  public let displayOptions: SoundBoothDisplayOptions?
+
+  /// Position of the season within its series (Season 1 = 1, …), for ordering.
+  public var index: Int? { displayOptions?.index }
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case name
+    case displayOptions
+  }
+}
+
+public struct SoundBoothDisplayOptions: Decodable, Sendable {
+  public let image: SoundBoothImage?
+  /// Season ordinal for `Group` display options (nil for element cover-art display options).
+  public let index: Int?
+}
+
+public struct SoundBoothImage: Decodable, Sendable {
+  public let attachment: SoundBoothAttachment?
+}
+
+/// A stored asset (cover art). URLs point at SoundBooth's DigitalOcean Spaces bucket.
+public struct SoundBoothAttachment: Decodable, Sendable {
+  public let url: URL?
+  public let thumbURL: URL?
+
+  /// Prefer the full-resolution URL, falling back to the thumbnail.
+  public var bestURL: URL? { url ?? thumbURL }
+
+  enum CodingKeys: String, CodingKey {
+    case url
+    case thumbURL = "thumbUrl"
+  }
+}
+
+// MARK: - Resources (chapters)
+
+/// One playable chapter of an item (`/functions/playlist/item-resources`). `number` is the
+/// running order (0 = opening credits), and can repeat. `duration` is seconds.
+/// `lowResSize`/`highResSize` are byte sizes for the 96k/192k renditions; the playable URL is
+/// resolved separately (`SoundBoothAPIClient.resolvePlaybackURL`). `type` has only ever been
+/// "chapter" (879 of 879 resources probed by the SoundBooth web client), so nothing filters on it.
+public struct SoundBoothItemResource: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let itemId: String
+  public let number: Int
+  public let name: String?
+  public let duration: Double?
+  public let type: String?
+  public let lowResSize: Int?
+  public let highResSize: Int?
+
+  /// Byte size for the given quality tier, when the API reported it.
+  public func size(for quality: SoundBoothQuality) -> Int? {
+    switch quality {
+    case .standard: return lowResSize
+    case .high: return highResSize
+    }
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case itemId
+    case number
+    case name
+    case duration
+    case type
+    case lowResSize
+    case highResSize
+  }
+}
+
+struct SoundBoothItemResourcesResponse: Decodable {
+  let itemResources: [SoundBoothItemResource]
+
+  enum CodingKeys: String, CodingKey { case itemResources }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let raw = try container.decodeIfPresent([SoundBoothFailable<SoundBoothItemResource>].self, forKey: .itemResources) ?? []
+    self.itemResources = raw.compactMap { $0.value }
+  }
+}
+
+// MARK: - Progress
+
+/// A per-resource playback position (`/functions/user/progresses`). `position` is seconds
+/// into `resource`. Read to seed a download's resume point; nothing is written back (SoundBooth
+/// writes progress through PowerSync).
+public struct SoundBoothProgress: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let item: String
+  public let resource: String
+  public let position: Double
+  public let finished: Bool
+  public let speed: String?
+  public let group: String?
+  public let series: String?
+  /// ISO-8601; the most recently updated record is the user's current listening position.
+  public let updatedAt: String?
+
+  enum CodingKeys: String, CodingKey {
+    case id = "_id"
+    case item
+    case resource
+    case position
+    case finished
+    case speed
+    case group
+    case series
+    case updatedAt
+  }
+}
+
+// MARK: - Errors
+
+/// Errors surfaced by `SoundBoothAPIClient`. The connection service maps these onto
+/// `IntegrationError` for the shared UI.
+public enum SoundBoothAPIError: Error, Equatable {
+  /// The server returned `success: false`. Carries the API's `message` and its code (a string
+  /// of digits, e.g. "50230")
+  case api(message: String?, code: String?)
+  /// A non-2xx HTTP status.
+  case http(status: Int)
+  /// The session token was rejected (invalid/expired user session).
+  case sessionInvalid
+  /// The response body wasn't the shape we expected.
+  case decoding
+  /// A URL could not be constructed from the configured base + path.
+  case malformedURL
+  /// `resources/play` answered without redirecting to the audio: the only working URL is the one
+  /// it redirects to, so there's nothing to download
+  case noRedirect(status: Int)
+}

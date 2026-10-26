@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Vrátit dnes";
 "hummingbird_due_format" = "Vrátit %@";
 "hummingbird_overdue_format" = "Po termínu, termín vypršel %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Účet SoundBooth";
+"soundbooth_code_accessibility" = "Přihlašovací kód";
+"soundbooth_code_footer_format" = "Zadejte kód, který SoundBooth poslal na %@.";
+"soundbooth_code_header" = "Zadejte kód";
+"soundbooth_code_label" = "Kód";
+"soundbooth_code_missing" = "Zadejte kód z e-mailu.";
+"soundbooth_different_email_button" = "Použít jiný e-mail";
+"soundbooth_download_season_button" = "Stáhnout řadu";
+"soundbooth_email_accessibility" = "E-mail účtu SoundBooth";
+"soundbooth_email_footer" = "SoundBooth vám e-mailem pošle jednorázový kód. Heslo není potřeba.";
+"soundbooth_email_invalid" = "Zadejte e-mailovou adresu svého účtu SoundBooth.";
+"soundbooth_format_audiobook" = "Audiokniha";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Filmový zvuk";
+"soundbooth_format_immersion" = "Imerze";
+"soundbooth_library_empty" = "Vaše knihovna SoundBooth je zatím prázdná.";
+"soundbooth_no_chapters" = "SoundBooth k tomuto titulu neuvedl žádné kapitoly.";
+"soundbooth_other_titles_title" = "Další tituly";
+"soundbooth_preparing_download" = "Připravuje se stahování…";
+"soundbooth_refresh_button" = "Obnovit";
+"soundbooth_releases_format" = "Vychází %@";
+"soundbooth_send_code_button" = "Odeslat kód";
+"soundbooth_sign_in_header" = "Přihlásit se do SoundBooth";
+"soundbooth_trim_credits_footer" = "Ponechá jen první úvodní a poslední závěrečné titulky řady a titulky mezi díly vynechá.";
+"soundbooth_trim_credits_toggle" = "Zkrátit opakované titulky";

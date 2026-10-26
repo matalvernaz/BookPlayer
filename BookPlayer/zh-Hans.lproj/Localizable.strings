@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "今天到期";
 "hummingbird_due_format" = "%@到期";
 "hummingbird_overdue_format" = "已逾期，%@到期";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth 账户";
+"soundbooth_code_accessibility" = "登录代码";
+"soundbooth_code_footer_format" = "输入 SoundBooth 发送到 %@ 的代码。";
+"soundbooth_code_header" = "输入代码";
+"soundbooth_code_label" = "代码";
+"soundbooth_code_missing" = "输入邮件中的代码。";
+"soundbooth_different_email_button" = "使用其他电子邮件";
+"soundbooth_download_season_button" = "下载整季";
+"soundbooth_email_accessibility" = "SoundBooth 账户电子邮件";
+"soundbooth_email_footer" = "SoundBooth 会通过电子邮件向你发送一次性代码，无需密码。";
+"soundbooth_email_invalid" = "输入你的 SoundBooth 账户的电子邮件地址。";
+"soundbooth_format_audiobook" = "有声书";
+"soundbooth_format_bonus" = "附赠";
+"soundbooth_format_cinematic" = "电影级音频";
+"soundbooth_format_immersion" = "沉浸版";
+"soundbooth_library_empty" = "你的 SoundBooth 资料库还是空的。";
+"soundbooth_no_chapters" = "SoundBooth 没有提供此作品的章节。";
+"soundbooth_other_titles_title" = "其他作品";
+"soundbooth_preparing_download" = "正在准备下载…";
+"soundbooth_refresh_button" = "刷新";
+"soundbooth_releases_format" = "%@ 发布";
+"soundbooth_send_code_button" = "发送代码";
+"soundbooth_sign_in_header" = "登录 SoundBooth";
+"soundbooth_trim_credits_footer" = "只保留本季第一段片头字幕和最后一段片尾字幕，去掉各集之间的字幕。";
+"soundbooth_trim_credits_toggle" = "精简重复的字幕";

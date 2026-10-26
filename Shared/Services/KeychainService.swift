@@ -35,6 +35,9 @@ public enum KeychainKeys: String {
   /// Stores the Hummingbird connection information (HummingbirdConnectionData, fork). The July
   /// 2026 builds used this same key
   case hummingbirdConnection = "hummingbird_connection"
+  /// Stores the SoundBooth connection information (SoundBoothConnectionData, fork). The July 2026
+  /// builds used this same key
+  case soundboothConnection = "soundbooth_connection"
   /// Stores Hardcover API access token
   case hardcoverToken = "hardcover_token"
 }

@@ -201,6 +201,8 @@ struct IntegrationAddressScreen<VM: IntegrationConnectionViewModelProtocol>: Vie
     case .jellyfin: return "8096"
     case .audiobookshelf: return "13378"
     case .hummingbird: return "8000"
+    // SoundBooth signs in with an emailed code and never comes through this flow
+    case .soundbooth: return ""
     }
   }
 
@@ -209,6 +211,7 @@ struct IntegrationAddressScreen<VM: IntegrationConnectionViewModelProtocol>: Vie
     case .jellyfin: return "jellyfin.example.com"
     case .audiobookshelf: return "audiobookshelf.example.com"
     case .hummingbird: return "hummingbird.example.com"
+    case .soundbooth: return ""
     }
   }
 

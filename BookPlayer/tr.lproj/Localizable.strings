@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Bugün iade edilmeli";
 "hummingbird_due_format" = "İade: %@";
 "hummingbird_overdue_format" = "Gecikmiş, iade tarihi: %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth hesabı";
+"soundbooth_code_accessibility" = "Giriş kodu";
+"soundbooth_code_footer_format" = "SoundBooth’un %@ adresine gönderdiği kodu girin.";
+"soundbooth_code_header" = "Kodunuzu girin";
+"soundbooth_code_label" = "Kod";
+"soundbooth_code_missing" = "E-postadaki kodu girin.";
+"soundbooth_different_email_button" = "Başka bir e-posta kullan";
+"soundbooth_download_season_button" = "Sezonu indir";
+"soundbooth_email_accessibility" = "SoundBooth hesabının e-postası";
+"soundbooth_email_footer" = "SoundBooth size e-postayla tek kullanımlık bir kod gönderir. Parola gerekmez.";
+"soundbooth_email_invalid" = "SoundBooth hesabınızın e-posta adresini girin.";
+"soundbooth_format_audiobook" = "Sesli kitap";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Sinematik ses";
+"soundbooth_format_immersion" = "Sürükleyici";
+"soundbooth_library_empty" = "SoundBooth kitaplığınız henüz boş.";
+"soundbooth_no_chapters" = "SoundBooth bu başlık için bölüm bildirmedi.";
+"soundbooth_other_titles_title" = "Diğer başlıklar";
+"soundbooth_preparing_download" = "İndirme hazırlanıyor…";
+"soundbooth_refresh_button" = "Yenile";
+"soundbooth_releases_format" = "Çıkış tarihi: %@";
+"soundbooth_send_code_button" = "Kod gönder";
+"soundbooth_sign_in_header" = "SoundBooth’a giriş yap";
+"soundbooth_trim_credits_footer" = "Sezonun yalnızca ilk açılış jeneriğini ve son kapanış jeneriğini tutar, bölümler arasındaki jenerikleri çıkarır.";
+"soundbooth_trim_credits_toggle" = "Tekrarlanan jenerikleri kırp";

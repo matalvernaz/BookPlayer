@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Skal leveres i dag";
 "hummingbird_due_format" = "Skal leveres %@";
 "hummingbird_overdue_format" = "Forsinket, skulle vært levert %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-konto";
+"soundbooth_code_accessibility" = "Påloggingskode";
+"soundbooth_code_footer_format" = "Skriv inn koden SoundBooth sendte til %@.";
+"soundbooth_code_header" = "Skriv inn koden";
+"soundbooth_code_label" = "Kode";
+"soundbooth_code_missing" = "Skriv inn koden fra e-posten.";
+"soundbooth_different_email_button" = "Bruk en annen e-postadresse";
+"soundbooth_download_season_button" = "Last ned sesong";
+"soundbooth_email_accessibility" = "E-postadressen til SoundBooth-kontoen";
+"soundbooth_email_footer" = "SoundBooth sender deg en engangskode på e-post. Du trenger ikke passord.";
+"soundbooth_email_invalid" = "Skriv inn e-postadressen til SoundBooth-kontoen din.";
+"soundbooth_format_audiobook" = "Lydbok";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Filmatisk lyd";
+"soundbooth_format_immersion" = "Immersjon";
+"soundbooth_library_empty" = "SoundBooth-biblioteket ditt er tomt foreløpig.";
+"soundbooth_no_chapters" = "SoundBooth oppga ingen kapitler for denne tittelen.";
+"soundbooth_other_titles_title" = "Andre titler";
+"soundbooth_preparing_download" = "Forbereder nedlasting…";
+"soundbooth_refresh_button" = "Oppdater";
+"soundbooth_releases_format" = "Kommer %@";
+"soundbooth_send_code_button" = "Send kode";
+"soundbooth_sign_in_header" = "Logg på SoundBooth";
+"soundbooth_trim_credits_footer" = "Beholder bare sesongens første åpningstekster og siste rulletekster, og fjerner rulletekstene mellom episodene.";
+"soundbooth_trim_credits_toggle" = "Kort ned gjentatte rulletekster";

@@ -98,5 +98,21 @@
         <string>%d livros</string>
       </dict>
     </dict>
+    <key>soundbooth_episode_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d episódio</string>
+        <key>other</key>
+        <string>%d episódios</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

@@ -21,6 +21,9 @@ public enum Constants {
     public static let missingItemsPassPending = "missingItemsPassPending"
     /// The tier the last account update reported, to notice LITE → PRO
     public static let lastKnownProAccess = "lastKnownProAccess"
+    /// SoundBooth (fork): whole-season downloads keep only the season's first opening and last
+    /// closing credits. On unless turned off; the July 2026 builds' key, in the shared defaults
+    public static let soundboothTrimSeasonCredits = "soundboothTrimSeasonCredits"
     /// Artwork cached by Kingfisher 7 (before 6.0.0) was moved to Kingfisher 8's file names
     public static let legacyArtworkRestored = "legacyArtworkRestored"
 

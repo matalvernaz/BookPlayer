@@ -31,6 +31,8 @@ class MainCoordinator: NSObject {
   let audiobookshelfConnectionService: AudiobookShelfConnectionService
   /// Hummingbird (fork)
   let hummingbirdConnectionService: HummingbirdConnectionService
+  /// SoundBooth (fork)
+  let soundboothConnectionService: SoundBoothConnectionService
   let syncQueueService: SyncQueueService
   let hardcoverService: HardcoverService
   let preferencesService: PreferencesSyncService
@@ -102,6 +104,10 @@ class MainCoordinator: NSObject {
       syncService: coreServices.syncService
     )
 
+    let soundboothService = SoundBoothConnectionService()
+    soundboothService.setup()
+    self.soundboothConnectionService = soundboothService
+
     self.mediaServerSourceTracker = MediaServerSourceTracker(
       store: sourceStore,
       downloadService: singleFileDownloadService
@@ -151,6 +157,7 @@ class MainCoordinator: NSObject {
       .environment(\.jellyfinService, jellyfinConnectionService)
       .environment(\.audiobookshelfService, audiobookshelfConnectionService)
       .environment(\.hummingbirdService, hummingbirdConnectionService)
+      .environment(\.soundboothService, soundboothConnectionService)
       .environment(\.mediaServerSourceStore, mediaServerSourceStore)
       .environment(\.hardcoverService, hardcoverService)
       .environment(\.playerState, playerState)

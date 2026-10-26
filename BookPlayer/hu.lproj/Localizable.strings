@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Ma jár le";
 "hummingbird_due_format" = "Lejár: %@";
 "hummingbird_overdue_format" = "Késésben, lejárt: %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-fiók";
+"soundbooth_code_accessibility" = "Bejelentkezési kód";
+"soundbooth_code_footer_format" = "Írd be a kódot, amelyet a SoundBooth a(z) %@ címre küldött.";
+"soundbooth_code_header" = "Írd be a kódot";
+"soundbooth_code_label" = "Kód";
+"soundbooth_code_missing" = "Írd be az e-mailben kapott kódot.";
+"soundbooth_different_email_button" = "Másik e-mail-cím használata";
+"soundbooth_download_season_button" = "Évad letöltése";
+"soundbooth_email_accessibility" = "A SoundBooth-fiók e-mail-címe";
+"soundbooth_email_footer" = "A SoundBooth egyszer használatos kódot küld e-mailben. Nem kell jelszó.";
+"soundbooth_email_invalid" = "Írd be a SoundBooth-fiókod e-mail-címét.";
+"soundbooth_format_audiobook" = "Hangoskönyv";
+"soundbooth_format_bonus" = "Bónusz";
+"soundbooth_format_cinematic" = "Filmszerű hanganyag";
+"soundbooth_format_immersion" = "Immerzió";
+"soundbooth_library_empty" = "A SoundBooth-könyvtárad még üres.";
+"soundbooth_no_chapters" = "A SoundBooth nem adott meg fejezeteket ehhez a címhez.";
+"soundbooth_other_titles_title" = "Egyéb címek";
+"soundbooth_preparing_download" = "Letöltés előkészítése…";
+"soundbooth_refresh_button" = "Frissítés";
+"soundbooth_releases_format" = "Megjelenik: %@";
+"soundbooth_send_code_button" = "Kód küldése";
+"soundbooth_sign_in_header" = "Bejelentkezés a SoundBoothba";
+"soundbooth_trim_credits_footer" = "Csak az évad első nyitó- és utolsó stáblistáját tartja meg, az epizódok közötti stáblistákat elhagyja.";
+"soundbooth_trim_credits_toggle" = "Ismétlődő stáblisták rövidítése";

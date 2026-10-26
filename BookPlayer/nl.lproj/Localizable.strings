@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Vandaag inleveren";
 "hummingbird_due_format" = "Inleveren %@";
 "hummingbird_overdue_format" = "Te laat, moest %@ worden ingeleverd";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-account";
+"soundbooth_code_accessibility" = "Inlogcode";
+"soundbooth_code_footer_format" = "Voer de code in die SoundBooth naar %@ heeft gestuurd.";
+"soundbooth_code_header" = "Voer je code in";
+"soundbooth_code_label" = "Code";
+"soundbooth_code_missing" = "Voer de code uit de e-mail in.";
+"soundbooth_different_email_button" = "Ander e-mailadres gebruiken";
+"soundbooth_download_season_button" = "Seizoen downloaden";
+"soundbooth_email_accessibility" = "E-mailadres van het SoundBooth-account";
+"soundbooth_email_footer" = "SoundBooth mailt je een eenmalige code. Geen wachtwoord nodig.";
+"soundbooth_email_invalid" = "Voer het e-mailadres van je SoundBooth-account in.";
+"soundbooth_format_audiobook" = "Luisterboek";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Cinematische audio";
+"soundbooth_format_immersion" = "Immersie";
+"soundbooth_library_empty" = "Je SoundBooth-bibliotheek is nog leeg.";
+"soundbooth_no_chapters" = "SoundBooth gaf geen hoofdstukken voor deze titel.";
+"soundbooth_other_titles_title" = "Overige titels";
+"soundbooth_preparing_download" = "Download voorbereiden…";
+"soundbooth_refresh_button" = "Vernieuwen";
+"soundbooth_releases_format" = "Verschijnt op %@";
+"soundbooth_send_code_button" = "Code versturen";
+"soundbooth_sign_in_header" = "Inloggen bij SoundBooth";
+"soundbooth_trim_credits_footer" = "Houdt alleen de eerste begintiteling en de laatste aftiteling van het seizoen, en laat de aftitelingen tussen de afleveringen weg.";
+"soundbooth_trim_credits_toggle" = "Herhaalde aftiteling inkorten";

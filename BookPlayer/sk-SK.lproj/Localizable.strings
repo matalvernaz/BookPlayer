@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Vrátiť dnes";
 "hummingbird_due_format" = "Vrátiť %@";
 "hummingbird_overdue_format" = "Po termíne, termín uplynul %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Účet SoundBooth";
+"soundbooth_code_accessibility" = "Prihlasovací kód";
+"soundbooth_code_footer_format" = "Zadajte kód, ktorý SoundBooth poslal na %@.";
+"soundbooth_code_header" = "Zadajte kód";
+"soundbooth_code_label" = "Kód";
+"soundbooth_code_missing" = "Zadajte kód z e-mailu.";
+"soundbooth_different_email_button" = "Použiť iný e-mail";
+"soundbooth_download_season_button" = "Stiahnuť sériu";
+"soundbooth_email_accessibility" = "E-mail účtu SoundBooth";
+"soundbooth_email_footer" = "SoundBooth vám e-mailom pošle jednorazový kód. Heslo netreba.";
+"soundbooth_email_invalid" = "Zadajte e-mailovú adresu svojho účtu SoundBooth.";
+"soundbooth_format_audiobook" = "Audiokniha";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Filmový zvuk";
+"soundbooth_format_immersion" = "Imerzia";
+"soundbooth_library_empty" = "Vaša knižnica SoundBooth je zatiaľ prázdna.";
+"soundbooth_no_chapters" = "SoundBooth k tomuto titulu neuviedol žiadne kapitoly.";
+"soundbooth_other_titles_title" = "Ďalšie tituly";
+"soundbooth_preparing_download" = "Pripravuje sa sťahovanie…";
+"soundbooth_refresh_button" = "Obnoviť";
+"soundbooth_releases_format" = "Vychádza %@";
+"soundbooth_send_code_button" = "Odoslať kód";
+"soundbooth_sign_in_header" = "Prihlásiť sa do SoundBooth";
+"soundbooth_trim_credits_footer" = "Ponechá iba prvé úvodné a posledné záverečné titulky série a titulky medzi dielmi vynechá.";
+"soundbooth_trim_credits_toggle" = "Skrátiť opakované titulky";

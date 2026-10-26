@@ -7,19 +7,22 @@
 > its section below still describes the July `test/all-changes` code. Each
 > slice updates its section. Ported so far: the Audiobookshelf Folders tab,
 > share links, the provenance store and the library export fix (slice 1);
-> Hummingbird, without its progress and bookmark sync (slice 2).
+> Hummingbird, without its progress and bookmark sync (slice 2); SoundBooth
+> (slice 3).
 
 The upstream TortugaPower BookPlayer is a local-files audiobook player.
-This fork adds three media-server clients and a share-extension web-URL
-importer on top of that base. Don't assume "local files only" when
-reading the code.
+This fork adds the Hummingbird media-server client, the SoundBooth store,
+extras for upstream's Jellyfin and Audiobookshelf clients, and a
+share-extension web-URL importer on top of that base. Don't assume "local
+files only" when reading the code.
 
 ## Media-server integrations
 
-All three speak through a shared `MediaServerKind` enum
-(`.jellyfin / .audiobookshelf / .hummingbird`) and a shared progress
+They share the `MediaServerKind` enum
+(`.jellyfin / .audiobookshelf / .hummingbird / .soundbooth`) that names a
+downloaded book's source in the provenance store, and a shared progress
 dispatcher that routes bookmarks back to whichever server an imported
-book came from. A fourth `.dodp` kind is planned — see
+book came from (back with slice 4). A `.dodp` kind is planned — see
 [dodp-direction.md](dodp-direction.md).
 
 ### Jellyfin (`BookPlayer/Jellyfin/`)
@@ -149,6 +152,93 @@ through `MediaServerDeletion` (see the provenance store section) and
 **Bound-book completion.** `MediaServerBoundBookCompleter` binds the
 folder into one book once it's in the library (opt-in through
 `shouldBindFolder`; Hummingbird, share links and SoundBooth set it).
+
+### SoundBooth (`Shared/SoundBooth/`, `BookPlayer/SoundBooth/`)
+
+Downloads what a SoundBooth Theater (soundbooth.app) account owns: audio
+dramas and audiobooks sold as titles and as season bundles. 6.0 base since
+slice 3. The API (`api.soundbooththeater.com`) is the private one its web
+player speaks, worked out from that player; `SoundBoothAPIClient`'s header
+comment lists what it insists on. The client key in
+`SoundBoothAPIClient.Configuration.production` is SoundBooth's own public
+key from its web player: it names the client, grants nothing without an
+account's session, and isn't a secret of ours, so it's in the code rather
+than an xcconfig.
+
+**Where it lives.** Models, the API client, the transport, the connection
+data and `SoundBoothConnectionService` are in `Shared/SoundBooth/` (6.0's
+connection store is internal to BookPlayerKit); the screens and the library
+view model are in `BookPlayer/SoundBooth/`.
+
+**Connections.** `IntegrationConnectionStore<SoundBoothConnectionData>`
+under the July keys `soundbooth_connection` and
+`soundbooth_active_connection_id`. The stored shape is July's five keys (id,
+email, userId, jwt, sessionCookie); the store's `url` (the one API address),
+`userID` (the account's id) and `token` (the JWT) are computed. A record
+with an empty id or JWT is dropped at load, and a sign-in answer without
+either is refused. Signing in to the same account again keeps its
+connection id, which downloaded books' provenance names; a renewal that
+lands on another account adds that one instead.
+
+**Sign-in.** Passwordless: the account's email, then the code SoundBooth
+emails to it, verified for a 30-day JWT and the `iglu.sid` cookie the same
+answer sets (the data calls want both). Its own small sheet
+(`SoundBoothConnectionView`), since the shared flow is built around a
+server address and a password. Closing the sheet cancels the request in
+flight and the service checks for that before saving. Spaces in a pasted
+code are dropped. Once signed in, a 401/403, or the API's code 50230 (sent
+with a 200), is `sessionExpired`: the library offers Sign In with the email
+filled in. The sign-in calls themselves never say a session expired (there's
+none yet): a 401/403 there is a plain refusal. The API's refusals show its
+own words ("That code has expired") through `IntegrationError.serverMessage`.
+
+**Transport.** `SoundBoothHTTPClient` keeps no cookies at all: 6.0's shared
+client keeps a jar (Audiobookshelf's OIDC needs it), and a stale `iglu.sid`
+riding along makes SoundBooth refuse a new sign-in. The session cookie is
+sent by hand.
+
+**Library** (`SoundBoothLibraryViewModel`, rules from July, worked out on a
+bundle-heavy account and an à-la-carte one). The owned set
+(`library-elements/list`) is required; `series/list` and `groups/list`
+name and order series and seasons and are best-effort; the catalog
+(`items/list`) is asked only when an owned title's series has no name,
+since its populated references name the series and seasons the lists leave
+out. Top level: series, then season bundles of a series nobody names, then
+titles of no series under "Other Titles". A series: its seasons in order
+(bundles and seasons owned episode by episode), then titles outside a
+season, split into sections by format (audiobook, cinematic, immersion,
+bonus, then others by name, then what has none) when it's owned in more
+than one. A bundle lists no episodes of its own: they're fetched when the
+season opens (`items/list` with its `groupId`) and kept until a refresh.
+Episodes not out yet show "Releases <date>" and don't download; release
+times parse with and without fractional seconds.
+
+**Downloads.** A title is a folder named "Series - Title" (through
+`MediaServerDownloadFolders`, "… 2" on a clash), its chapters
+"001 - <chapter>.mp3" numbered by position (SoundBooth's own `number` can
+repeat), recorded as landed with `shouldBindFolder` so the completer binds
+it into one book. A season downloads its released episodes as one book,
+"E001 001 - ….mp3", episodes numbered among those that have chapters.
+"Trim Repeated Credits" (on unless turned off, kept in the shared defaults)
+keeps only the season's first opening credits and last closing credits; a
+credits chapter in an episode's first half counts as opening. A chapter's
+audio is where `resources/play` redirects: the redirect is read, not
+followed, and never replaced by a URL built here (July saved CacheFly's
+HTML 404 page as chapters). Every chapter resolves before anything is
+queued, at 192k; the CDN requests carry no credentials. The book starts at
+the account's newest saved position the plan can place, plus the length of
+the kept chapters before it (`seedTime`, applied once when bound); nothing
+under a second, a missing length, or a failure to read the positions means
+no seed. Positions are only read: SoundBooth's apps write theirs through
+PowerSync. A download, and a season's episode list, goes out with the
+account the library on screen was listed for (`listedConnectionId`),
+whichever is active at the tap: logging out of the active account makes
+another one active, and the screen then reloads that one's library from the
+top. Only the latest library load's answer is kept, and a season's episodes
+only for the listing they were asked under, so a slow answer for the
+previous account can't land after the new one's. An account signed out
+meanwhile asks nothing, and is checked once more just before anything is
+queued.
 
 ## ABS public share links (universal links)
 

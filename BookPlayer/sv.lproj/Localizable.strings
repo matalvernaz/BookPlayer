@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Ska lämnas tillbaka i dag";
 "hummingbird_due_format" = "Ska lämnas tillbaka %@";
 "hummingbird_overdue_format" = "Försenad, skulle ha lämnats tillbaka %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-konto";
+"soundbooth_code_accessibility" = "Inloggningskod";
+"soundbooth_code_footer_format" = "Ange koden som SoundBooth skickade till %@.";
+"soundbooth_code_header" = "Ange din kod";
+"soundbooth_code_label" = "Kod";
+"soundbooth_code_missing" = "Ange koden från mejlet.";
+"soundbooth_different_email_button" = "Använd en annan e-postadress";
+"soundbooth_download_season_button" = "Ladda ned säsong";
+"soundbooth_email_accessibility" = "E-postadress för SoundBooth-kontot";
+"soundbooth_email_footer" = "SoundBooth mejlar dig en engångskod. Inget lösenord behövs.";
+"soundbooth_email_invalid" = "Ange e-postadressen till ditt SoundBooth-konto.";
+"soundbooth_format_audiobook" = "Ljudbok";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Filmiskt ljud";
+"soundbooth_format_immersion" = "Immersion";
+"soundbooth_library_empty" = "Ditt SoundBooth-bibliotek är tomt än så länge.";
+"soundbooth_no_chapters" = "SoundBooth angav inga kapitel för den här titeln.";
+"soundbooth_other_titles_title" = "Övriga titlar";
+"soundbooth_preparing_download" = "Förbereder nedladdning…";
+"soundbooth_refresh_button" = "Uppdatera";
+"soundbooth_releases_format" = "Släpps %@";
+"soundbooth_send_code_button" = "Skicka kod";
+"soundbooth_sign_in_header" = "Logga in på SoundBooth";
+"soundbooth_trim_credits_footer" = "Behåller bara säsongens första förtexter och sista eftertexter och tar bort eftertexterna mellan avsnitten.";
+"soundbooth_trim_credits_toggle" = "Korta upprepade eftertexter";

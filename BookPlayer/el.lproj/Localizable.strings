@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Λήγει σήμερα";
 "hummingbird_due_format" = "Λήγει %@";
 "hummingbird_overdue_format" = "Εκπρόθεσμο, έληξε %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Λογαριασμός SoundBooth";
+"soundbooth_code_accessibility" = "Κωδικός σύνδεσης";
+"soundbooth_code_footer_format" = "Εισαγάγετε τον κωδικό που έστειλε το SoundBooth στο %@.";
+"soundbooth_code_header" = "Εισαγάγετε τον κωδικό";
+"soundbooth_code_label" = "Κωδικός";
+"soundbooth_code_missing" = "Εισαγάγετε τον κωδικό από το email.";
+"soundbooth_different_email_button" = "Χρήση άλλου email";
+"soundbooth_download_season_button" = "Λήψη σεζόν";
+"soundbooth_email_accessibility" = "Email του λογαριασμού SoundBooth";
+"soundbooth_email_footer" = "Το SoundBooth σάς στέλνει με email έναν κωδικό μίας χρήσης. Δεν χρειάζεται συνθηματικό.";
+"soundbooth_email_invalid" = "Εισαγάγετε τη διεύθυνση email του λογαριασμού σας στο SoundBooth.";
+"soundbooth_format_audiobook" = "Ηχητικό βιβλίο";
+"soundbooth_format_bonus" = "Μπόνους";
+"soundbooth_format_cinematic" = "Κινηματογραφικός ήχος";
+"soundbooth_format_immersion" = "Εμβύθιση";
+"soundbooth_library_empty" = "Η βιβλιοθήκη σας στο SoundBooth είναι ακόμη άδεια.";
+"soundbooth_no_chapters" = "Το SoundBooth δεν έδωσε κεφάλαια για αυτόν τον τίτλο.";
+"soundbooth_other_titles_title" = "Άλλοι τίτλοι";
+"soundbooth_preparing_download" = "Προετοιμασία λήψης…";
+"soundbooth_refresh_button" = "Ανανέωση";
+"soundbooth_releases_format" = "Κυκλοφορεί στις %@";
+"soundbooth_send_code_button" = "Αποστολή κωδικού";
+"soundbooth_sign_in_header" = "Σύνδεση στο SoundBooth";
+"soundbooth_trim_credits_footer" = "Κρατά μόνο τους πρώτους τίτλους αρχής και τους τελευταίους τίτλους τέλους της σεζόν, αφαιρώντας τους τίτλους ανάμεσα στα επεισόδια.";
+"soundbooth_trim_credits_toggle" = "Περικοπή επαναλαμβανόμενων τίτλων";

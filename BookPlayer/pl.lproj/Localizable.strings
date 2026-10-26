@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Termin zwrotu: dziś";
 "hummingbird_due_format" = "Termin zwrotu: %@";
 "hummingbird_overdue_format" = "Po terminie, termin minął %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Konto SoundBooth";
+"soundbooth_code_accessibility" = "Kod logowania";
+"soundbooth_code_footer_format" = "Wpisz kod, który SoundBooth wysłał na adres %@.";
+"soundbooth_code_header" = "Wpisz kod";
+"soundbooth_code_label" = "Kod";
+"soundbooth_code_missing" = "Wpisz kod z e-maila.";
+"soundbooth_different_email_button" = "Użyj innego adresu e-mail";
+"soundbooth_download_season_button" = "Pobierz sezon";
+"soundbooth_email_accessibility" = "Adres e-mail konta SoundBooth";
+"soundbooth_email_footer" = "SoundBooth wyśle Ci jednorazowy kod e-mailem. Hasło nie jest potrzebne.";
+"soundbooth_email_invalid" = "Wpisz adres e-mail swojego konta SoundBooth.";
+"soundbooth_format_audiobook" = "Audiobook";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Słuchowisko filmowe";
+"soundbooth_format_immersion" = "Immersja";
+"soundbooth_library_empty" = "Twoja biblioteka SoundBooth jest jeszcze pusta.";
+"soundbooth_no_chapters" = "SoundBooth nie podał rozdziałów tego tytułu.";
+"soundbooth_other_titles_title" = "Inne tytuły";
+"soundbooth_preparing_download" = "Przygotowywanie pobierania…";
+"soundbooth_refresh_button" = "Odśwież";
+"soundbooth_releases_format" = "Premiera %@";
+"soundbooth_send_code_button" = "Wyślij kod";
+"soundbooth_sign_in_header" = "Zaloguj się do SoundBooth";
+"soundbooth_trim_credits_footer" = "Zostawia tylko pierwsze napisy początkowe i ostatnie napisy końcowe sezonu, a usuwa napisy między odcinkami.";
+"soundbooth_trim_credits_toggle" = "Skracaj powtarzane napisy";

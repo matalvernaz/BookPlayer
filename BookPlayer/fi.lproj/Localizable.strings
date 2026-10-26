@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Erääntyy tänään";
 "hummingbird_due_format" = "Erääntyy %@";
 "hummingbird_overdue_format" = "Myöhässä, erääntyi %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-tili";
+"soundbooth_code_accessibility" = "Kirjautumiskoodi";
+"soundbooth_code_footer_format" = "Anna koodi, jonka SoundBooth lähetti osoitteeseen %@.";
+"soundbooth_code_header" = "Anna koodi";
+"soundbooth_code_label" = "Koodi";
+"soundbooth_code_missing" = "Anna sähköpostissa tullut koodi.";
+"soundbooth_different_email_button" = "Käytä toista sähköpostiosoitetta";
+"soundbooth_download_season_button" = "Lataa tuotantokausi";
+"soundbooth_email_accessibility" = "SoundBooth-tilin sähköpostiosoite";
+"soundbooth_email_footer" = "SoundBooth lähettää sinulle kertakäyttöisen koodin sähköpostitse. Salasanaa ei tarvita.";
+"soundbooth_email_invalid" = "Anna SoundBooth-tilisi sähköpostiosoite.";
+"soundbooth_format_audiobook" = "Äänikirja";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Elokuvallinen ääni";
+"soundbooth_format_immersion" = "Immersio";
+"soundbooth_library_empty" = "SoundBooth-kirjastosi on vielä tyhjä.";
+"soundbooth_no_chapters" = "SoundBooth ei antanut tälle nimikkeelle lukuja.";
+"soundbooth_other_titles_title" = "Muut nimikkeet";
+"soundbooth_preparing_download" = "Valmistellaan latausta…";
+"soundbooth_refresh_button" = "Päivitä";
+"soundbooth_releases_format" = "Julkaistaan %@";
+"soundbooth_send_code_button" = "Lähetä koodi";
+"soundbooth_sign_in_header" = "Kirjaudu SoundBoothiin";
+"soundbooth_trim_credits_footer" = "Säilyttää vain kauden ensimmäiset alkutekstit ja viimeiset lopputekstit ja poistaa jaksojen väliset tekstit.";
+"soundbooth_trim_credits_toggle" = "Lyhennä toistuvat tekstit";

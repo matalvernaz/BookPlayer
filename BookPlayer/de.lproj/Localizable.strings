@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Heute fällig";
 "hummingbird_due_format" = "Fällig %@";
 "hummingbird_overdue_format" = "Überfällig, war fällig %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth-Konto";
+"soundbooth_code_accessibility" = "Anmeldecode";
+"soundbooth_code_footer_format" = "Gib den Code ein, den SoundBooth an %@ gesendet hat.";
+"soundbooth_code_header" = "Code eingeben";
+"soundbooth_code_label" = "Code";
+"soundbooth_code_missing" = "Gib den Code aus der E-Mail ein.";
+"soundbooth_different_email_button" = "Andere E-Mail-Adresse verwenden";
+"soundbooth_download_season_button" = "Staffel laden";
+"soundbooth_email_accessibility" = "E-Mail-Adresse des SoundBooth-Kontos";
+"soundbooth_email_footer" = "SoundBooth schickt dir einen Einmalcode per E-Mail. Kein Passwort nötig.";
+"soundbooth_email_invalid" = "Gib die E-Mail-Adresse deines SoundBooth-Kontos ein.";
+"soundbooth_format_audiobook" = "Hörbuch";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Hörspiel";
+"soundbooth_format_immersion" = "Immersion";
+"soundbooth_library_empty" = "Deine SoundBooth-Bibliothek ist noch leer.";
+"soundbooth_no_chapters" = "SoundBooth hat für diesen Titel keine Kapitel geliefert.";
+"soundbooth_other_titles_title" = "Weitere Titel";
+"soundbooth_preparing_download" = "Download wird vorbereitet …";
+"soundbooth_refresh_button" = "Aktualisieren";
+"soundbooth_releases_format" = "Erscheint am %@";
+"soundbooth_send_code_button" = "Code senden";
+"soundbooth_sign_in_header" = "Bei SoundBooth anmelden";
+"soundbooth_trim_credits_footer" = "Behält nur den ersten Vorspann und den letzten Abspann der Staffel und entfernt die Credits zwischen den Folgen.";
+"soundbooth_trim_credits_toggle" = "Wiederholte Credits kürzen";

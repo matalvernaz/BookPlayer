@@ -110,5 +110,23 @@
         <string>%d de cărți</string>
       </dict>
     </dict>
+    <key>soundbooth_episode_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d episod</string>
+        <key>few</key>
+        <string>%d episoade</string>
+        <key>other</key>
+        <string>%d de episoade</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

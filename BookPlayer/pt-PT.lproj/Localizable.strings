@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Expira hoje";
 "hummingbird_due_format" = "Expira %@";
 "hummingbird_overdue_format" = "Em atraso, expirou %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Conta SoundBooth";
+"soundbooth_code_accessibility" = "Código de início de sessão";
+"soundbooth_code_footer_format" = "Introduza o código que o SoundBooth enviou para %@.";
+"soundbooth_code_header" = "Introduza o código";
+"soundbooth_code_label" = "Código";
+"soundbooth_code_missing" = "Introduza o código do e-mail.";
+"soundbooth_different_email_button" = "Usar outro e-mail";
+"soundbooth_download_season_button" = "Transferir temporada";
+"soundbooth_email_accessibility" = "E-mail da conta SoundBooth";
+"soundbooth_email_footer" = "O SoundBooth envia-lhe um código de utilização única por e-mail. Não precisa de palavra-passe.";
+"soundbooth_email_invalid" = "Introduza o endereço de e-mail da sua conta SoundBooth.";
+"soundbooth_format_audiobook" = "Audiolivro";
+"soundbooth_format_bonus" = "Bónus";
+"soundbooth_format_cinematic" = "Áudio cinematográfico";
+"soundbooth_format_immersion" = "Imersão";
+"soundbooth_library_empty" = "A sua biblioteca SoundBooth ainda está vazia.";
+"soundbooth_no_chapters" = "O SoundBooth não indicou capítulos para este título.";
+"soundbooth_other_titles_title" = "Outros títulos";
+"soundbooth_preparing_download" = "A preparar a transferência…";
+"soundbooth_refresh_button" = "Atualizar";
+"soundbooth_releases_format" = "Sai a %@";
+"soundbooth_send_code_button" = "Enviar código";
+"soundbooth_sign_in_header" = "Iniciar sessão no SoundBooth";
+"soundbooth_trim_credits_footer" = "Mantém apenas o primeiro genérico inicial e o último genérico final da temporada, removendo os genéricos entre episódios.";
+"soundbooth_trim_credits_toggle" = "Cortar genéricos repetidos";

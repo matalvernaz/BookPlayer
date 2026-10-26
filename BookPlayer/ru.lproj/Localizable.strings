@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Вернуть сегодня";
 "hummingbird_due_format" = "Вернуть %@";
 "hummingbird_overdue_format" = "Просрочено, срок истёк %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Аккаунт SoundBooth";
+"soundbooth_code_accessibility" = "Код для входа";
+"soundbooth_code_footer_format" = "Введите код, который SoundBooth отправил на %@.";
+"soundbooth_code_header" = "Введите код";
+"soundbooth_code_label" = "Код";
+"soundbooth_code_missing" = "Введите код из письма.";
+"soundbooth_different_email_button" = "Другой адрес почты";
+"soundbooth_download_season_button" = "Скачать сезон";
+"soundbooth_email_accessibility" = "Почта аккаунта SoundBooth";
+"soundbooth_email_footer" = "SoundBooth пришлёт одноразовый код на почту. Пароль не нужен.";
+"soundbooth_email_invalid" = "Введите адрес почты своего аккаунта SoundBooth.";
+"soundbooth_format_audiobook" = "Аудиокнига";
+"soundbooth_format_bonus" = "Бонус";
+"soundbooth_format_cinematic" = "Кинематографичное аудио";
+"soundbooth_format_immersion" = "Погружение";
+"soundbooth_library_empty" = "Ваша библиотека SoundBooth пока пуста.";
+"soundbooth_no_chapters" = "SoundBooth не указал главы для этого произведения.";
+"soundbooth_other_titles_title" = "Другие произведения";
+"soundbooth_preparing_download" = "Подготовка загрузки…";
+"soundbooth_refresh_button" = "Обновить";
+"soundbooth_releases_format" = "Выходит %@";
+"soundbooth_send_code_button" = "Отправить код";
+"soundbooth_sign_in_header" = "Вход в SoundBooth";
+"soundbooth_trim_credits_footer" = "Оставляет только первые начальные и последние финальные титры сезона, убирая титры между эпизодами.";
+"soundbooth_trim_credits_toggle" = "Сокращать повторяющиеся титры";

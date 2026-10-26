@@ -433,3 +433,61 @@ reset). Still open.
   "01". July did the same; naming the file after the title needs a
   root-level `fileName` on the single-file download path.
 
+
+# 2026-10-25 catch-up, slice 3 (SoundBooth on the 6.0 base)
+
+## FIXED in the port (July bugs)
+
+- When `resources/play` didn't redirect, July downloaded a URL it built
+  from the chapter id, and CacheFly answers some of those with an HTML 404
+  page, which was saved as the chapter's MP3. Now only the redirect's
+  `Location` is used (resolved against the request, so a relative one
+  works), anything else fails the download before a file is queued, and a
+  300 or 304 no longer counts as a redirect.
+- Chapter files were named by SoundBooth's `number`, which can repeat, so
+  two chapters could get one name and the second was lost. They're
+  numbered by position now.
+- Two titles with the same name (and series) downloaded into one folder
+  and became one book. Folders are reserved now: the second is "… 2".
+- A download's provenance named whichever connection was active when it
+  finished, not the account the title was listed for, and was written
+  under the Documents folder name, which the import can change. It's
+  captured at the tap and goes through slice 1's landed stage now.
+- Every refusal from the API read "Unexpected server response"; SoundBooth's
+  own words show now ("That code has expired").
+- The API's invalid-session code (50230, sent with a 200) wasn't treated
+  as an expired session.
+- With two accounts saved, logging out of the active one from inside the
+  library left its titles on screen while the other account became
+  active, and a tap went out with the other account's session. Downloads
+  now name the account the library was listed for, and the screen reloads
+  the new account's library.
+
+## OPEN
+
+- **CDN tokens can run out on a long download.** Every chapter's URL is
+  resolved before anything is queued, and each redirect carries a CacheFly
+  path token that expires about two hours after it's issued (seen in July;
+  an older URL form kept serving past its expiry, this one may not). A big
+  season on a slow connection could reach its last chapters after that,
+  and those files would fail on their own (the bound book would miss
+  them). Resolving each chapter just before its download starts needs a
+  hook in `SingleFileDownloadService`.
+- **July's "row disappeared" report** (a library row gone after a
+  download) was never reproduced, on July's code or on this port.
+- **A release time that doesn't parse** counts as released, so a preorder
+  episode with an odd timestamp would offer a download that then fails.
+  Both formats SoundBooth sends parse.
+- **No progress write-back** (seed only, decided): SoundBooth's apps write
+  positions through PowerSync. Slice 4 gives the dispatcher a no-op
+  SoundBooth reporter.
+- **An API refusal with a message but no numeric code** reads "The server
+  responded with 0: …" (`serverMessage(code: 0, …)`). Every refusal seen
+  from SoundBooth carries a code; a SoundBooth-specific error type would be
+  the fix if one ever doesn't (panel, slice 3).
+- **Hummingbird has the stale-list gap SoundBooth fixed** (slice 2 code):
+  with two servers saved, logging out of the active one from inside its
+  bookshelf leaves that bookshelf on screen while the other server becomes
+  active, and a download then asks the other server for the first one's
+  book. Same fix: remember the connection the bookshelf (and a search) was
+  listed for, and reload on a switch.

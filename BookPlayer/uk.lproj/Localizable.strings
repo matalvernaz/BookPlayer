@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Повернути сьогодні";
 "hummingbird_due_format" = "Повернути %@";
 "hummingbird_overdue_format" = "Прострочено, термін минув %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Обліковий запис SoundBooth";
+"soundbooth_code_accessibility" = "Код для входу";
+"soundbooth_code_footer_format" = "Введіть код, який SoundBooth надіслав на %@.";
+"soundbooth_code_header" = "Введіть код";
+"soundbooth_code_label" = "Код";
+"soundbooth_code_missing" = "Введіть код із листа.";
+"soundbooth_different_email_button" = "Інша адреса пошти";
+"soundbooth_download_season_button" = "Завантажити сезон";
+"soundbooth_email_accessibility" = "Пошта облікового запису SoundBooth";
+"soundbooth_email_footer" = "SoundBooth надішле одноразовий код на пошту. Пароль не потрібен.";
+"soundbooth_email_invalid" = "Введіть адресу пошти свого облікового запису SoundBooth.";
+"soundbooth_format_audiobook" = "Аудіокнига";
+"soundbooth_format_bonus" = "Бонус";
+"soundbooth_format_cinematic" = "Кінематографічне аудіо";
+"soundbooth_format_immersion" = "Занурення";
+"soundbooth_library_empty" = "Ваша бібліотека SoundBooth поки порожня.";
+"soundbooth_no_chapters" = "SoundBooth не вказав розділів для цього твору.";
+"soundbooth_other_titles_title" = "Інші твори";
+"soundbooth_preparing_download" = "Підготовка завантаження…";
+"soundbooth_refresh_button" = "Оновити";
+"soundbooth_releases_format" = "Виходить %@";
+"soundbooth_send_code_button" = "Надіслати код";
+"soundbooth_sign_in_header" = "Вхід у SoundBooth";
+"soundbooth_trim_credits_footer" = "Залишає лише перші початкові й останні фінальні титри сезону, прибираючи титри між епізодами.";
+"soundbooth_trim_credits_toggle" = "Скорочувати повторювані титри";

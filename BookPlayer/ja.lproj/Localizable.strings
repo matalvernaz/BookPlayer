@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "今日が返却期限";
 "hummingbird_due_format" = "返却期限：%@";
 "hummingbird_overdue_format" = "延滞中（返却期限：%@）";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBoothアカウント";
+"soundbooth_code_accessibility" = "サインインコード";
+"soundbooth_code_footer_format" = "SoundBoothが%@に送信したコードを入力してください。";
+"soundbooth_code_header" = "コードを入力";
+"soundbooth_code_label" = "コード";
+"soundbooth_code_missing" = "メールに記載のコードを入力してください。";
+"soundbooth_different_email_button" = "別のメールアドレスを使用";
+"soundbooth_download_season_button" = "シーズンをダウンロード";
+"soundbooth_email_accessibility" = "SoundBoothアカウントのメールアドレス";
+"soundbooth_email_footer" = "SoundBoothから使い捨てのコードがメールで届きます。パスワードは不要です。";
+"soundbooth_email_invalid" = "SoundBoothアカウントのメールアドレスを入力してください。";
+"soundbooth_format_audiobook" = "オーディオブック";
+"soundbooth_format_bonus" = "ボーナス";
+"soundbooth_format_cinematic" = "シネマティックオーディオ";
+"soundbooth_format_immersion" = "イマージョン";
+"soundbooth_library_empty" = "SoundBoothライブラリにはまだ何もありません。";
+"soundbooth_no_chapters" = "SoundBoothはこのタイトルのチャプターを返しませんでした。";
+"soundbooth_other_titles_title" = "その他のタイトル";
+"soundbooth_preparing_download" = "ダウンロードを準備中…";
+"soundbooth_refresh_button" = "更新";
+"soundbooth_releases_format" = "%@に配信";
+"soundbooth_send_code_button" = "コードを送信";
+"soundbooth_sign_in_header" = "SoundBoothにサインイン";
+"soundbooth_trim_credits_footer" = "シーズン最初のオープニングクレジットと最後のエンディングクレジットだけを残し、エピソード間のクレジットを省きます。";
+"soundbooth_trim_credits_toggle" = "繰り返しのクレジットを省く";

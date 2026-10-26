@@ -17,7 +17,9 @@
 		0EF52614EF6770D09CA81CE4 /* IntegrationConnectedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C564A7BDE3A2D98E02BF8B /* IntegrationConnectedView.swift */; };
 		0F0EAF4DDF3188A7B875EA1D /* SharedLinkImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76DDC8B9B07F7C038B9C10A9 /* SharedLinkImportService.swift */; };
 		11A972EC3C4426DD4D02867E /* TagsFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AADE0F4BFEC0640FC687FA /* TagsFlowLayout.swift */; };
+		1272E07015C4EFB575022015 /* SoundBoothConnectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54636C03261199651473AB49 /* SoundBoothConnectionData.swift */; };
 		16000315318B32E19AD77ADA /* HummingbirdConnectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC86F22AA2EA5072B6974379 /* HummingbirdConnectionViewModel.swift */; };
+		162FFD51D09C96801F39F763 /* SoundBoothRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389BC3BA0DC29194C6FBA856 /* SoundBoothRootView.swift */; };
 		17239057BBE31E405AFFBBCD /* IntegrationServerFoundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3511F737DCDEE7A12B713AE /* IntegrationServerFoundView.swift */; };
 		18D0AD99D1AAA10976F75C11 /* BPNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55F466D61AE62A69DE4D371 /* BPNavigation.swift */; };
 		1A26F7D72FFD6D625A313FC5 /* AudioMetadataServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC40E520F644AFA46DAD76B0 /* AudioMetadataServiceTests.swift */; };
@@ -27,8 +29,11 @@
 		23B611054CBB754179339408 /* HummingbirdLibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC8A368628D7E15A7F29CEB /* HummingbirdLibraryViewModel.swift */; };
 		2B283D695990DA665D1661CC /* mp3_NO_chapters.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 12EDB8401F38342155CBBC91 /* mp3_NO_chapters.mp3 */; };
 		2D7D5973F598D517CBCCE0ED /* PreferencesSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D25EF2A5FFF30CF12F2C21 /* PreferencesSyncService.swift */; };
+		347E1C7C3F8192D46AE69B40 /* SoundBoothConnectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB1C0C261A1D28343D9C570 /* SoundBoothConnectionViewModel.swift */; };
 		35801A3A885EBED05A38490B /* HummingbirdLibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C9B27BF16908653D9CA32D /* HummingbirdLibraryItem.swift */; };
+		35EDC092C8B742C11D28902F /* SoundBoothHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 727FF997C75AC5E33FDB8DED /* SoundBoothHTTPClient.swift */; };
 		39313742614BCCA918DA7C0E /* IntegrationConnectionFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA0C0229963991F8CE1E941 /* IntegrationConnectionFlowView.swift */; };
+		39F45C887363D37746714B53 /* SoundBoothDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193C3709EE828ED71AFC2B37 /* SoundBoothDownloadTests.swift */; };
 		3A0470C5F1BAC0EAB7881443 /* HummingbirdDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C22C90167D0A8A8BDDDABA /* HummingbirdDownloadTests.swift */; };
 		3F058A74415A3AF6C17DA8F4 /* IntegrationHostResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE48B26D3726D5519F45ED9 /* IntegrationHostResolverTests.swift */; };
 		3F66408A2E162ABF00356522 /* AudioMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6640892E162ABF00356522 /* AudioMetadataService.swift */; };
@@ -46,16 +51,23 @@
 		3F7B643D2E0FA0B800299D97 /* GraphQLClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B643C2E0FA0B800299D97 /* GraphQLClient.swift */; };
 		3F7B64422E0FB27000299D97 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B64412E0FB27000299D97 /* AnyCodable.swift */; };
 		3F7B64452E0FB29600299D97 /* BooksData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B64442E0FB29600299D97 /* BooksData.swift */; };
+		44C9FE1AAB4C0D86D85F0FF4 /* SoundBoothModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93DF05C1771834A50B049AD3 /* SoundBoothModels.swift */; };
 		46C1525A617E0F3A31065118 /* HummingbirdLoanExpiryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8A766FF87829A87FD21FC6 /* HummingbirdLoanExpiryScanner.swift */; };
 		4AF38A2010EED4735B01B0D5 /* HummingbirdLibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C9B27BF16908653D9CA32D /* HummingbirdLibraryItem.swift */; };
 		50514AE4F9B53CDBF4DB190D /* MediaServerDownloadFolders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0C3CC76921FFB2CAD2208D /* MediaServerDownloadFolders.swift */; };
+		54D7D859FF2BC74B884BFEC5 /* SoundBoothConnectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54636C03261199651473AB49 /* SoundBoothConnectionData.swift */; };
+		55954F6C067C3FFEDCE6E06F /* SoundBoothAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A8042C947763C4A9469EAF /* SoundBoothAPIClient.swift */; };
+		593F2EF1DFF344A6B5E8DEAF /* SoundBoothConnectionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 707B0ABB3EB521D5925B03FC /* SoundBoothConnectionServiceTests.swift */; };
 		66D7274160328BDA8F140F18 /* MediaServerProgressPushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2621E11ACFA5162D6D14CB7C /* MediaServerProgressPushTests.swift */; };
 		775853C8B32BB8AEAB3B7C6A /* HummingbirdConnectionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C9FC2101A29AE7B172712D8 /* HummingbirdConnectionViewModelTests.swift */; };
 		77637412E50708DC138EFDA9 /* HummingbirdLoanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A983940A4C648275162EDF14 /* HummingbirdLoanTests.swift */; };
+		796E01A294E595249DE59D61 /* SoundBoothConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */; };
 		89EF133DD79D14323DD94579 /* HummingbirdLibraryListItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7645B1947378CBC149EE00 /* HummingbirdLibraryListItemView.swift */; };
 		8A11FE89666C7D794E0E536B /* MediaServerSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F06C911EF2D951D2636761 /* MediaServerSourceStore.swift */; };
+		94ADCA5E68A9D044A921938C /* SoundBoothLibraryListItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10425312567FCC673D6F22C9 /* SoundBoothLibraryListItemView.swift */; };
 		94CC66531387EF8E2872DF0F /* MediaServerProvenanceLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD917DF7FCE4AE0338C50EEE /* MediaServerProvenanceLibraryTests.swift */; };
 		99A04C9953A3C07CAE256E77 /* MediaServerSourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6C0D2F00AD230F638DB4C2 /* MediaServerSourceInfo.swift */; };
+		9C0441279854575020D83728 /* SoundBoothLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACCEA7050E8D069FBE0D7DF /* SoundBoothLibraryView.swift */; };
 		9FC76736E06218F8D43EB5C6 /* MediaServerDownloadLandingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7CEB9FE3628D497813110AE /* MediaServerDownloadLandingTests.swift */; };
 		A179BB26325B4699A9EA15CA /* BookByIdData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE1A8E1D323493B91FA8E1C /* BookByIdData.swift */; };
 		3F7B64472E0FB2A900299D97 /* AudiobookEditionsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B64462E0FB2A900299D97 /* AudiobookEditionsData.swift */; };
@@ -148,20 +160,30 @@
 		28EEB2588DE468A6B8C15272 /* RefreshTaskOperationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65962B5F03D221629A83C22C /* RefreshTaskOperationTests.swift */; };
 		3EBBB264D481A0F2DF48763E /* ListSyncRefreshServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098A98893A8783E8BE1C5420 /* ListSyncRefreshServiceTests.swift */; };
 		A4FCC5068DF2147F25247A37 /* HummingbirdRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CC97D03043FDEB26FD9595 /* HummingbirdRootView.swift */; };
+		A5D143A61C6D5EDDF71341AB /* SoundBoothLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C3B46ED1AE2EDBC402B1F /* SoundBoothLibraryTests.swift */; };
 		A64308C416AABB27C66476A5 /* SleepTimerOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288AB833FD0408AF95443752 /* SleepTimerOptionTests.swift */; };
 		ACF19C064D3757CE54FC9C55 /* HummingbirdConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5C4C112636A223AC11728E /* HummingbirdConnectionService.swift */; };
+		AFD932E6C7A735EC0BCCFFBD /* SoundBoothAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A8042C947763C4A9469EAF /* SoundBoothAPIClient.swift */; };
 		B3942B73BA1C7785F6797E06 /* MediaServerSourceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDF55C2052A63673A9B18BB /* MediaServerSourceTracker.swift */; };
 		B843F82DBB21978E66CC52BE /* SleepTimerOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = F272F6B4BD466581AA888D36 /* SleepTimerOption.swift */; };
 		BB6DBCA6C7DD1393DFC02BEF /* HummingbirdLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 095D8EE2E075C5F663E0AD61 /* HummingbirdLibraryView.swift */; };
 		BDA4E4A14A1C7D075BFEA78A /* HummingbirdConnectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702EDC1AAB2F2B7FE96CF0E5 /* HummingbirdConnectionData.swift */; };
 		BE12D46C3B210D992C811E37 /* HummingbirdLoanReturns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ADD30AEFFFEF629B7F65765 /* HummingbirdLoanReturns.swift */; };
 		BF3FFE3BF0AA189D0C5CEDE1 /* AudiobookShelfShareLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB2B39F7DE40C54133A0ED3 /* AudiobookShelfShareLinkTests.swift */; };
+		BF8A17DAF3475D12A7F55958 /* SoundBoothConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73768D19B8E7B23F7DFF31E /* SoundBoothConnectionView.swift */; };
 		C0F287787DA6664F61EBC1DF /* HummingbirdConnectionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C26F35FD18BAC64DA7C594 /* HummingbirdConnectionServiceTests.swift */; };
 		C3A07F92C2B6DAD1A5AE0156 /* MediaServerBoundBookCompleter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0539E45E46341AE193AA6E3 /* MediaServerBoundBookCompleter.swift */; };
 		CD5F28377EB6CA3A6D28FCAE /* TimeListenedConfigurationIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B7EA50469723CE6626EB2A /* TimeListenedConfigurationIntent.swift */; };
 		D299275B670C269299C1EFCF /* MediaServerSourceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8577F85955A2024B40F10D19 /* MediaServerSourceStoreTests.swift */; };
+		D9492FC96347F9871B8C3D03 /* SoundBoothConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */; };
+		DD28F2D51B255279FD8CBFB2 /* SoundBoothAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB413CC0B7108E78B8736AB5 /* SoundBoothAPIClientTests.swift */; };
 		DEF28DF16A55FEF13AF25A13 /* ShareLinkSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDF92CFE145EFF5C0ADAF99 /* ShareLinkSheetView.swift */; };
+		E06511F120887CC705C2192F /* SoundBoothLibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC3BE09C0C2B0BDB7EAEE32 /* SoundBoothLibraryItem.swift */; };
+		E2DDEA54B2F86166B6D2CE70 /* SoundBoothHTTPClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D2935519D4462878032F8B /* SoundBoothHTTPClientTests.swift */; };
+		E55780FFCB309F41C5D3927D /* SoundBoothModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93DF05C1771834A50B049AD3 /* SoundBoothModels.swift */; };
 		E79345DD00DC64A0F7E0939A /* SleepTimerOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = F272F6B4BD466581AA888D36 /* SleepTimerOption.swift */; };
+		E9DE4DF7B42677113AAF24FD /* SoundBoothHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 727FF997C75AC5E33FDB8DED /* SoundBoothHTTPClient.swift */; };
+		EAFE60CBD6A8A384516537BB /* SoundBoothLibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5ADBF709A9CCAEEF7F4C87 /* SoundBoothLibraryViewModel.swift */; };
 		EB1C6653F83C8FA52846DB25 /* HummingbirdConnectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702EDC1AAB2F2B7FE96CF0E5 /* HummingbirdConnectionData.swift */; };
 		ECD1F4B6AC66B224B4752F0D /* HummingbirdConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5C4C112636A223AC11728E /* HummingbirdConnectionService.swift */; };
 		FDA22898B1CD320A1D8F6C52 /* QueuedTaskDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC06443EFD052E697036798 /* QueuedTaskDisplayTests.swift */; };
@@ -1212,8 +1234,10 @@
 		0ADD30AEFFFEF629B7F65765 /* HummingbirdLoanReturns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLoanReturns.swift; sourceTree = "<group>"; };
 		0EA09FE5A35CEA0B87F83EF3 /* PreferencesSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSyncServiceTests.swift; sourceTree = "<group>"; };
 		0FC8B923A5506F865253B97C /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
+		10425312567FCC673D6F22C9 /* SoundBoothLibraryListItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryListItemView.swift; sourceTree = "<group>"; };
 		12EDB8401F38342155CBBC91 /* mp3_NO_chapters.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = mp3_NO_chapters.mp3; sourceTree = "<group>"; };
 		13C407B5BD19D3CF9CC64EC7 /* IntegrationLibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationLibraryView.swift; sourceTree = "<group>"; };
+		193C3709EE828ED71AFC2B37 /* SoundBoothDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothDownloadTests.swift; sourceTree = "<group>"; };
 		1BA32C89144C68DD64FD0B62 /* mp3_NO_toc_v23.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = mp3_NO_toc_v23.mp3; sourceTree = "<group>"; };
 		1C6581B92E4D292C2AFC361A /* SyncResponseFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncResponseFixtures.swift; sourceTree = "<group>"; };
 		1FFF7B7B6E62B274D230C207 /* IntegrationServerAddress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationServerAddress.swift; sourceTree = "<group>"; };
@@ -1230,22 +1254,33 @@
 		3373A34FC2536111E50BF868 /* PasskeyEmailInputView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PasskeyEmailInputView.swift; sourceTree = "<group>"; };
 		3451CA062919E03CEB975E92 /* IntegrationHostResolver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationHostResolver.swift; sourceTree = "<group>"; };
 		09CE0C5C0B0003FC174EA8CD /* MediaServerStreams.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MediaServerStreams.swift; sourceTree = "<group>"; };
+		389BC3BA0DC29194C6FBA856 /* SoundBoothRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothRootView.swift; sourceTree = "<group>"; };
 		3DDF92CFE145EFF5C0ADAF99 /* ShareLinkSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkSheetView.swift; sourceTree = "<group>"; };
 		4BB2B39F7DE40C54133A0ED3 /* AudiobookShelfShareLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudiobookShelfShareLinkTests.swift; sourceTree = "<group>"; };
 		4C9FC2101A29AE7B172712D8 /* HummingbirdConnectionViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdConnectionViewModelTests.swift; sourceTree = "<group>"; };
+		54636C03261199651473AB49 /* SoundBoothConnectionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionData.swift; sourceTree = "<group>"; };
 		6A7645B1947378CBC149EE00 /* HummingbirdLibraryListItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLibraryListItemView.swift; sourceTree = "<group>"; };
 		6B6C0D2F00AD230F638DB4C2 /* MediaServerSourceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerSourceInfo.swift; sourceTree = "<group>"; };
+		6FB1C0C261A1D28343D9C570 /* SoundBoothConnectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionViewModel.swift; sourceTree = "<group>"; };
 		702EDC1AAB2F2B7FE96CF0E5 /* HummingbirdConnectionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdConnectionData.swift; sourceTree = "<group>"; };
+		707B0ABB3EB521D5925B03FC /* SoundBoothConnectionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionServiceTests.swift; sourceTree = "<group>"; };
+		727FF997C75AC5E33FDB8DED /* SoundBoothHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothHTTPClient.swift; sourceTree = "<group>"; };
 		76DDC8B9B07F7C038B9C10A9 /* SharedLinkImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLinkImportService.swift; sourceTree = "<group>"; };
+		7BC3BE09C0C2B0BDB7EAEE32 /* SoundBoothLibraryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryItem.swift; sourceTree = "<group>"; };
 		81C26F35FD18BAC64DA7C594 /* HummingbirdConnectionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdConnectionServiceTests.swift; sourceTree = "<group>"; };
 		8577F85955A2024B40F10D19 /* MediaServerSourceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerSourceStoreTests.swift; sourceTree = "<group>"; };
 		87F06C911EF2D951D2636761 /* MediaServerSourceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerSourceStore.swift; sourceTree = "<group>"; };
 		8E8A766FF87829A87FD21FC6 /* HummingbirdLoanExpiryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLoanExpiryScanner.swift; sourceTree = "<group>"; };
+		93DF05C1771834A50B049AD3 /* SoundBoothModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothModels.swift; sourceTree = "<group>"; };
+		9E5ADBF709A9CCAEEF7F4C87 /* SoundBoothLibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryViewModel.swift; sourceTree = "<group>"; };
 		A51357B087F7FB3CF6E08296 /* ExternalStreamResolver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExternalStreamResolver.swift; sourceTree = "<group>"; };
 		97ADE40DF29059A5B97E37D6 /* MediaServerChapterProviding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MediaServerChapterProviding.swift; sourceTree = "<group>"; };
+		A7A8042C947763C4A9469EAF /* SoundBoothAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothAPIClient.swift; sourceTree = "<group>"; };
 		A7CEB9FE3628D497813110AE /* MediaServerDownloadLandingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerDownloadLandingTests.swift; sourceTree = "<group>"; };
 		A983940A4C648275162EDF14 /* HummingbirdLoanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLoanTests.swift; sourceTree = "<group>"; };
+		AACCEA7050E8D069FBE0D7DF /* SoundBoothLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryView.swift; sourceTree = "<group>"; };
 		AFBFC1F5F1C6A4BBA25DDC09 /* MediaServerDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerDeletion.swift; sourceTree = "<group>"; };
+		C36C3B46ED1AE2EDBC402B1F /* SoundBoothLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryTests.swift; sourceTree = "<group>"; };
 		C6C22C90167D0A8A8BDDDABA /* HummingbirdDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdDownloadTests.swift; sourceTree = "<group>"; };
 		C85605CDB6C6075AADBE2D15 /* MediaServerChapterRefreshService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MediaServerChapterRefreshService.swift; sourceTree = "<group>"; };
 		35C564A7BDE3A2D98E02BF8B /* IntegrationConnectedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationConnectedView.swift; sourceTree = "<group>"; };
@@ -1350,7 +1385,11 @@
 		CFC8A368628D7E15A7F29CEB /* HummingbirdLibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLibraryViewModel.swift; sourceTree = "<group>"; };
 		D0539E45E46341AE193AA6E3 /* MediaServerBoundBookCompleter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServerBoundBookCompleter.swift; sourceTree = "<group>"; };
 		D8CC97D03043FDEB26FD9595 /* HummingbirdRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdRootView.swift; sourceTree = "<group>"; };
+		D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionService.swift; sourceTree = "<group>"; };
+		E5D2935519D4462878032F8B /* SoundBoothHTTPClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothHTTPClientTests.swift; sourceTree = "<group>"; };
 		E6C9B27BF16908653D9CA32D /* HummingbirdLibraryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLibraryItem.swift; sourceTree = "<group>"; };
+		E73768D19B8E7B23F7DFF31E /* SoundBoothConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionView.swift; sourceTree = "<group>"; };
+		EB413CC0B7108E78B8736AB5 /* SoundBoothAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothAPIClientTests.swift; sourceTree = "<group>"; };
 		EDC06443EFD052E697036798 /* QueuedTaskDisplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuedTaskDisplayTests.swift; sourceTree = "<group>"; };
 		93B92CBF82FDC0C582ED64AC /* OrientationLockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationLockTests.swift; sourceTree = "<group>"; };
 		5359C57600F2E373E8F33D39 /* NetworkClientQueryEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClientQueryEncodingTests.swift; sourceTree = "<group>"; };
@@ -2219,6 +2258,27 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		00C54BA7B3C276489327CE93 /* SoundBooth */ = {
+			isa = PBXGroup;
+			children = (
+				7467DC76BE4C56A35EF9064A /* Connection Screen */,
+				17D057ED84BA35E5FC8D7AE8 /* Library Screen */,
+				389BC3BA0DC29194C6FBA856 /* SoundBoothRootView.swift */,
+			);
+			path = SoundBooth;
+			sourceTree = "<group>";
+		};
+		17D057ED84BA35E5FC8D7AE8 /* Library Screen */ = {
+			isa = PBXGroup;
+			children = (
+				7BC3BE09C0C2B0BDB7EAEE32 /* SoundBoothLibraryItem.swift */,
+				9E5ADBF709A9CCAEEF7F4C87 /* SoundBoothLibraryViewModel.swift */,
+				AACCEA7050E8D069FBE0D7DF /* SoundBoothLibraryView.swift */,
+				10425312567FCC673D6F22C9 /* SoundBoothLibraryListItemView.swift */,
+			);
+			path = "Library Screen";
+			sourceTree = "<group>";
+		};
 		18566623695D8A2AC6E42994 /* Library Screen */ = {
 			isa = PBXGroup;
 			children = (
@@ -2252,6 +2312,18 @@
 				8DA0C0229963991F8CE1E941 /* IntegrationConnectionFlowView.swift */,
 			);
 			path = "Connection Screen";
+			sourceTree = "<group>";
+		};
+		21885077BF0C973189235821 /* SoundBooth */ = {
+			isa = PBXGroup;
+			children = (
+				93DF05C1771834A50B049AD3 /* SoundBoothModels.swift */,
+				727FF997C75AC5E33FDB8DED /* SoundBoothHTTPClient.swift */,
+				A7A8042C947763C4A9469EAF /* SoundBoothAPIClient.swift */,
+				54636C03261199651473AB49 /* SoundBoothConnectionData.swift */,
+				D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */,
+			);
+			path = SoundBooth;
 			sourceTree = "<group>";
 		};
 		2A23DEE1F66CF605694BCAE8 /* Hummingbird */ = {
@@ -2605,6 +2677,7 @@
 				419B375423B8D5A500128A8F /* Localizable.strings */,
 				6376091B2ADCD81400A01D5D /* AppShortcuts.strings */,
 				7FC3BA8DC72FFC8B672D71C4 /* Hummingbird */,
+				00C54BA7B3C276489327CE93 /* SoundBooth */,
 			);
 			path = BookPlayer;
 			sourceTree = "<group>";
@@ -2673,6 +2746,7 @@
 				41A90C4727564DAA00C30394 /* BookPlayerError.swift */,
 				9F56C84C287B734C00EA9751 /* BPLogger.swift */,
 				2A23DEE1F66CF605694BCAE8 /* Hummingbird */,
+				21885077BF0C973189235821 /* SoundBooth */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -2892,6 +2966,11 @@
 				4C9FC2101A29AE7B172712D8 /* HummingbirdConnectionViewModelTests.swift */,
 				C6C22C90167D0A8A8BDDDABA /* HummingbirdDownloadTests.swift */,
 				A983940A4C648275162EDF14 /* HummingbirdLoanTests.swift */,
+				E5D2935519D4462878032F8B /* SoundBoothHTTPClientTests.swift */,
+				EB413CC0B7108E78B8736AB5 /* SoundBoothAPIClientTests.swift */,
+				707B0ABB3EB521D5925B03FC /* SoundBoothConnectionServiceTests.swift */,
+				C36C3B46ED1AE2EDBC402B1F /* SoundBoothLibraryTests.swift */,
+				193C3709EE828ED71AFC2B37 /* SoundBoothDownloadTests.swift */,
 			);
 			path = MediaServerIntegration;
 			sourceTree = "<group>";
@@ -3579,6 +3658,15 @@
 				F496A2BF4CBFFC745C453D42 /* ChaptersViewModelTests.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7467DC76BE4C56A35EF9064A /* Connection Screen */ = {
+			isa = PBXGroup;
+			children = (
+				6FB1C0C261A1D28343D9C570 /* SoundBoothConnectionViewModel.swift */,
+				E73768D19B8E7B23F7DFF31E /* SoundBoothConnectionView.swift */,
+			);
+			path = "Connection Screen";
 			sourceTree = "<group>";
 		};
 		7B8F0FB422E156D393656BFB /* Connection Screen */ = {
@@ -5067,6 +5155,11 @@
 				BDA4E4A14A1C7D075BFEA78A /* HummingbirdConnectionData.swift in Sources */,
 				4AF38A2010EED4735B01B0D5 /* HummingbirdLibraryItem.swift in Sources */,
 				ECD1F4B6AC66B224B4752F0D /* HummingbirdConnectionService.swift in Sources */,
+				E55780FFCB309F41C5D3927D /* SoundBoothModels.swift in Sources */,
+				35EDC092C8B742C11D28902F /* SoundBoothHTTPClient.swift in Sources */,
+				55954F6C067C3FFEDCE6E06F /* SoundBoothAPIClient.swift in Sources */,
+				1272E07015C4EFB575022015 /* SoundBoothConnectionData.swift in Sources */,
+				796E01A294E595249DE59D61 /* SoundBoothConnectionService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5504,6 +5597,13 @@
 				46C1525A617E0F3A31065118 /* HummingbirdLoanExpiryScanner.swift in Sources */,
 				50514AE4F9B53CDBF4DB190D /* MediaServerDownloadFolders.swift in Sources */,
 				0452D825071BD0525E73DD47 /* MediaServerDeletion.swift in Sources */,
+				347E1C7C3F8192D46AE69B40 /* SoundBoothConnectionViewModel.swift in Sources */,
+				BF8A17DAF3475D12A7F55958 /* SoundBoothConnectionView.swift in Sources */,
+				E06511F120887CC705C2192F /* SoundBoothLibraryItem.swift in Sources */,
+				EAFE60CBD6A8A384516537BB /* SoundBoothLibraryViewModel.swift in Sources */,
+				9C0441279854575020D83728 /* SoundBoothLibraryView.swift in Sources */,
+				94ADCA5E68A9D044A921938C /* SoundBoothLibraryListItemView.swift in Sources */,
+				162FFD51D09C96801F39F763 /* SoundBoothRootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5591,6 +5691,11 @@
 				775853C8B32BB8AEAB3B7C6A /* HummingbirdConnectionViewModelTests.swift in Sources */,
 				3A0470C5F1BAC0EAB7881443 /* HummingbirdDownloadTests.swift in Sources */,
 				77637412E50708DC138EFDA9 /* HummingbirdLoanTests.swift in Sources */,
+				E2DDEA54B2F86166B6D2CE70 /* SoundBoothHTTPClientTests.swift in Sources */,
+				DD28F2D51B255279FD8CBFB2 /* SoundBoothAPIClientTests.swift in Sources */,
+				593F2EF1DFF344A6B5E8DEAF /* SoundBoothConnectionServiceTests.swift in Sources */,
+				A5D143A61C6D5EDDF71341AB /* SoundBoothLibraryTests.swift in Sources */,
+				39F45C887363D37746714B53 /* SoundBoothDownloadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5764,6 +5869,11 @@
 				EB1C6653F83C8FA52846DB25 /* HummingbirdConnectionData.swift in Sources */,
 				35801A3A885EBED05A38490B /* HummingbirdLibraryItem.swift in Sources */,
 				ACF19C064D3757CE54FC9C55 /* HummingbirdConnectionService.swift in Sources */,
+				44C9FE1AAB4C0D86D85F0FF4 /* SoundBoothModels.swift in Sources */,
+				E9DE4DF7B42677113AAF24FD /* SoundBoothHTTPClient.swift in Sources */,
+				AFD932E6C7A735EC0BCCFFBD /* SoundBoothAPIClient.swift in Sources */,
+				54D7D859FF2BC74B884BFEC5 /* SoundBoothConnectionData.swift in Sources */,
+				D9492FC96347F9871B8C3D03 /* SoundBoothConnectionService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

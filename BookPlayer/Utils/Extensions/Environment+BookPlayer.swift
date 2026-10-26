@@ -23,6 +23,8 @@ extension EnvironmentValues {
   /// Hummingbird (fork). Read by `MediaServersView` from here rather than taken in its init, so
   /// upstream's three call sites stay as they are
   @Entry var hummingbirdService: HummingbirdConnectionService = .init()
+  /// SoundBooth (fork), read by `MediaServersView` the same way
+  @Entry var soundboothService: SoundBoothConnectionService = .init()
   /// Which library items came from a media server (fork). Unlike the placeholders here, the default
   /// is the real store: a second instance would cache what it read and miss the other's writes.
   /// `MainCoordinator` injects the same one

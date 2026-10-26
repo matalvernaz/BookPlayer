@@ -639,3 +639,30 @@
 "hummingbird_due_today" = "Due today";
 "hummingbird_due_format" = "Due %@";
 "hummingbird_overdue_format" = "Overdue, was due %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "SoundBooth Account";
+"soundbooth_code_accessibility" = "Sign-in code";
+"soundbooth_code_footer_format" = "Enter the code SoundBooth emailed to %@.";
+"soundbooth_code_header" = "Enter Your Code";
+"soundbooth_code_label" = "Code";
+"soundbooth_code_missing" = "Enter the code from the email.";
+"soundbooth_different_email_button" = "Use a Different Email";
+"soundbooth_download_season_button" = "Download Season";
+"soundbooth_email_accessibility" = "SoundBooth account email";
+"soundbooth_email_footer" = "SoundBooth emails you a one-time code. No password needed.";
+"soundbooth_email_invalid" = "Enter the email address of your SoundBooth account.";
+"soundbooth_format_audiobook" = "Audiobook";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Cinematic Audio";
+"soundbooth_format_immersion" = "Immersion";
+"soundbooth_library_empty" = "Nothing in your SoundBooth library yet.";
+"soundbooth_no_chapters" = "SoundBooth listed no chapters for this title.";
+"soundbooth_other_titles_title" = "Other Titles";
+"soundbooth_preparing_download" = "Preparing download…";
+"soundbooth_refresh_button" = "Refresh";
+"soundbooth_releases_format" = "Releases %@";
+"soundbooth_send_code_button" = "Send Code";
+"soundbooth_sign_in_header" = "Sign In to SoundBooth";
+"soundbooth_trim_credits_footer" = "Keeps only the season’s first opening credits and last closing credits, dropping the credits between episodes.";
+"soundbooth_trim_credits_toggle" = "Trim Repeated Credits";

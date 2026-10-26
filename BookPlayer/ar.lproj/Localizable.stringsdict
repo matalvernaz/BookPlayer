@@ -146,5 +146,29 @@
         <string>%d كتاب</string>
       </dict>
     </dict>
+    <key>soundbooth_episode_count</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@format@</string>
+      <key>format</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>zero</key>
+        <string>لا حلقات</string>
+        <key>one</key>
+        <string>حلقة واحدة</string>
+        <key>two</key>
+        <string>حلقتان</string>
+        <key>few</key>
+        <string>%d حلقات</string>
+        <key>many</key>
+        <string>%d حلقة</string>
+        <key>other</key>
+        <string>%d حلقة</string>
+      </dict>
+    </dict>
   </dict>
 </plist>

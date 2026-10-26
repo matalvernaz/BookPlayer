@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "موعد الإرجاع اليوم";
 "hummingbird_due_format" = "موعد الإرجاع %@";
 "hummingbird_overdue_format" = "متأخر، كان موعد الإرجاع %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "حساب SoundBooth";
+"soundbooth_code_accessibility" = "رمز تسجيل الدخول";
+"soundbooth_code_footer_format" = "أدخل الرمز الذي أرسله SoundBooth إلى %@.";
+"soundbooth_code_header" = "أدخل الرمز";
+"soundbooth_code_label" = "الرمز";
+"soundbooth_code_missing" = "أدخل الرمز الموجود في البريد.";
+"soundbooth_different_email_button" = "استخدام بريد إلكتروني آخر";
+"soundbooth_download_season_button" = "تنزيل الموسم";
+"soundbooth_email_accessibility" = "البريد الإلكتروني لحساب SoundBooth";
+"soundbooth_email_footer" = "يرسل لك SoundBooth رمزًا لمرة واحدة بالبريد الإلكتروني. لا حاجة إلى كلمة سر.";
+"soundbooth_email_invalid" = "أدخل البريد الإلكتروني لحسابك في SoundBooth.";
+"soundbooth_format_audiobook" = "كتاب صوتي";
+"soundbooth_format_bonus" = "إضافي";
+"soundbooth_format_cinematic" = "صوت سينمائي";
+"soundbooth_format_immersion" = "انغماس";
+"soundbooth_library_empty" = "مكتبتك في SoundBooth فارغة حتى الآن.";
+"soundbooth_no_chapters" = "لم يذكر SoundBooth أي فصول لهذا العنوان.";
+"soundbooth_other_titles_title" = "عناوين أخرى";
+"soundbooth_preparing_download" = "جارٍ تجهيز التنزيل…";
+"soundbooth_refresh_button" = "تحديث";
+"soundbooth_releases_format" = "يصدر في %@";
+"soundbooth_send_code_button" = "إرسال الرمز";
+"soundbooth_sign_in_header" = "تسجيل الدخول إلى SoundBooth";
+"soundbooth_trim_credits_footer" = "يُبقي فقط على أول شارة بداية وآخر شارة نهاية في الموسم، ويحذف الشارات بين الحلقات.";
+"soundbooth_trim_credits_toggle" = "اختصار الشارات المتكررة";

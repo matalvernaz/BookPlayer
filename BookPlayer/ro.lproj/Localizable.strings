@@ -638,3 +638,30 @@
 "hummingbird_due_today" = "Scadent azi";
 "hummingbird_due_format" = "Scadent %@";
 "hummingbird_overdue_format" = "Întârziat, scadent %@";
+
+/* Fork: SoundBooth */
+"soundbooth_account_header" = "Contul SoundBooth";
+"soundbooth_code_accessibility" = "Cod de conectare";
+"soundbooth_code_footer_format" = "Introdu codul pe care SoundBooth l-a trimis la %@.";
+"soundbooth_code_header" = "Introdu codul";
+"soundbooth_code_label" = "Cod";
+"soundbooth_code_missing" = "Introdu codul din e-mail.";
+"soundbooth_different_email_button" = "Folosește alt e-mail";
+"soundbooth_download_season_button" = "Descarcă sezonul";
+"soundbooth_email_accessibility" = "E-mailul contului SoundBooth";
+"soundbooth_email_footer" = "SoundBooth îți trimite prin e-mail un cod de unică folosință. Nu e nevoie de parolă.";
+"soundbooth_email_invalid" = "Introdu adresa de e-mail a contului tău SoundBooth.";
+"soundbooth_format_audiobook" = "Carte audio";
+"soundbooth_format_bonus" = "Bonus";
+"soundbooth_format_cinematic" = "Audio cinematic";
+"soundbooth_format_immersion" = "Imersiune";
+"soundbooth_library_empty" = "Biblioteca ta SoundBooth e încă goală.";
+"soundbooth_no_chapters" = "SoundBooth nu a indicat capitole pentru acest titlu.";
+"soundbooth_other_titles_title" = "Alte titluri";
+"soundbooth_preparing_download" = "Se pregătește descărcarea…";
+"soundbooth_refresh_button" = "Reîmprospătează";
+"soundbooth_releases_format" = "Apare pe %@";
+"soundbooth_send_code_button" = "Trimite codul";
+"soundbooth_sign_in_header" = "Conectează-te la SoundBooth";
+"soundbooth_trim_credits_footer" = "Păstrează doar primul generic de început și ultimul generic de final al sezonului, eliminând genericele dintre episoade.";
+"soundbooth_trim_credits_toggle" = "Scurtează genericele repetate";
