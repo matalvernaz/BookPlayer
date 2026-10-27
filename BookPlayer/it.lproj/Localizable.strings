@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Accedi a SoundBooth";
 "soundbooth_trim_credits_footer" = "Mantiene solo i primi titoli di testa e gli ultimi titoli di coda della stagione, eliminando quelli tra un episodio e l’altro.";
 "soundbooth_trim_credits_toggle" = "Taglia i titoli ripetuti";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Alcuni file condivisi non sono stati importati";
+"share_import_failure_copy_failed" = "Impossibile copiare “%1$@” in BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Impossibile scaricare “%1$@”: %2$@";
+"share_import_failure_http_status" = "Impossibile scaricare “%1$@”: il server ha risposto con l’errore %2$d.";
+"share_import_failure_move_failed" = "Impossibile salvare “%1$@” in BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Il download di “%@” si è interrotto quando BookPlayer è stato chiuso dal selettore delle app. Condividi di nuovo il link.";
+"share_import_failure_unsupported_extension" = "“%@” non sembra un file di audiolibro: il nome non ha un’estensione di file audio. Prova il link di download diretto.";
+"share_import_failure_unsupported_type" = "“%1$@” non è un file di audiolibro: il server ha inviato %2$@. Prova il link di download diretto.";

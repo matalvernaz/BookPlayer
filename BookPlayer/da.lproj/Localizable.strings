@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Log ind på SoundBooth";
 "soundbooth_trim_credits_footer" = "Beholder kun sæsonens første fortekster og sidste rulletekster og fjerner rulleteksterne mellem afsnittene.";
 "soundbooth_trim_credits_toggle" = "Forkort gentagne rulletekster";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Nogle delte filer blev ikke importeret";
+"share_import_failure_copy_failed" = "»%1$@« kunne ikke kopieres til BookPlayer: %2$@";
+"share_import_failure_download_failed" = "»%1$@« kunne ikke downloades: %2$@";
+"share_import_failure_http_status" = "»%1$@« kunne ikke downloades: serveren svarede med fejl %2$d.";
+"share_import_failure_move_failed" = "»%1$@« kunne ikke gemmes i BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Download af »%@« stoppede, da BookPlayer blev lukket fra appskifteren. Del linket igen.";
+"share_import_failure_unsupported_extension" = "»%@« ligner ikke en lydbogsfil: navnet har ingen lydfilendelse. Prøv det direkte downloadlink.";
+"share_import_failure_unsupported_type" = "»%1$@« er ikke en lydbogsfil: serveren sendte %2$@. Prøv det direkte downloadlink.";

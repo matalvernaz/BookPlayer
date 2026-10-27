@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Вход в SoundBooth";
 "soundbooth_trim_credits_footer" = "Оставляет только первые начальные и последние финальные титры сезона, убирая титры между эпизодами.";
 "soundbooth_trim_credits_toggle" = "Сокращать повторяющиеся титры";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Некоторые файлы, которыми вы поделились, не импортированы";
+"share_import_failure_copy_failed" = "Не удалось скопировать «%1$@» в BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Не удалось скачать «%1$@»: %2$@";
+"share_import_failure_http_status" = "Не удалось скачать «%1$@»: сервер ответил ошибкой %2$d.";
+"share_import_failure_move_failed" = "Не удалось сохранить «%1$@» в BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Загрузка «%@» остановилась, когда BookPlayer закрыли через переключатель приложений. Поделитесь ссылкой ещё раз.";
+"share_import_failure_unsupported_extension" = "«%@» не похож на файл аудиокниги: у имени нет расширения аудиофайла. Попробуйте прямую ссылку на скачивание.";
+"share_import_failure_unsupported_type" = "«%1$@» — не файл аудиокниги: сервер прислал %2$@. Попробуйте прямую ссылку на скачивание.";

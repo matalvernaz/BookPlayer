@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Вхід у SoundBooth";
 "soundbooth_trim_credits_footer" = "Залишає лише перші початкові й останні фінальні титри сезону, прибираючи титри між епізодами.";
 "soundbooth_trim_credits_toggle" = "Скорочувати повторювані титри";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Деякі файли, якими ви поділилися, не імпортовано";
+"share_import_failure_copy_failed" = "Не вдалося скопіювати «%1$@» у BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Не вдалося завантажити «%1$@»: %2$@";
+"share_import_failure_http_status" = "Не вдалося завантажити «%1$@»: сервер відповів помилкою %2$d.";
+"share_import_failure_move_failed" = "Не вдалося зберегти «%1$@» у BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Завантаження «%@» зупинилося, коли BookPlayer закрили через перемикач програм. Поділіться посиланням ще раз.";
+"share_import_failure_unsupported_extension" = "«%@» не схожий на файл аудіокниги: у назві немає розширення аудіофайлу. Спробуйте пряме посилання для завантаження.";
+"share_import_failure_unsupported_type" = "«%1$@» — не файл аудіокниги: сервер надіслав %2$@. Спробуйте пряме посилання для завантаження.";

@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Logg på SoundBooth";
 "soundbooth_trim_credits_footer" = "Beholder bare sesongens første åpningstekster og siste rulletekster, og fjerner rulletekstene mellom episodene.";
 "soundbooth_trim_credits_toggle" = "Kort ned gjentatte rulletekster";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Noen delte filer ble ikke importert";
+"share_import_failure_copy_failed" = "«%1$@» kunne ikke kopieres til BookPlayer: %2$@";
+"share_import_failure_download_failed" = "«%1$@» kunne ikke lastes ned: %2$@";
+"share_import_failure_http_status" = "«%1$@» kunne ikke lastes ned: serveren svarte med feil %2$d.";
+"share_import_failure_move_failed" = "«%1$@» kunne ikke lagres i BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Nedlastingen av «%@» stoppet da BookPlayer ble lukket fra appveksleren. Del lenken på nytt.";
+"share_import_failure_unsupported_extension" = "«%@» ser ikke ut som en lydbokfil: navnet har ingen lydfilendelse. Prøv den direkte nedlastingslenken.";
+"share_import_failure_unsupported_type" = "«%1$@» er ikke en lydbokfil: serveren sendte %2$@. Prøv den direkte nedlastingslenken.";

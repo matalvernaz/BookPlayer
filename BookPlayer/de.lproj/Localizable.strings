@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Bei SoundBooth anmelden";
 "soundbooth_trim_credits_footer" = "Behält nur den ersten Vorspann und den letzten Abspann der Staffel und entfernt die Credits zwischen den Folgen.";
 "soundbooth_trim_credits_toggle" = "Wiederholte Credits kürzen";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Einige geteilte Dateien wurden nicht importiert";
+"share_import_failure_copy_failed" = "„%1$@“ konnte nicht in BookPlayer kopiert werden: %2$@";
+"share_import_failure_download_failed" = "„%1$@“ konnte nicht geladen werden: %2$@";
+"share_import_failure_http_status" = "„%1$@“ konnte nicht geladen werden: Der Server antwortete mit Fehler %2$d.";
+"share_import_failure_move_failed" = "„%1$@“ konnte nicht in BookPlayer gesichert werden: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Das Laden von „%@“ wurde beendet, als BookPlayer über den App-Umschalter geschlossen wurde. Teile den Link erneut.";
+"share_import_failure_unsupported_extension" = "„%@“ scheint keine Hörbuchdatei zu sein: Der Name hat keine Audio-Dateiendung. Versuche den direkten Download-Link.";
+"share_import_failure_unsupported_type" = "„%1$@“ ist keine Hörbuchdatei: Der Server hat %2$@ gesendet. Versuche den direkten Download-Link.";

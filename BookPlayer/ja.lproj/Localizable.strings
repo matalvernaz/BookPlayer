@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "SoundBoothにサインイン";
 "soundbooth_trim_credits_footer" = "シーズン最初のオープニングクレジットと最後のエンディングクレジットだけを残し、エピソード間のクレジットを省きます。";
 "soundbooth_trim_credits_toggle" = "繰り返しのクレジットを省く";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "共有したファイルの一部を読み込めませんでした";
+"share_import_failure_copy_failed" = "「%1$@」をBookPlayerにコピーできませんでした: %2$@";
+"share_import_failure_download_failed" = "「%1$@」をダウンロードできませんでした: %2$@";
+"share_import_failure_http_status" = "「%1$@」をダウンロードできませんでした: サーバがエラー%2$dを返しました。";
+"share_import_failure_move_failed" = "「%1$@」をBookPlayerに保存できませんでした: %2$@";
+"share_import_failure_stopped_by_force_quit" = "BookPlayerがAppスイッチャーから閉じられたため、「%@」のダウンロードが止まりました。もう一度リンクを共有してください。";
+"share_import_failure_unsupported_extension" = "「%@」はオーディオブックのファイルではないようです: 名前にオーディオファイルの拡張子がありません。直接ダウンロードのリンクを試してください。";
+"share_import_failure_unsupported_type" = "「%1$@」はオーディオブックのファイルではありません: サーバが%2$@を送信しました。直接ダウンロードのリンクを試してください。";

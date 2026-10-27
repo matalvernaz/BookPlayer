@@ -455,24 +455,73 @@ on this device (a book's file exists; a folder's books are all
 downloaded), and the share sheet's preview shows the title. The dead
 UIKit `BookActivityItemProvider` is gone.
 
-## Share-extension web-URL imports
+## Share-extension web-URL imports (6.0 base, slice 5)
 
-The share extension accepts plain URLs (not just local files). When the
-host app comes back to the foreground, a `ShareImportFailureStore` (file
-in App Group, NOT UserDefaults — cross-process sync there is unreliable)
-gets drained and any failures surface as a persistent alert with a
-VoiceOver announcement.
+The share extension takes web links as well as files: an http(s) link
+to a file BookPlayer imports (`ShareDownloads.supportedFileExtensions`:
+the audio formats, mp4/m4v/mov and zip). The activation rule
+(`BookPlayerShareExtension/Info.plist`) keeps upstream's four file types
+and adds `public.url` without `public.file-url`, so a PDF from Files
+still doesn't offer BookPlayer (July's rule did). Any other link the
+share sheet hands over is dropped, so an unsupported page shows an empty
+list.
 
-Cross-process state between the share extension and the host app uses
-file-backed JSON at `containerURL(forSecurityApplicationGroupIdentifier:)`,
-not `UserDefaults(suiteName:)`. Existing stores: `ShareImportFailureStore`,
-`ShareCancelStore`.
+Done copies files as upstream does (a failed copy is now recorded) and
+starts one background session for the share's links, with an identifier
+of its own (`<bundle>.shareext.<uuid>`): a background session may only
+be used by one process at a time, and an extension process can take a
+second share before it's gone. Both processes build the session from
+`ShareDownloads.sessionConfiguration` (shared container = the App
+Group, launch events on, serial delegate queue) and hand it the same
+delegate, `ShareDownloadReceiver`:
 
-MIME validation on downloads is layered: hard-reject
-`text/html|text/plain|application/json|application/xml|application/problem+json`;
-accept `audio/*` and the zip/m3u family; fall back to filename
-extension for `application/octet-stream` or `application/download` or
-missing types.
+- a finished download is judged and moved into the shared folder
+  (`ShareDownloads.finish`): an error status, then July's layered type
+  rules (web and error types never; audio, video and archives always;
+  the name's extension decides the rest). The name is the server's
+  suggestion or the link's, through upstream's
+  `MediaServerFileNames.sanitize`, an extension put back when sanitizing
+  took it, cut to 200 bytes, numbered on a clash ("Dune 2.m4b"; July
+  put a uuid in front of every name, so in the book's title). Upstream's
+  shared-folder watcher imports it;
+- every task error is a failure, cancellation included (nothing in
+  BookPlayer cancels a share's download); a cancellation the system made
+  because the app was force-quit says so;
+- each task's end is marked done in `ShareDownloadSessionRegistry`
+  after its file or failure is written (same serial queue).
+
+Reconnecting: iOS wakes the app for a share's session once the
+extension is gone (`BackgroundSessionWakeCoordinator` owns the
+`shareext.` prefix: it recreates the session through
+`ShareDownloadSessions.activate` and answers when its events finish,
+with nothing to settle). iOS never relaunches an app the user
+force-quit, so the app also reconnects, at launch and on every
+foreground, to registry sessions older than 2 minutes. The margin is
+there because the extension may still hold the session just after a
+share; it's a margin, not proof. A session is closed
+(`finishTasksAndInvalidate`) only once its events are known delivered:
+the system's "finished events", or every task the share started marked
+done. It's forgotten in `didBecomeInvalidWithError`, after its last
+delegate call; the extension forgets the sessions it saw through itself
+the same way. A record older than a week is dropped.
+
+Failures (`ShareImportFailure`, with a `Reason`, not text: the extension
+bundles no strings, so July's extension-written messages were the raw
+keys) wait in the App Group until shown. `LibraryRootView` reads them on
+first load and every activation into an alert plus a VoiceOver
+announcement, and removes exactly the ones shown when OK is pressed.
+The alert's value is cleared and set again on every activation, since
+SwiftUI keeps the value of an alert it dropped under a cover and would
+never show it.
+
+Cross-process state between the share extension and the app lives in
+files in the App Group container, one file per record
+(`share-import-failures/<id>.json`, `share-download-sessions/<id>.json`
+plus `<id>.done/<task>`), so neither process ever reads, changes and
+writes back what the other is writing. July's single-file
+`share-import-failures.json` and `share-canceled.json` are deleted at
+launch; its `ShareCancelStore` is gone (nothing could ever write it:
+Done blocks the extension's window before Cancel could follow it).
 
 ## Session-expired vs sign-in 401
 

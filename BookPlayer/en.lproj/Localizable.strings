@@ -667,3 +667,13 @@
 "soundbooth_sign_in_header" = "Sign In to SoundBooth";
 "soundbooth_trim_credits_footer" = "Keeps only the season’s first opening credits and last closing credits, dropping the credits between episodes.";
 "soundbooth_trim_credits_toggle" = "Trim Repeated Credits";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Some shared files didn’t import";
+"share_import_failure_copy_failed" = "Couldn’t copy “%1$@” to BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Couldn’t download “%1$@”: %2$@";
+"share_import_failure_http_status" = "Couldn’t download “%1$@”: the server answered with error %2$d.";
+"share_import_failure_move_failed" = "Couldn’t save “%1$@” to BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "The download of “%@” stopped when BookPlayer was closed from the app switcher. Share the link again.";
+"share_import_failure_unsupported_extension" = "“%@” doesn’t look like an audiobook file: its name has no audio file extension. Try the direct download link.";
+"share_import_failure_unsupported_type" = "“%1$@” isn’t an audiobook file: the server sent %2$@. Try the direct download link.";

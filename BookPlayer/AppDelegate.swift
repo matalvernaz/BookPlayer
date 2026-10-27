@@ -83,6 +83,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, BPLogger {
     // Before anything can wake a session: a session's "finished events" may arrive before
     // iOS hands over its handler, and must not find no one listening
     _ = backgroundSessionWakes
+    // Links shared to the app: reconnect to the downloads the share extension didn't see through (fork)
+    ShareDownloads.removeJulyFiles(in: ShareDownloads.appGroupContainer)
+    ShareDownloadSessions.shared.start()
     // register background refresh tasks
     self.setupBackgroundRefreshTasks()
     // register for remote events

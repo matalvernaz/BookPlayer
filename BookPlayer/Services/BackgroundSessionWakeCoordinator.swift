@@ -36,6 +36,11 @@ final class BackgroundSessionWakeCoordinator: BPLogger {
         activateSessions: { identifier in
           if BackgroundTransferSessions.uploadIdentifiers.contains(identifier) {
             BackgroundTransferSessions.activateUploadSessions()
+          } else if ShareDownloads.isShareSession(identifier) {
+            // A share extension's download session (fork)
+            MainActor.assumeIsolated {
+              ShareDownloadSessions.shared.activate(identifier)
+            }
           }
         },
         settleUploads: {
@@ -113,7 +118,13 @@ final class BackgroundSessionWakeCoordinator: BPLogger {
   private func sessionFinishedEvents(_ identifier: String) {
     guard isOwned(identifier) else { return }
     guard let token = handlers[identifier]?.token else {
-      finishedWithoutHandler[identifier] = Date()
+      // Share sessions the app reconnects to on its own finish with no wake to answer, each under a new
+      // identifier (fork): drop the entries no wake can use any more, so they don't pile up
+      let now = Date()
+      finishedWithoutHandler = finishedWithoutHandler.filter {
+        now.timeIntervalSince($0.value) < dependencies.staleEventsAfter
+      }
+      finishedWithoutHandler[identifier] = now
       return
     }
     answer(identifier, token: token)
@@ -122,15 +133,27 @@ final class BackgroundSessionWakeCoordinator: BPLogger {
   private func isOwned(_ identifier: String) -> Bool {
     BackgroundTransferSessions.uploadIdentifiers.contains(identifier)
       || identifier == BackgroundTransferSessions.downloadIdentifier
+      || ShareDownloads.isShareSession(identifier)
+  }
+
+  /// Sessions whose events finished before a wake handed over their handler, for tests
+  var finishedWithoutHandlerCount: Int {
+    finishedWithoutHandler.count
   }
 
   /// The session's work settles first, under a background task so it isn't frozen
   /// mid-request or mid-write: uploads queue their next parts; downloads finish their
   /// follow-up (chapters, verification, scheduling — Core Data in the App Group container)
   private func answer(_ identifier: String, token: UUID) {
-    let settle = BackgroundTransferSessions.uploadIdentifiers.contains(identifier)
-      ? dependencies.settleUploads
-      : dependencies.settleDownloads
+    let settle: () async -> Void
+    if BackgroundTransferSessions.uploadIdentifiers.contains(identifier) {
+      settle = dependencies.settleUploads
+    } else if ShareDownloads.isShareSession(identifier) {
+      // A share's files landed inside its delegate calls, before "finished events" (fork)
+      settle = {}
+    } else {
+      settle = dependencies.settleDownloads
+    }
 
     var backgroundTask = UIBackgroundTaskIdentifier.invalid
     let finish: (String) -> Void = { [weak self] reason in

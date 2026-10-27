@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Se connecter à SoundBooth";
 "soundbooth_trim_credits_footer" = "Ne conserve que le premier générique de début et le dernier générique de fin de la saison, et supprime les génériques entre les épisodes.";
 "soundbooth_trim_credits_toggle" = "Supprimer les génériques répétés";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Certains fichiers partagés n’ont pas été importés";
+"share_import_failure_copy_failed" = "Impossible de copier « %1$@ » dans BookPlayer : %2$@";
+"share_import_failure_download_failed" = "Impossible de télécharger « %1$@ » : %2$@";
+"share_import_failure_http_status" = "Impossible de télécharger « %1$@ » : le serveur a répondu avec l’erreur %2$d.";
+"share_import_failure_move_failed" = "Impossible d’enregistrer « %1$@ » dans BookPlayer : %2$@";
+"share_import_failure_stopped_by_force_quit" = "Le téléchargement de « %@ » s’est arrêté quand BookPlayer a été fermé depuis le sélecteur d’apps. Partagez à nouveau le lien.";
+"share_import_failure_unsupported_extension" = "« %@ » ne semble pas être un fichier de livre audio : son nom n’a pas d’extension de fichier audio. Essayez le lien de téléchargement direct.";
+"share_import_failure_unsupported_type" = "« %1$@ » n’est pas un fichier de livre audio : le serveur a envoyé %2$@. Essayez le lien de téléchargement direct.";

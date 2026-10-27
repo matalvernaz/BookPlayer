@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Inicia la sessió a SoundBooth";
 "soundbooth_trim_credits_footer" = "Només conserva els primers crèdits inicials i els últims crèdits finals de la temporada, i treu els crèdits entre episodis.";
 "soundbooth_trim_credits_toggle" = "Retalla els crèdits repetits";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Alguns fitxers compartits no s’han importat";
+"share_import_failure_copy_failed" = "No s’ha pogut copiar «%1$@» al BookPlayer: %2$@";
+"share_import_failure_download_failed" = "No s’ha pogut baixar «%1$@»: %2$@";
+"share_import_failure_http_status" = "No s’ha pogut baixar «%1$@»: el servidor ha respost amb l’error %2$d.";
+"share_import_failure_move_failed" = "No s’ha pogut desar «%1$@» al BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "La baixada de «%@» s’ha aturat quan el BookPlayer s’ha tancat des del selector d’apps. Torna a compartir l’enllaç.";
+"share_import_failure_unsupported_extension" = "«%@» no sembla un fitxer d’audiollibre: el nom no té cap extensió de fitxer d’àudio. Prova l’enllaç de baixada directa.";
+"share_import_failure_unsupported_type" = "«%1$@» no és un fitxer d’audiollibre: el servidor ha enviat %2$@. Prova l’enllaç de baixada directa.";

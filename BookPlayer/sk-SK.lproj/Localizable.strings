@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Prihlásiť sa do SoundBooth";
 "soundbooth_trim_credits_footer" = "Ponechá iba prvé úvodné a posledné záverečné titulky série a titulky medzi dielmi vynechá.";
 "soundbooth_trim_credits_toggle" = "Skrátiť opakované titulky";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Niektoré zdieľané súbory sa nepodarilo importovať";
+"share_import_failure_copy_failed" = "„%1$@“ sa nepodarilo skopírovať do BookPlayera: %2$@";
+"share_import_failure_download_failed" = "„%1$@“ sa nepodarilo stiahnuť: %2$@";
+"share_import_failure_http_status" = "„%1$@“ sa nepodarilo stiahnuť: server odpovedal chybou %2$d.";
+"share_import_failure_move_failed" = "„%1$@“ sa nepodarilo uložiť do BookPlayera: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Sťahovanie „%@“ sa zastavilo, keď bol BookPlayer zatvorený v prepínači aplikácií. Zdieľajte odkaz znova.";
+"share_import_failure_unsupported_extension" = "„%@“ nevyzerá ako súbor audioknihy: jeho názov nemá príponu zvukového súboru. Skúste priamy odkaz na stiahnutie.";
+"share_import_failure_unsupported_type" = "„%1$@“ nie je súbor audioknihy: server poslal %2$@. Skúste priamy odkaz na stiahnutie.";

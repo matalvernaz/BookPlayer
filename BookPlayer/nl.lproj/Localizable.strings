@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Inloggen bij SoundBooth";
 "soundbooth_trim_credits_footer" = "Houdt alleen de eerste begintiteling en de laatste aftiteling van het seizoen, en laat de aftitelingen tussen de afleveringen weg.";
 "soundbooth_trim_credits_toggle" = "Herhaalde aftiteling inkorten";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Sommige gedeelde bestanden zijn niet geïmporteerd";
+"share_import_failure_copy_failed" = "Kan “%1$@” niet naar BookPlayer kopiëren: %2$@";
+"share_import_failure_download_failed" = "Kan “%1$@” niet downloaden: %2$@";
+"share_import_failure_http_status" = "Kan “%1$@” niet downloaden: de server antwoordde met fout %2$d.";
+"share_import_failure_move_failed" = "Kan “%1$@” niet in BookPlayer bewaren: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Het downloaden van “%@” is gestopt toen BookPlayer via de appkiezer werd gesloten. Deel de link opnieuw.";
+"share_import_failure_unsupported_extension" = "“%@” lijkt geen audioboekbestand: de naam heeft geen extensie van een audiobestand. Probeer de directe downloadlink.";
+"share_import_failure_unsupported_type" = "“%1$@” is geen audioboekbestand: de server stuurde %2$@. Probeer de directe downloadlink.";

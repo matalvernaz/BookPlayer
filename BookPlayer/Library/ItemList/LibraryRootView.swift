@@ -23,6 +23,9 @@ struct LibraryRootView: View {
 
   @State private var importOperationState = ImportOperationState()
   @State private var loadingState = LoadingOverlayState()
+  /// Shares that failed while the app wasn't looking (fork), shown until dismissed: they stay in the
+  /// store until then, so an alert SwiftUI drops under a cover comes back next time
+  @State private var shareImportFailures = [ShareImportFailure]()
 
   @StateObject private var documentFolderWatcher = DirectoryWatcher.watch(
     DataManager.getDocumentsFolderURL(),
@@ -96,6 +99,7 @@ struct LibraryRootView: View {
       .onChange(of: scenePhase) {
         guard scenePhase == .active else { return }
         showImport()
+        showShareImportFailures()
       }
       .onReceive(syncService.downloadErrorPublisher) { (relativePath, error) in
         let errorMessage = "\(relativePath)\n\(error.localizedDescription)"
@@ -134,6 +138,25 @@ struct LibraryRootView: View {
         }
       }
     }
+    .alert(
+      "share_import_failure_alert_title".localized,
+      isPresented: Binding(
+        get: { !shareImportFailures.isEmpty },
+        set: { isPresented in
+          if !isPresented {
+            dismissShareImportFailures()
+          }
+        }
+      ),
+      actions: {
+        Button("ok_button".localized) {
+          dismissShareImportFailures()
+        }
+      },
+      message: {
+        Text(shareImportFailures.map(\.message).joined(separator: "\n"))
+      }
+    )
     .modifier(
       ImportPlacementPrompt(
         model: ImportPlacementModel(
@@ -155,7 +178,33 @@ struct LibraryRootView: View {
     .environment(\.importOperationState, importOperationState)
   }
 
+  /// Shows the shares that failed and haven't been dismissed (fork). Set afresh on every activation: an
+  /// alert SwiftUI dropped under a cover keeps its value and would never show again, so the value is
+  /// cleared now and set on the next turn
+  func showShareImportFailures() {
+    guard let store = ShareImportFailureStore.appGroup else { return }
+
+    let failures = store.pending()
+    shareImportFailures = []
+    guard !failures.isEmpty else { return }
+
+    DispatchQueue.main.async {
+      self.shareImportFailures = failures
+      UIAccessibility.post(notification: .announcement, argument: ShareImportFailure.announcement(for: failures))
+    }
+  }
+
+  /// The person saw them: they're forgotten, and only they (one written meanwhile shows next time)
+  func dismissShareImportFailures() {
+    let shown = Set(shareImportFailures.map(\.id))
+    guard !shown.isEmpty else { return }
+
+    ShareImportFailureStore.appGroup?.remove(ids: shown)
+    shareImportFailures = []
+  }
+
   func handleLibraryLoaded() async {
+    showShareImportFailures()
     await loadLastBookIfNeeded()
     importManager.notifyPendingFiles()
     /// Open the player on launch when enabled and a book is loaded. Checked here, after the load above,

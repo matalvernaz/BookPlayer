@@ -156,7 +156,9 @@ class ShareViewController: UIViewController {
 
       guard error == nil else { return }
 
-      if let url = data as? URL {
+      // A file as before, or a web link to an audio file or archive (fork); other links would land as
+      // web pages dressed as audiobooks
+      if let url = data as? URL, url.isFileURL || ShareDownloads.isDownloadableWebURL(url) {
         self?.sharedItems.append(url)
       }
     }
@@ -182,7 +184,43 @@ class ShareViewController: UIViewController {
 
   @objc func didPressDone() {
     LoadingUtils.loadAndBlock(in: self)
-    saveSharedItems(sharedItems)
+    startDownloads(of: sharedItems.filter { !$0.isFileURL })
+    saveSharedItems(sharedItems.filter(\.isFileURL))
+  }
+
+  /// Downloads the shared web links in a background session of this share's own (fork). The system
+  /// runs it after the share sheet closes; whichever process holds the session when a download ends
+  /// puts the file in the shared folder for the app's import. The session is recorded before any task
+  /// starts, so the app can reconnect to it if this extension is gone before the downloads end
+  private func startDownloads(of links: [URL]) {
+    guard !links.isEmpty else { return }
+
+    let identifier = ShareDownloads.makeSessionIdentifier()
+    let registry = ShareDownloadSessionRegistry.appGroup
+    let receiver = ShareDownloadReceiver(
+      sessionIdentifier: identifier,
+      sharedFolder: sharedFolder,
+      failures: ShareImportFailureStore.appGroup,
+      registry: registry
+    )
+    let session = ShareDownloads.makeSession(identifier: identifier, receiver: receiver)
+    let tasks = links.map { session.downloadTask(with: $0) }
+
+    // Without the record the downloads still run and iOS still hands them to the app when it wakes
+    // it; only the reconnect after the app was force-quit wouldn't know them
+    try? registry?.record(
+      ShareDownloadSessionRegistry.Session(
+        identifier: identifier,
+        startedAt: Date(),
+        taskIdentifiers: tasks.map(\.taskIdentifier)
+      )
+    )
+
+    for task in tasks {
+      task.resume()
+    }
+    // Closes once its tasks end; if this process is gone first, the app takes the session over
+    session.finishTasksAndInvalidate()
   }
 
   func saveSharedItems(_ items: [URL]) {
@@ -197,7 +235,14 @@ class ShareViewController: UIViewController {
     let item = mutableItems.removeFirst()
 
     let destinationURL = sharedFolder.appendingPathComponent(item.lastPathComponent)
-    try? FileManager.default.copyItem(at: item, to: destinationURL)
+    do {
+      try FileManager.default.copyItem(at: item, to: destinationURL)
+    } catch {
+      // The app shows it next time it's opened: the share sheet is gone by then (fork)
+      ShareImportFailureStore.appGroup?.append(
+        ShareImportFailure(source: item.lastPathComponent, reason: .copyFailed(detail: error.localizedDescription))
+      )
+    }
 
     saveSharedItems(mutableItems)
   }

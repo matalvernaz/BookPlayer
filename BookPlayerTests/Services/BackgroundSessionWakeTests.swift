@@ -21,6 +21,8 @@ final class BackgroundSessionWakeTests: XCTestCase {
   private var settleRelease: CheckedContinuation<Void, Never>?
   private var began = 0
   private var ended = 0
+  /// The sessions the coordinator asked to recreate
+  private var activated = [String]()
   private var coordinator: BackgroundSessionWakeCoordinator!
 
   private func makeCoordinator(
@@ -29,7 +31,7 @@ final class BackgroundSessionWakeTests: XCTestCase {
     staleEventsAfter: TimeInterval = 60
   ) {
     coordinator = BackgroundSessionWakeCoordinator(dependencies: .init(
-      activateSessions: { _ in },
+      activateSessions: { [unowned self] in self.activated.append($0) },
       settleUploads: { [unowned self] in
         self.settleCalls += 1
         guard !settles else { return }
@@ -150,6 +152,42 @@ final class BackgroundSessionWakeTests: XCTestCase {
     XCTAssertEqual(downloadSettleCalls, 0, "not answered from the stale record")
     try await waitUntil { calls == 1 }
     XCTAssertEqual(calls, 1, "the fallback still answers")
+  }
+
+  /// A share extension's download session (fork): owned, recreated, and answered once its events are
+  /// in, with nothing to settle (its files landed inside its delegate calls)
+  func testShareWake_isActivatedAndAnsweredOnItsFinishedEvents() async throws {
+    makeCoordinator()
+    let share = ShareDownloads.makeSessionIdentifier()
+    var calls = 0
+    coordinator.handleEvents(forSession: share) { calls += 1 }
+    XCTAssertEqual(calls, 0, "owned: not answered before its events are in")
+    XCTAssertEqual(activated, [share])
+
+    finishEvents(share)
+
+    try await waitUntil { calls == 1 }
+    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(settleCalls, 0)
+    XCTAssertEqual(downloadSettleCalls, 0, "a share's downloads aren't the cloud downloads")
+    XCTAssertEqual(ended, 1)
+  }
+
+  /// Share sessions the app reconnects to by itself finish with no wake, each under a new identifier
+  /// (fork): their records go once no wake could use them
+  func testShareSessionsFinishingWithoutAWake_doNotPileUp() async throws {
+    makeCoordinator(staleEventsAfter: 0.05)
+    for _ in 0..<10 {
+      finishEvents(ShareDownloads.makeSessionIdentifier())
+    }
+    try await waitUntil { coordinator.finishedWithoutHandlerCount == 10 }
+    XCTAssertEqual(coordinator.finishedWithoutHandlerCount, 10)
+    try await Task.sleep(for: .milliseconds(100))
+
+    finishEvents(ShareDownloads.makeSessionIdentifier())
+
+    try await waitUntil { coordinator.finishedWithoutHandlerCount == 1 }
+    XCTAssertEqual(coordinator.finishedWithoutHandlerCount, 1)
   }
 
   /// A session nothing resumes in the background (e.g. the single-file downloads)

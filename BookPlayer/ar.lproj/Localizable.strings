@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "تسجيل الدخول إلى SoundBooth";
 "soundbooth_trim_credits_footer" = "يُبقي فقط على أول شارة بداية وآخر شارة نهاية في الموسم، ويحذف الشارات بين الحلقات.";
 "soundbooth_trim_credits_toggle" = "اختصار الشارات المتكررة";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "تعذّر استيراد بعض الملفات التي شاركتها";
+"share_import_failure_copy_failed" = "تعذّر نسخ «%1$@» إلى BookPlayer: %2$@";
+"share_import_failure_download_failed" = "تعذّر تنزيل «%1$@»: %2$@";
+"share_import_failure_http_status" = "تعذّر تنزيل «%1$@»: ردّ الخادم بالخطأ %2$d.";
+"share_import_failure_move_failed" = "تعذّر حفظ «%1$@» في BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "توقف تنزيل «%@» عند إغلاق BookPlayer من مبدّل التطبيقات. شارك الرابط مرة أخرى.";
+"share_import_failure_unsupported_extension" = "لا يبدو أن «%@» ملف كتاب صوتي: لا يحتوي اسمه على امتداد ملف صوتي. جرّب رابط التنزيل المباشر.";
+"share_import_failure_unsupported_type" = "«%1$@» ليس ملف كتاب صوتي: أرسل الخادم %2$@. جرّب رابط التنزيل المباشر.";

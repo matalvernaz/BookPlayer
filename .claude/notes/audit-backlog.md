@@ -30,16 +30,22 @@ ground truth.
 - **C7** `ShareImportFailureStore` (file in App Group, not UserDefaults).
   Drained on `scenePhase=.active` in `LibraryRootView`, surfaced as
   persistent alert + `UIAccessibility.post(notification: .announcement)`.
+  Slice 5 (6.0 base): one file per failure, structured reasons with the
+  text made in the app, removed only once shown.
 - **H8** `URL.canonicalDedupKey` in `Shared/Extensions/URL+BookPlayer.swift`;
   both services dedup on canonical form.
 - **H11** `@State actionTask: Task<Void, Never>?` in
   `IntegrationConnectionView`, cancel `.onDisappear`. Plus
   `try Task.checkCancellation()` inside both services' signIn paths.
 - **H14 + H16** `Shared/Services/ShareDownloadSupport.swift` helper.
-  UUID-prefixed unique destinations. Layered MIME validation.
+  UUID-prefixed unique destinations. Layered MIME validation. Slice 5:
+  replaced by `ShareDownloads` (same MIME rules; names numbered on a
+  clash instead of a uuid prefix; upstream's sanitize).
 - **H15** `Shared/Services/ShareCancelStore.swift` (file-backed App Group
   set). Best-effort `task.cancel()` in extension + durable shareID
-  marker.
+  marker. RETIRED in slice 5: unreachable. Done calls `loadAndBlock`,
+  which disables the extension's window, so Cancel can't follow Done,
+  and Cancel before Done has no tasks.
 - **H18 + H19** ABS auto-prepend `https://` when scheme missing, trim
   username/password.
 - **H20** `ThemeViewModel.destructiveColor` / `errorColor`. Replaces
@@ -56,10 +62,10 @@ ground truth.
   level (`IntegrationConnectionFormViewModel`'s `normalized` field). Real
   CFNetwork already rejects invalid values at request time, so this is
   defensive input validation, not a vulnerability.
-- **C6** — Share-extension filename sanitization beyond what
-  `ShareDownloadSupport.sanitizedFilename` already does. Currently strips
-  `..`, leading dots, `/`, `\`, NUL; caps length. Probably already
-  sufficient; revisit if a user reports a weird filename landing.
+- **C6** — Share-extension filename sanitization. Slice 5: upstream's
+  `MediaServerFileNames.sanitize` (replaces `<>:"/\|?*`, trims `_` and
+  `.`), an extension restored when that took it, 200-byte cap. Revisit
+  only if a weird name lands.
 - **H21** — ABS keychain not versioned. Argued against the audit's
   recommended envelope: doesn't improve live downgrade (App Store builds
   still can't decode array), current code already silent-version-detects
@@ -508,3 +514,13 @@ reset). Still open.
   active, and a download then asks the other server for the first one's
   book. Same fix: remember the connection the bookshelf (and a search) was
   listed for, and reload on a switch.
+- **Share links, slice 5, still open:** a link BookPlayer doesn't
+  download (a web page) shows an empty list with no message; a download
+  can't be cancelled once Done is tapped (no UI, July had none either);
+  the app's reconnect waits 2 minutes after a share as a margin against
+  the extension still holding the session, which an extension iOS keeps
+  suspended longer could still hit; a share made while the App Group
+  can't be reached has no registry record, so only iOS's wake brings its
+  downloads to the app. Device tests owed: a link shared with BookPlayer
+  force-quit (imports at next open, or reports "stopped"), one with
+  BookPlayer in the background, and a bad link (the alert shows).

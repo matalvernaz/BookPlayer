@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Entrar no SoundBooth";
 "soundbooth_trim_credits_footer" = "Mantém só os primeiros créditos de abertura e os últimos créditos finais da temporada, removendo os créditos entre os episódios.";
 "soundbooth_trim_credits_toggle" = "Cortar créditos repetidos";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Alguns arquivos compartilhados não foram importados";
+"share_import_failure_copy_failed" = "Não foi possível copiar “%1$@” para o BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Não foi possível baixar “%1$@”: %2$@";
+"share_import_failure_http_status" = "Não foi possível baixar “%1$@”: o servidor respondeu com o erro %2$d.";
+"share_import_failure_move_failed" = "Não foi possível salvar “%1$@” no BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "O download de “%@” parou quando o BookPlayer foi fechado pelo seletor de apps. Compartilhe o link de novo.";
+"share_import_failure_unsupported_extension" = "“%@” não parece um arquivo de audiolivro: o nome não tem uma extensão de arquivo de áudio. Tente o link de download direto.";
+"share_import_failure_unsupported_type" = "“%1$@” não é um arquivo de audiolivro: o servidor enviou %2$@. Tente o link de download direto.";

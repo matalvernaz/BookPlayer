@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Conectează-te la SoundBooth";
 "soundbooth_trim_credits_footer" = "Păstrează doar primul generic de început și ultimul generic de final al sezonului, eliminând genericele dintre episoade.";
 "soundbooth_trim_credits_toggle" = "Scurtează genericele repetate";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Unele fișiere partajate nu au fost importate";
+"share_import_failure_copy_failed" = "„%1$@” nu a putut fi copiat în BookPlayer: %2$@";
+"share_import_failure_download_failed" = "„%1$@” nu a putut fi descărcat: %2$@";
+"share_import_failure_http_status" = "„%1$@” nu a putut fi descărcat: serverul a răspuns cu eroarea %2$d.";
+"share_import_failure_move_failed" = "„%1$@” nu a putut fi salvat în BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Descărcarea „%@” s-a oprit când BookPlayer a fost închis din comutatorul de aplicații. Partajați din nou linkul.";
+"share_import_failure_unsupported_extension" = "„%@” nu pare a fi un fișier de carte audio: numele nu are o extensie de fișier audio. Încercați linkul de descărcare directă.";
+"share_import_failure_unsupported_type" = "„%1$@” nu este un fișier de carte audio: serverul a trimis %2$@. Încercați linkul de descărcare directă.";

@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "SoundBooth’a giriş yap";
 "soundbooth_trim_credits_footer" = "Sezonun yalnızca ilk açılış jeneriğini ve son kapanış jeneriğini tutar, bölümler arasındaki jenerikleri çıkarır.";
 "soundbooth_trim_credits_toggle" = "Tekrarlanan jenerikleri kırp";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Paylaşılan bazı dosyalar içe aktarılamadı";
+"share_import_failure_copy_failed" = "“%1$@” BookPlayer’a kopyalanamadı: %2$@";
+"share_import_failure_download_failed" = "“%1$@” indirilemedi: %2$@";
+"share_import_failure_http_status" = "“%1$@” indirilemedi: sunucu %2$d hatasıyla yanıt verdi.";
+"share_import_failure_move_failed" = "“%1$@” BookPlayer’a kaydedilemedi: %2$@";
+"share_import_failure_stopped_by_force_quit" = "BookPlayer uygulama değiştiriciden kapatıldığında “%@” indirmesi durdu. Bağlantıyı yeniden paylaşın.";
+"share_import_failure_unsupported_extension" = "“%@” bir sesli kitap dosyasına benzemiyor: adında ses dosyası uzantısı yok. Doğrudan indirme bağlantısını deneyin.";
+"share_import_failure_unsupported_type" = "“%1$@” bir sesli kitap dosyası değil: sunucu %2$@ gönderdi. Doğrudan indirme bağlantısını deneyin.";

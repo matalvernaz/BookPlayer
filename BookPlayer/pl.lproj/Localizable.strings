@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Zaloguj się do SoundBooth";
 "soundbooth_trim_credits_footer" = "Zostawia tylko pierwsze napisy początkowe i ostatnie napisy końcowe sezonu, a usuwa napisy między odcinkami.";
 "soundbooth_trim_credits_toggle" = "Skracaj powtarzane napisy";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Niektóre udostępnione pliki nie zostały zaimportowane";
+"share_import_failure_copy_failed" = "Nie udało się skopiować „%1$@” do BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Nie udało się pobrać „%1$@”: %2$@";
+"share_import_failure_http_status" = "Nie udało się pobrać „%1$@”: serwer odpowiedział błędem %2$d.";
+"share_import_failure_move_failed" = "Nie udało się zapisać „%1$@” w BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Pobieranie „%@” zostało przerwane, gdy BookPlayer zamknięto w przełączniku aplikacji. Udostępnij link ponownie.";
+"share_import_failure_unsupported_extension" = "„%@” nie wygląda na plik audiobooka: jego nazwa nie ma rozszerzenia pliku audio. Spróbuj bezpośredniego linku do pobrania.";
+"share_import_failure_unsupported_type" = "„%1$@” nie jest plikiem audiobooka: serwer wysłał %2$@. Spróbuj bezpośredniego linku do pobrania.";

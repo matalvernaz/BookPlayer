@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Kirjaudu SoundBoothiin";
 "soundbooth_trim_credits_footer" = "Säilyttää vain kauden ensimmäiset alkutekstit ja viimeiset lopputekstit ja poistaa jaksojen väliset tekstit.";
 "soundbooth_trim_credits_toggle" = "Lyhennä toistuvat tekstit";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Joitakin jaettuja tiedostoja ei tuotu";
+"share_import_failure_copy_failed" = "Kohdetta ”%1$@” ei voitu kopioida BookPlayeriin: %2$@";
+"share_import_failure_download_failed" = "Kohdetta ”%1$@” ei voitu ladata: %2$@";
+"share_import_failure_http_status" = "Kohdetta ”%1$@” ei voitu ladata: palvelin vastasi virheellä %2$d.";
+"share_import_failure_move_failed" = "Kohdetta ”%1$@” ei voitu tallentaa BookPlayeriin: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Kohteen ”%@” lataus pysähtyi, kun BookPlayer suljettiin appien vaihtajasta. Jaa linkki uudelleen.";
+"share_import_failure_unsupported_extension" = "”%@” ei näytä äänikirjatiedostolta: sen nimessä ei ole äänitiedoston päätettä. Kokeile suoraa latauslinkkiä.";
+"share_import_failure_unsupported_type" = "”%1$@” ei ole äänikirjatiedosto: palvelin lähetti %2$@. Kokeile suoraa latauslinkkiä.";

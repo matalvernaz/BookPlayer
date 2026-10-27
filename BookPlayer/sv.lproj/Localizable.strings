@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Logga in på SoundBooth";
 "soundbooth_trim_credits_footer" = "Behåller bara säsongens första förtexter och sista eftertexter och tar bort eftertexterna mellan avsnitten.";
 "soundbooth_trim_credits_toggle" = "Korta upprepade eftertexter";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Vissa delade filer importerades inte";
+"share_import_failure_copy_failed" = "Det gick inte att kopiera ”%1$@” till BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Det gick inte att ladda ner ”%1$@”: %2$@";
+"share_import_failure_http_status" = "Det gick inte att ladda ner ”%1$@”: servern svarade med fel %2$d.";
+"share_import_failure_move_failed" = "Det gick inte att spara ”%1$@” i BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Nedladdningen av ”%@” stoppades när BookPlayer stängdes från appväxlaren. Dela länken igen.";
+"share_import_failure_unsupported_extension" = "”%@” ser inte ut som en ljudboksfil: namnet saknar filändelse för ljud. Prova den direkta nedladdningslänken.";
+"share_import_failure_unsupported_type" = "”%1$@” är inte en ljudboksfil: servern skickade %2$@. Prova den direkta nedladdningslänken.";

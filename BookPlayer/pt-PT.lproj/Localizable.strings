@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Iniciar sessão no SoundBooth";
 "soundbooth_trim_credits_footer" = "Mantém apenas o primeiro genérico inicial e o último genérico final da temporada, removendo os genéricos entre episódios.";
 "soundbooth_trim_credits_toggle" = "Cortar genéricos repetidos";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Alguns ficheiros partilhados não foram importados";
+"share_import_failure_copy_failed" = "Não foi possível copiar “%1$@” para o BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Não foi possível transferir “%1$@”: %2$@";
+"share_import_failure_http_status" = "Não foi possível transferir “%1$@”: o servidor respondeu com o erro %2$d.";
+"share_import_failure_move_failed" = "Não foi possível guardar “%1$@” no BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "A transferência de “%@” parou quando o BookPlayer foi fechado no seletor de apps. Partilhe a ligação novamente.";
+"share_import_failure_unsupported_extension" = "“%@” não parece um ficheiro de audiolivro: o nome não tem uma extensão de ficheiro de áudio. Experimente a ligação de transferência direta.";
+"share_import_failure_unsupported_type" = "“%1$@” não é um ficheiro de audiolivro: o servidor enviou %2$@. Experimente a ligação de transferência direta.";

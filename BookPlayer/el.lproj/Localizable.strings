@@ -665,3 +665,13 @@
 "soundbooth_sign_in_header" = "Σύνδεση στο SoundBooth";
 "soundbooth_trim_credits_footer" = "Κρατά μόνο τους πρώτους τίτλους αρχής και τους τελευταίους τίτλους τέλους της σεζόν, αφαιρώντας τους τίτλους ανάμεσα στα επεισόδια.";
 "soundbooth_trim_credits_toggle" = "Περικοπή επαναλαμβανόμενων τίτλων";
+
+/* Fork: links shared to BookPlayer */
+"share_import_failure_alert_title" = "Ορισμένα κοινοποιημένα αρχεία δεν εισήχθησαν";
+"share_import_failure_copy_failed" = "Δεν ήταν δυνατή η αντιγραφή του «%1$@» στο BookPlayer: %2$@";
+"share_import_failure_download_failed" = "Δεν ήταν δυνατή η λήψη του «%1$@»: %2$@";
+"share_import_failure_http_status" = "Δεν ήταν δυνατή η λήψη του «%1$@»: ο διακομιστής απάντησε με σφάλμα %2$d.";
+"share_import_failure_move_failed" = "Δεν ήταν δυνατή η αποθήκευση του «%1$@» στο BookPlayer: %2$@";
+"share_import_failure_stopped_by_force_quit" = "Η λήψη του «%@» σταμάτησε όταν το BookPlayer έκλεισε από την εναλλαγή εφαρμογών. Κοινοποιήστε ξανά τον σύνδεσμο.";
+"share_import_failure_unsupported_extension" = "Το «%@» δεν μοιάζει με αρχείο ηχοβιβλίου: το όνομά του δεν έχει επέκταση αρχείου ήχου. Δοκιμάστε τον άμεσο σύνδεσμο λήψης.";
+"share_import_failure_unsupported_type" = "Το «%1$@» δεν είναι αρχείο ηχοβιβλίου: ο διακομιστής έστειλε %2$@. Δοκιμάστε τον άμεσο σύνδεσμο λήψης.";
