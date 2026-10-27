@@ -8,6 +8,7 @@
 
 import BookPlayerKit
 import Combine
+import Observation
 import RevenueCat
 import SwiftUI
 import Themeable
@@ -46,6 +47,10 @@ class MainCoordinator: NSObject {
   private let hummingbirdLoanReturns: HummingbirdLoanReturns
   /// Returns and deletes Hummingbird books whose loan ran out (fork)
   private let hummingbirdLoanExpiryScanner: HummingbirdLoanExpiryScanner
+  /// Sends Hummingbird books' positions back to their servers (fork)
+  private let hummingbirdProgressReporter: HummingbirdProgressReporter
+  /// Starts unplayed Hummingbird books at their server bookmark (fork)
+  private let hummingbirdBookmarkPuller: HummingbirdBookmarkPuller
 
   var playerState: PlayerState { AppServices.shared.playerState }
 
@@ -103,6 +108,21 @@ class MainCoordinator: NSObject {
       playerManager: coreServices.playerManager,
       syncService: coreServices.syncService
     )
+    self.hummingbirdProgressReporter = HummingbirdProgressReporter(
+      playerManager: coreServices.playerManager,
+      sourceStore: sourceStore
+    ) { [hummingbirdService] bookmark, bookId, connectionId in
+      try await hummingbirdService.reportBookmark(bookmark, bookId: bookId, connectionId: connectionId)
+    }
+    self.hummingbirdBookmarkPuller = HummingbirdBookmarkPuller(
+      sourceStore: sourceStore,
+      libraryService: coreServices.libraryService,
+      isLoadedInPlayer: { [playerManager = coreServices.playerManager] relativePath in
+        playerManager.currentItem?.relativePath == relativePath
+      }
+    ) { [hummingbirdService] bookId, connectionId in
+      try await hummingbirdService.fetchBookmark(bookId: bookId, connectionId: connectionId)
+    }
 
     let soundboothService = SoundBoothConnectionService()
     soundboothService.setup()
@@ -128,6 +148,33 @@ class MainCoordinator: NSObject {
     setUpTheming()
   }
 
+  /// Points Audiobookshelf and Jellyfin downloads' provenance at their servers' current identities,
+  /// which upstream's progress push resolves the connection by (fork): an edited address, or a server
+  /// that has started reporting its id, is picked up
+  private func refreshProvenanceHosts() {
+    func hostIds<C: IntegrationHostIdentifiable & Identifiable>(_ connections: [C]) -> [String: String] where C.ID == String {
+      Dictionary(connections.map { ($0.id, $0.stableHostId) }, uniquingKeysWith: { first, _ in first })
+    }
+    mediaServerSourceStore.refreshHostIds([
+      .audiobookshelf: hostIds(audiobookshelfConnectionService.connections),
+      .jellyfin: hostIds(jellyfinConnectionService.connections),
+    ])
+  }
+
+  /// Refreshes the hosts whenever either service's connections change. Observation reports a change
+  /// before it lands, so the refresh runs right after it, on the next main-actor turn, and observes again
+  private func observeConnectionsForProvenanceHosts() {
+    withObservationTracking {
+      _ = audiobookshelfConnectionService.connections
+      _ = jellyfinConnectionService.connections
+    } onChange: { [weak self] in
+      Task { @MainActor [weak self] in
+        self?.refreshProvenanceHosts()
+        self?.observeConnectionsForProvenanceHosts()
+      }
+    }
+  }
+
   func start() {
     if var currentTheme = libraryService.getLibraryCurrentTheme() {
       currentTheme.useDarkVariant = ThemeManager.shared.useDarkVariant
@@ -140,6 +187,11 @@ class MainCoordinator: NSObject {
 
     // Loans that ran out while the app was closed; coming back to the foreground scans again
     Task { await hummingbirdLoanExpiryScanner.scan() }
+    // Bookmarks saved elsewhere for Hummingbird books not played here yet
+    hummingbirdBookmarkPuller.startPull()
+    // Downloads' server identities, for the progress push, now and whenever the connections change
+    refreshProvenanceHosts()
+    observeConnectionsForProvenanceHosts()
 
     let vc = AppHostingViewController(
       rootView: MainView {

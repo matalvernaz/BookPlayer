@@ -241,6 +241,48 @@ public class HummingbirdConnectionService: BPLogger {
     try validateAuthenticatedResponse(response, connection: target)
   }
 
+  // MARK: - Bookmarks
+
+  /// Saves `bookmark` as the listening position of the book with `bookId` (Hummingbird's node_id) on
+  /// the server of the connection with `connectionId`, the one the book's provenance names. The server
+  /// keeps the bookmark as sent and takes the user from the sign-in. A connection that's gone fails
+  /// before any request
+  public func reportBookmark(_ bookmark: HummingbirdBookmark, bookId: String, connectionId: String) async throws {
+    let target = try savedConnection(connectionId)
+    var request = try bookmarkRequest(bookId: bookId, connection: target)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONEncoder().encode(BookmarkEnvelope(bookmark: bookmark))
+
+    let (_, response) = try await httpClient.data(for: request)
+    try validateAuthenticatedResponse(response, connection: target)
+  }
+
+  /// The listening position saved for the book with `bookId` on the server of the connection with
+  /// `connectionId`, or nil when there's none BookPlayer can read (nothing saved, or a DODP client's
+  /// bookmark, which keeps a `position` instead)
+  public func fetchBookmark(bookId: String, connectionId: String) async throws -> HummingbirdBookmark? {
+    let target = try savedConnection(connectionId)
+    let request = try bookmarkRequest(bookId: bookId, connection: target)
+
+    let (data, response) = try await httpClient.data(for: request)
+    try validateAuthenticatedResponse(response, connection: target)
+    guard let answer = try? JSONDecoder().decode(BookmarkAnswer.self, from: data) else {
+      throw IntegrationError.unexpectedResponse(code: nil)
+    }
+    return answer.bookmark
+  }
+
+  private func bookmarkRequest(bookId: String, connection: HummingbirdConnectionData) throws -> URLRequest {
+    guard let id = Int(bookId) else { throw IntegrationError.unexpectedResponse(code: nil) }
+    let url = connection.url
+      .appendingPathComponent("protocols/hummingbird/v1/bookshelf/bookmark")
+      .appendingPathComponent("\(id)")
+    var request = URLRequest(url: url)
+    applyAuthenticatedHeaders(to: &request, connection: connection)
+    return request
+  }
+
   /// One audio edition from an API entry, or nil for text, braille and other editions BookPlayer
   /// can't play. The entry's URL ends `/download/{format}/{bookId}/`, the server's own statement of
   /// which copy this is.
@@ -363,6 +405,54 @@ public class HummingbirdConnectionService: BPLogger {
 }
 
 // MARK: - Wire models
+
+/// A listening position as BookPlayer keeps it on a Hummingbird server (fork): the July builds' shape.
+/// The server stores whatever a client sends; only `currentTime` is required to read one back
+public struct HummingbirdBookmark: Codable, Equatable, Sendable {
+  public let currentTime: Double
+  public let duration: Double
+  /// `currentTime` as a share of `duration`, 0 to 1
+  public let progress: Double
+  public let isFinished: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case currentTime, duration, progress, isFinished
+  }
+
+  public init(currentTime: Double, duration: Double, isFinished: Bool) {
+    self.currentTime = currentTime
+    self.duration = duration
+    self.progress = duration > 0 ? min(max(currentTime / duration, 0), 1) : 0
+    self.isFinished = isFinished
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    currentTime = try container.decode(Double.self, forKey: .currentTime)
+    duration = (try? container.decode(Double.self, forKey: .duration)) ?? 0
+    progress = (try? container.decode(Double.self, forKey: .progress)) ?? 0
+    isFinished = (try? container.decode(Bool.self, forKey: .isFinished)) ?? false
+  }
+}
+
+private struct BookmarkEnvelope: Encodable {
+  let bookmark: HummingbirdBookmark
+}
+
+/// `GET bookshelf/bookmark/{id}`: `{"username", "node_id", "bookmark": {...}}`, the bookmark `{}` when
+/// nothing is saved. One BookPlayer can't read is no bookmark, not an error
+private struct BookmarkAnswer: Decodable {
+  let bookmark: HummingbirdBookmark?
+
+  enum CodingKeys: String, CodingKey {
+    case bookmark
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    bookmark = try? container.decode(HummingbirdBookmark.self, forKey: .bookmark)
+  }
+}
 
 private struct BookshelfListResponse: Decodable {
   let items: [HummingbirdLibraryItem.APIItem]

@@ -45,6 +45,11 @@ public struct MediaServerSourceInfo: Codable, Hashable {
   /// Resume position (seconds into the bound book) carried over from the source server's account,
   /// applied once when the folder is auto-bound. `nil` = no server-side position to seed.
   public let seedTime: Double?
+  /// The server's cross-device identity (`IntegrationHostIdentifiable.stableHostId`), for Audiobookshelf
+  /// and Jellyfin downloads: what upstream's progress push resolves the connection by. Recorded when the
+  /// download starts and kept current from the connection (`refreshHostIds`). `nil` for the other kinds
+  /// and in entries that predate it.
+  public let hostId: String?
 
   public init(
     kind: MediaServerKind,
@@ -52,7 +57,8 @@ public struct MediaServerSourceInfo: Codable, Hashable {
     itemId: String,
     dueDate: Date? = nil,
     shouldBindFolder: Bool? = nil,
-    seedTime: Double? = nil
+    seedTime: Double? = nil,
+    hostId: String? = nil
   ) {
     self.kind = kind
     self.connectionId = connectionId
@@ -60,5 +66,19 @@ public struct MediaServerSourceInfo: Codable, Hashable {
     self.dueDate = dueDate
     self.shouldBindFolder = shouldBindFolder
     self.seedTime = seedTime
+    self.hostId = hostId
+  }
+
+  /// The same entry with another `hostId`
+  public func with(hostId: String?) -> MediaServerSourceInfo {
+    MediaServerSourceInfo(
+      kind: kind,
+      connectionId: connectionId,
+      itemId: itemId,
+      dueDate: dueDate,
+      shouldBindFolder: shouldBindFolder,
+      seedTime: seedTime,
+      hostId: hostId
+    )
   }
 }

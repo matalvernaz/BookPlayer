@@ -481,6 +481,23 @@ reset). Still open.
 - **No progress write-back** (seed only, decided): SoundBooth's apps write
   positions through PowerSync. Slice 4 gives the dispatcher a no-op
   SoundBooth reporter.
+- **The end of a downloaded book isn't flagged finished on its server**
+  (slice 4): Audiobookshelf and Jellyfin downloads use upstream's push,
+  which sends positions only (streamed books have the same gap). July's
+  reporters sent `isFinished`. A follow-up for both.
+- **A removed server's progress is dropped, not kept**: the push consumes
+  an update whose host doesn't resolve (upstream's rule), so positions
+  played while a server is removed never reach it if it's added again. An
+  edited address loses at most one update (about 10 s) before the host
+  refresh picks it up.
+- **6.0 posts `.bookEnd` twice** (`PlayerManager`: in `markAsCompleted` and
+  again after `playNextItem`, when the next book is already loaded; marking
+  a book unfinished posts it too). The Hummingbird reporter guards against
+  it; worth fixing upstream (carry the item, or post once).
+- **No flush on stop**: `stopPlayback()` posts nothing, so a Hummingbird
+  book loses up to one 15 s tick when playback is stopped rather than
+  paused; `.bookPaused` fires before the pause, so its report can be about a
+  second stale until slice 6 reorders it.
 - **An API refusal with a message but no numeric code** reads "The server
   responded with 0: …" (`serverMessage(code: 0, …)`). Every refusal seen
   from SoundBooth carries a code; a SoundBooth-specific error type would be

@@ -949,7 +949,12 @@ public class JellyfinConnectionService: BPLogger {
     if let connection {
       mediaServerSourceStore?.registerPendingDownload(
         url,
-        info: MediaServerSourceInfo(kind: .jellyfin, connectionId: connection.id, itemId: item.id)
+        info: MediaServerSourceInfo(
+          kind: .jellyfin,
+          connectionId: connection.id,
+          itemId: item.id,
+          hostId: connection.stableHostId
+        )
       )
     }
     return request

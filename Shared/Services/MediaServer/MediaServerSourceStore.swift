@@ -46,6 +46,17 @@ public final class MediaServerSourceStore: @unchecked Sendable {
   private var cache = [String: [String: MediaServerSourceInfo]]()
   /// What the mapped items under each folder agree on, built from the resolved map when asked
   private var folderSummaries: [String: FolderSummary]?
+  /// `pushKeys(for:)`'s answer per path (nil answers included), dropped with every resolved write:
+  /// playback asks on every tick
+  private var pushKeysByPath = [String: PushKeys?]()
+
+  /// What upstream's progress push needs to address a download's server item (fork): the provider lane,
+  /// the item, and the server's stable identity
+  public struct PushKeys: Equatable, Sendable {
+    public let providerName: String
+    public let providerId: String
+    public let hostId: String
+  }
 
   private enum FolderSummary {
     case unanimous(MediaServerSourceInfo)
@@ -116,6 +127,58 @@ public final class MediaServerSourceStore: @unchecked Sendable {
       var resolved = read(Key.resolved)
       guard Self.rekey(&resolved, from: oldRelativePath, to: newRelativePath) else { return }
       write(resolved, to: Key.resolved)
+    }
+  }
+
+  /// The keys upstream's progress push needs for the item at `relativePath` (fork), or nil: only an
+  /// Audiobookshelf or Jellyfin download whose server is known (a `hostId`) has them. Also nil when
+  /// another entry for the same server item sits in the same folder: those are the tracks of one
+  /// multi-file item (a zip without a wrapping folder lands its tracks as separate books), and each
+  /// track's own time isn't the item's position. Copies in different folders each push, as upstream's
+  /// streamed copies do.
+  public func pushKeys(for relativePath: String) -> PushKeys? {
+    queue.sync {
+      let resolved = read(Key.resolved)
+      guard
+        let info = resolved[relativePath],
+        info.kind == .audiobookshelf || info.kind == .jellyfin,
+        let hostId = info.hostId,
+        !hostId.isEmpty
+      else { return nil }
+      if let known = pushKeysByPath[relativePath] {
+        return known
+      }
+
+      let folder = Self.parentPath(of: relativePath)
+      let hasSiblingTrack = resolved.contains { path, other in
+        path != relativePath && Self.parentPath(of: path) == folder && Self.sameItem(other, info)
+      }
+      let keys = hasSiblingTrack ? nil : PushKeys(providerName: info.kind.rawValue, providerId: info.itemId, hostId: hostId)
+      pushKeysByPath[relativePath] = .some(keys)
+      return keys
+    }
+  }
+
+  /// Sets the `hostId` of Audiobookshelf and Jellyfin entries, in every stage, from their connections'
+  /// current stable host ids, by kind then connection id (fork). An entry whose connection isn't listed
+  /// keeps the host it has: the same server added again resolves it
+  public func refreshHostIds(_ hostIdsByConnection: [MediaServerKind: [String: String]]) {
+    queue.sync {
+      for key in [Key.resolved, Key.landed, Key.pending] {
+        var map = read(key)
+        var changed = false
+        for (path, info) in map {
+          guard
+            let hostId = hostIdsByConnection[info.kind]?[info.connectionId],
+            info.hostId != hostId
+          else { continue }
+          map[path] = info.with(hostId: hostId)
+          changed = true
+        }
+        if changed {
+          write(map, to: key)
+        }
+      }
     }
   }
 
@@ -276,6 +339,12 @@ public final class MediaServerSourceStore: @unchecked Sendable {
     lhs.kind == rhs.kind && lhs.connectionId == rhs.connectionId && lhs.itemId == rhs.itemId
   }
 
+  /// The folder an item's path is in, "" at the root
+  private static func parentPath(of path: String) -> String {
+    guard let slash = path.lastIndex(of: "/") else { return "" }
+    return String(path[..<slash])
+  }
+
   private static func isSelfOrDescendant(_ path: String, of ancestor: String) -> Bool {
     path == ancestor || path.hasPrefix(ancestor + "/")
   }
@@ -313,6 +382,7 @@ public final class MediaServerSourceStore: @unchecked Sendable {
     cache[key] = map
     if key == Key.resolved {
       folderSummaries = nil
+      pushKeysByPath = [:]
     }
   }
 }

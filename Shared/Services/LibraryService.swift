@@ -2892,6 +2892,12 @@ extension LibraryService {
       params[#keyPath(ExternalResource.providerId)] = externalResource.providerId
       params[#keyPath(ExternalResource.providerName)] = externalResource.providerName
       params["hostId"] = externalResource.hostId
+    } else if let keys = mediaServerSourceStore?.pushKeys(for: relativePath) {
+      // An Audiobookshelf or Jellyfin download (fork) has no link, so its provenance names the server
+      // item. Only when there's no link: one key set per update means one writer per book
+      params[#keyPath(ExternalResource.providerId)] = keys.providerId
+      params[#keyPath(ExternalResource.providerName)] = keys.providerName
+      params["hostId"] = keys.hostId
     }
     
     progressPassthroughPublisher.send(params)

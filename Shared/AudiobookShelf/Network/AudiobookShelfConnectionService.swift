@@ -767,7 +767,12 @@ public class AudiobookShelfConnectionService: BPLogger {
     applyAuthenticatedHeaders(to: &request, connection: connection)
     mediaServerSourceStore?.registerPendingDownload(
       url,
-      info: MediaServerSourceInfo(kind: .audiobookshelf, connectionId: connection.id, itemId: item.id)
+      info: MediaServerSourceInfo(
+        kind: .audiobookshelf,
+        connectionId: connection.id,
+        itemId: item.id,
+        hostId: connection.stableHostId
+      )
     )
     return request
   }

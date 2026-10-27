@@ -467,13 +467,17 @@ public actor SyncQueueRepository: SyncQueueRepositoryProtocol, BPLogger {
       guard let providerId = parameters["providerId"] as? String else {
         return false
       }
+      let providerName = parameters["providerName"] as? String
+      let hostId = parameters["hostId"] as? String
       // The reference doesn't carry providerId, so match through the fetched tasks:
       // taking just the LAST externalUpdate reference misses whenever the queue holds
-      // pushes for more than one book, creating a duplicate task instead of coalescing
+      // pushes for more than one book, creating a duplicate task instead of coalescing.
+      // Only the same item on the same server: two servers can hold items with one id (fork). A task
+      // without a host matches only others without one
       let externalTasks = (try? modelContext.fetch(FetchDescriptor<ExternalUpdateTaskModel>())) ?? []
       let tasksByID = Dictionary(
         uniqueKeysWithValues: externalTasks
-          .filter { $0.providerId == providerId }
+          .filter { $0.providerId == providerId && $0.providerName == providerName && $0.hostId == hostId }
           .map { ($0.id, $0) }
       )
       guard

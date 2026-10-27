@@ -7,8 +7,8 @@
 > its section below still describes the July `test/all-changes` code. Each
 > slice updates its section. Ported so far: the Audiobookshelf Folders tab,
 > share links, the provenance store and the library export fix (slice 1);
-> Hummingbird, without its progress and bookmark sync (slice 2); SoundBooth
-> (slice 3).
+> Hummingbird (slice 2); SoundBooth (slice 3); progress sync for downloads
+> (slice 4).
 
 The upstream TortugaPower BookPlayer is a local-files audiobook player.
 This fork adds the Hummingbird media-server client, the SoundBooth store,
@@ -20,10 +20,9 @@ files only" when reading the code.
 
 They share the `MediaServerKind` enum
 (`.jellyfin / .audiobookshelf / .hummingbird / .soundbooth`) that names a
-downloaded book's source in the provenance store, and a shared progress
-dispatcher that routes bookmarks back to whichever server an imported
-book came from (back with slice 4). A `.dodp` kind is planned — see
-[dodp-direction.md](dodp-direction.md).
+downloaded book's source in the provenance store; see "Progress sync" for
+how a downloaded book's position goes back to its server. A `.dodp` kind is
+planned — see [dodp-direction.md](dodp-direction.md).
 
 ### Jellyfin (`BookPlayer/Jellyfin/`)
 
@@ -73,8 +72,8 @@ The tab title is upstream's `folders_title`.
 
 Talks to a self-hosted Hummingbird server (`cobdfamily/hummingbird`, port
 8000 by default), which puts accessible libraries (NNELS today) behind one
-REST surface through server plugins. 6.0 base since slice 2; the progress
-reporter and bookmark puller come back with slice 4.
+REST surface through server plugins. 6.0 base since slice 2; its
+bookmark sync (reporter and puller) since slice 4, see "Progress sync".
 
 **Where it lives.** The connection data, the library item and
 `HummingbirdConnectionService` are in `Shared/Hummingbird/` (both
@@ -371,8 +370,78 @@ suite. Keys and shapes `MediaServerSourceStore.resolved`
 and `.pending` are the July ones (JSON data in standard defaults), so July
 installs keep their entries; the landed stage is a new key.
 
-Not in slice 1: progress reporting and the Tortuga-sync gating that read
-the store (slice 4).
+Audiobookshelf and Jellyfin entries also carry the server's `hostId` (the
+connection's `stableHostId`, recorded when the download starts and kept
+current by `MainCoordinator`), which is what progress sync needs; see the
+next section. The July Tortuga-sync gating that read the store isn't on the
+6.0 base: the fork's builds point `BP_API_DOMAIN` at a placeholder, so no
+BookPlayer account can sign in and nothing reaches BookPlayer's server.
+
+## Progress sync (6.0 base, slice 4)
+
+Upstream 6.0 already pushes the position of LINKED books (stream imports,
+streamed-then-downloaded books, sync-adopted links) to their Audiobookshelf
+or Jellyfin server, on every tier with no BookPlayer account:
+`LibraryService.updatePlaybackTime` puts providerName/providerId/hostId on
+the progress update, `SyncQueueService` queues an `externalUpdate` task in
+that provider's lane (10 s throttle, coalescing, retries), and
+`ExternalUpdateProgressOperation` finds the connection by `hostId`
+(Jellyfin: UserData write; Audiobookshelf: PATCH `api/me/progress`). An
+unresolved host is consumed, never retried, so a removed server's updates
+are dropped for good, not kept for later.
+
+Downloads ride the same path, one writer by construction: in
+`updatePlaybackTime` the link's keys win, and only a book with no streaming
+link gets keys from its provenance (`MediaServerSourceStore.pushKeys`). So
+a download that refilled a linked book, or adopted a link through sync,
+still has exactly one writer. `pushKeys` answers only for an Audiobookshelf
+or Jellyfin entry with a `hostId`, and not for the tracks of one multi-file
+item (another entry for the same server item in the same folder: a zip
+without a wrapping folder lands its tracks as separate books); copies in
+different folders each push, as upstream's streamed copies do. It checks
+kind and host first and caches its answer per path until the next store
+write, because playback asks on every tick. Coalescing in
+`SyncQueueRepository` matches (providerName, hostId, providerId), so the
+same item id on two servers stays two tasks (upstream matched by id alone).
+Hosts stay current: `MainCoordinator.refreshProvenanceHosts` sets each
+entry's `hostId` from its connection at launch and whenever the
+Audiobookshelf or Jellyfin connections change (observation reports a change
+before it lands, so the refresh runs on the next main-actor turn); an entry
+whose connection is gone keeps its last host, so adding the same server
+again resumes its pushes.
+
+Changes from July for Audiobookshelf/Jellyfin downloads: they push on every
+tier (July: TestFlight or Pro), Jellyfin gets UserData writes instead of a
+playback session (no "now playing" in its dashboard), and the end of a book
+isn't flagged finished on the server (upstream doesn't for streamed books
+either; the last position, about 100 %, still goes).
+
+Hummingbird isn't an upstream provider, so it keeps a fork path, July's on
+the 6.0 base. `HummingbirdProgressReporter` (owned by `MainCoordinator`)
+posts a bookmark `{currentTime, duration, progress, isFinished}` to
+`POST /protocols/hummingbird/v1/bookshelf/bookmark/{node_id}` on the
+connection the book's provenance names (`reportBookmark`, failing closed
+for a removed connection): a `.bookPlaying` tick at most every 15 s per
+book, the position on `.bookPaused`, and on `.bookEnd` the book it last
+reported, finished or not as the player now says. `.bookEnd` names no book
+and 6.0 posts it twice, the second after the next book loaded, so the
+reporter never reads `currentItem` then: it forgets the book once its end
+is reported and whenever another book is loaded. One bookmark per book is
+on its way at a time, the newest waiting. No gate, failures logged.
+`HummingbirdBookmarkPuller` (launch, foreground, `.importItemsInserted`)
+asks the server (`fetchBookmark`, GET) of each Hummingbird book still at 0,
+unfinished and not loaded in the player, once per launch, and applies a
+position above 0 (held to the book's length) only if, when the answer
+arrives, the same book (uuid) is still at that path with the same
+provenance, still unplayed and still not the player's. The player check is
+what protects a book the user just started: playback saves its position a
+couple of seconds late (`scheduleSaveContext`), and the library's reads
+(`getSimpleItem`, a dictionary fetch) see only saved values. Upstream
+decided media servers' positions are never pulled; that's about
+Audiobookshelf and Jellyfin. The Hummingbird puller (DAISY bookmarks) and
+SoundBooth's one-time download seed are fork features outside it.
+
+SoundBooth sends nothing: its apps write positions through PowerSync.
 
 ## Library export
 
@@ -424,7 +493,8 @@ the user already cancelled.
 ## Pro-feature bypass policy
 
 TestFlight bypasses are only for local/fork-owned features (icons,
-themes, the fork's media-server progress sync). Tortuga's paid-backend
+themes). Progress sync needs none: it follows upstream's every-tier gate
+(slice 4). Tortuga's paid-backend
 features (cloud sync, data-usage section) stay gated — bypassing would
 be theft of service AND the server validates entitlement independently
 anyway.
