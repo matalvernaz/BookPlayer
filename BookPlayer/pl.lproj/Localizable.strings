@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Pobieranie „%@” zostało przerwane, gdy BookPlayer zamknięto w przełączniku aplikacji. Udostępnij link ponownie.";
 "share_import_failure_unsupported_extension" = "„%@” nie wygląda na plik audiobooka: jego nazwa nie ma rozszerzenia pliku audio. Spróbuj bezpośredniego linku do pobrania.";
 "share_import_failure_unsupported_type" = "„%1$@” nie jest plikiem audiobooka: serwer wysłał %2$@. Spróbuj bezpośredniego linku do pobrania.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Wczytywanie wszystkich elementów…";

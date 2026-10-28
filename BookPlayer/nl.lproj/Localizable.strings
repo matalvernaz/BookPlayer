@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Het downloaden van “%@” is gestopt toen BookPlayer via de appkiezer werd gesloten. Deel de link opnieuw.";
 "share_import_failure_unsupported_extension" = "“%@” lijkt geen audioboekbestand: de naam heeft geen extensie van een audiobestand. Probeer de directe downloadlink.";
 "share_import_failure_unsupported_type" = "“%1$@” is geen audioboekbestand: de server stuurde %2$@. Probeer de directe downloadlink.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Alle items worden geladen…";

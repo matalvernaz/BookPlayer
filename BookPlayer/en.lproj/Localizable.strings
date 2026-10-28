@@ -677,3 +677,6 @@
 "share_import_failure_stopped_by_force_quit" = "The download of “%@” stopped when BookPlayer was closed from the app switcher. Share the link again.";
 "share_import_failure_unsupported_extension" = "“%@” doesn’t look like an audiobook file: its name has no audio file extension. Try the direct download link.";
 "share_import_failure_unsupported_type" = "“%1$@” isn’t an audiobook file: the server sent %2$@. Try the direct download link.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Loading every item…";

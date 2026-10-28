@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Nedladdningen av ”%@” stoppades när BookPlayer stängdes från appväxlaren. Dela länken igen.";
 "share_import_failure_unsupported_extension" = "”%@” ser inte ut som en ljudboksfil: namnet saknar filändelse för ljud. Prova den direkta nedladdningslänken.";
 "share_import_failure_unsupported_type" = "”%1$@” är inte en ljudboksfil: servern skickade %2$@. Prova den direkta nedladdningslänken.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Läser in alla objekt…";

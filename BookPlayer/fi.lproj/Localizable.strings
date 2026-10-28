@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Kohteen ”%@” lataus pysähtyi, kun BookPlayer suljettiin appien vaihtajasta. Jaa linkki uudelleen.";
 "share_import_failure_unsupported_extension" = "”%@” ei näytä äänikirjatiedostolta: sen nimessä ei ole äänitiedoston päätettä. Kokeile suoraa latauslinkkiä.";
 "share_import_failure_unsupported_type" = "”%1$@” ei ole äänikirjatiedosto: palvelin lähetti %2$@. Kokeile suoraa latauslinkkiä.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Ladataan kaikkia kohteita…";

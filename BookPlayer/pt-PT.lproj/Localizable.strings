@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "A transferência de “%@” parou quando o BookPlayer foi fechado no seletor de apps. Partilhe a ligação novamente.";
 "share_import_failure_unsupported_extension" = "“%@” não parece um ficheiro de audiolivro: o nome não tem uma extensão de ficheiro de áudio. Experimente a ligação de transferência direta.";
 "share_import_failure_unsupported_type" = "“%1$@” não é um ficheiro de audiolivro: o servidor enviou %2$@. Experimente a ligação de transferência direta.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "A carregar todos os itens…";

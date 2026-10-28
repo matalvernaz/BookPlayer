@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "La baixada de «%@» s’ha aturat quan el BookPlayer s’ha tancat des del selector d’apps. Torna a compartir l’enllaç.";
 "share_import_failure_unsupported_extension" = "«%@» no sembla un fitxer d’audiollibre: el nom no té cap extensió de fitxer d’àudio. Prova l’enllaç de baixada directa.";
 "share_import_failure_unsupported_type" = "«%1$@» no és un fitxer d’audiollibre: el servidor ha enviat %2$@. Prova l’enllaç de baixada directa.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "S’estan carregant tots els elements…";

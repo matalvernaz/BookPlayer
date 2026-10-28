@@ -533,3 +533,31 @@ reset). Still open.
   (3 s), so a seek slower than that can still be undone by the old race.
   Device test owed: in a book made of one file per chapter, play a chapter
   past 30 s, press previous chapter, and check it restarts.
+
+# 2026-10-27 catch-up, slice 7 (two upstream bugs from the October audit)
+
+## FIXED
+
+- **Select-all, whole-level Stream and Audiobookshelf's whole-level
+  Download acted on the loaded pages only** (upstream #1661). They load
+  the rest first; see architecture.md. The select-all button had no
+  VoiceOver label (it read the symbol); it says Select All, Deselect All,
+  or Cancel while the load runs.
+- **Format-specific author and title tags were never read** (upstream
+  #1665): aART, TPE2 and the rest are now found by identifier.
+- **A cancelled Jellyfin request showed an error** (`URLError.cancelled`
+  from Get, caught only as `CancellationError`), a superseded page could
+  clear its replacement's handle on both servers, and a superseded
+  Audiobookshelf search could put its results back over the tab. Fixed with
+  the select-all work, since its load cancels whatever is in flight.
+
+## OPEN
+
+- **Jellyfin's whole-level Download from a global search does nothing**
+  (`onDownloadFolderTapped` needs a folder) though the menu offers it, and
+  `fetchAudiobookDownloadRequests` ignores recursion and the search term.
+- **Tags written with ffmpeg's `use_metadata_tags`** (bare mdta `title`,
+  `artist`, `album_artist`) are still unread.
+- **A very large level loads in one request** (a Jellyfin library of 1661
+  items answered in one go on the homelab server); nothing pages it, and
+  the overlay is the only progress shown.

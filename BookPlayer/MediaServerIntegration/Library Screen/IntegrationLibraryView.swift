@@ -57,7 +57,10 @@ struct IntegrationLibraryView<
       .environmentObject(theme)
     }
     .scrollDismissesKeyboard(.interactively)
-    .loadingOverlay(viewModel.isPreparingDownload)
+    .loadingOverlay(
+      viewModel.isPreparingDownload || viewModel.isLoadingAllItems,
+      message: viewModel.isLoadingAllItems ? "integration_loading_all_items".localized : nil
+    )
     .background(theme.systemBackgroundColor)
     .modifier(IntegrationSearchableModifier(
       isSearchable: viewModel.isSearchable,
@@ -118,6 +121,7 @@ struct IntegrationLibraryView<
             Button(action: viewModel.onEditToggleSelectTapped) {
               Label("select_title".localized, systemImage: "checkmark.circle")
             }
+            .disabled(viewModel.isLoadingAllItems)
             
             // Both fire OUTSIDE edit mode, where the selection is empty — they
             // always mean "everything at this level".
@@ -126,7 +130,7 @@ struct IntegrationLibraryView<
             } label: {
               Label("stream_button", systemImage: "waveform")
             }
-            .disabled(viewModel.downloadableItemCount == 0)
+            .disabled(viewModel.downloadableItemCount == 0 || viewModel.isLoadingAllItems)
 
             Button(action: viewModel.onDownloadFolderTapped) {
               Label("download_title".localized, systemImage: "arrow.down.to.line")
@@ -134,7 +138,9 @@ struct IntegrationLibraryView<
             // Conservative: on a Jellyfin folder whose loaded page is all subfolders this
             // reads 0 while the server has audiobooks, so Download is briefly unavailable
             // until another page lands. A false negative — never the wrong action.
-            .disabled(viewModel.downloadableItemCount == 0 || viewModel.isPreparingDownload)
+            .disabled(
+              viewModel.downloadableItemCount == 0 || viewModel.isPreparingDownload || viewModel.isLoadingAllItems
+            )
           }
         }
 
@@ -168,8 +174,18 @@ struct IntegrationLibraryView<
 
   @ViewBuilder
   var bottomBar: some View {
+    // While select-all loads the level, a tap stops it, so the button says so
     Button(action: viewModel.onSelectAllTapped) {
-      Image(systemName: viewModel.selectedItems.isEmpty ? "checklist.checked" : "checklist.unchecked")
+      if viewModel.isLoadingAllItems {
+        Image(systemName: "xmark")
+          .accessibilityLabel("cancel_button".localized)
+      } else if viewModel.selectedItems.isEmpty {
+        Image(systemName: "checklist.checked")
+          .accessibilityLabel("select_all_title".localized)
+      } else {
+        Image(systemName: "checklist.unchecked")
+          .accessibilityLabel("deselect_all_title".localized)
+      }
     }
 
     Spacer()
@@ -180,13 +196,13 @@ struct IntegrationLibraryView<
       Image(systemName: "waveform")
         .accessibilityLabel("stream_button")
     }
-    .disabled(viewModel.selectedItems.isEmpty)
+    .disabled(viewModel.selectedItems.isEmpty || viewModel.isLoadingAllItems)
 
     Button(action: viewModel.onDownloadTapped) {
       Image(systemName: "arrow.down.to.line")
         .accessibilityLabel("download_title")
     }
-    .disabled(viewModel.selectedItems.isEmpty)
+    .disabled(viewModel.selectedItems.isEmpty || viewModel.isLoadingAllItems)
   }
 }
 

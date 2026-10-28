@@ -893,8 +893,9 @@ it from the diff against upstream.
   export fix, the media-server progress sync store, the player's seek guard
   and paused-position snapshot (`PlayerClock`; July's FLAC fast start and
   seek-tolerance stack were not re-ported, see `.claude/notes/architecture.md`),
-  and the TestFlight and Pro-gating bypasses — those last ones must never
-  appear in an upstream PR.
+  select-all and the whole-level actions loading every page (upstream #1661),
+  the title/author tag fallbacks (#1665), and the TestFlight and Pro-gating
+  bypasses — those last ones must never appear in an upstream PR.
 - **Secrets layout:** signing certs, ASC API key, and account identifiers
   live on the Mac at `~/.appstoreconnect/private_keys/` and
   `~/.config/bookplayer-deploy/`. Nothing sensitive crosses GitHub Secrets

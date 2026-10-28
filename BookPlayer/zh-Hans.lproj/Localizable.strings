@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "由于 BookPlayer 在 App 切换器中被关闭，“%@”的下载已停止。请再次共享该链接。";
 "share_import_failure_unsupported_extension" = "“%@”似乎不是有声书文件：其名称没有音频文件扩展名。请尝试直接下载链接。";
 "share_import_failure_unsupported_type" = "“%1$@”不是有声书文件：服务器发送的是 %2$@。请尝试直接下载链接。";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "正在载入所有项目…";

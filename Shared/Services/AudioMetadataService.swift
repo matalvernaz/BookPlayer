@@ -124,40 +124,60 @@ public class AudioMetadataService: BPLogger, AudioMetadataServiceProtocol {
     let titleKeys: [AVMetadataKey] = [
       .commonKeyTitle,              // Actual title - should be first
       .commonKeyAlbumName,          // Album name (fallback for audiobooks)
-      .id3MetadataKeyAlbumTitle,
-      .iTunesMetadataKeyAlbum,
-      .id3MetadataKeyOriginalAlbumTitle,
     ]
-    
-    for key in titleKeys {
-      if let metadataItem = metadata.first(where: { $0.commonKey == key }),
-         let titleValue = try? await metadataItem.load(.stringValue),
-         !titleValue.isEmpty {
-        return titleValue
-      }
-    }
-    
-    return ""
+    // Format-specific tags have no common key, so they're found by identifier (fork, upstream #1665)
+    let titleIdentifiers: [AVMetadataIdentifier] = [
+      .id3MetadataAlbumTitle,
+      .iTunesMetadataAlbum,
+      .id3MetadataOriginalAlbumTitle,
+    ]
+
+    return await firstValue(in: metadata, commonKeys: titleKeys, identifiers: titleIdentifiers)
   }
   
   private func extractArtist(from metadata: [AVMetadataItem]) async -> String {
     let artistKeys: [AVMetadataKey] = [
       .commonKeyAuthor,
       .commonKeyArtist,
-      .metadata3GPUserDataKeyAuthor,
-      .iTunesMetadataKeyArtist,
-      .iTunesMetadataKeyAlbumArtist,
-      .id3MetadataKeyOriginalArtist
     ]
-    
-    for key in artistKeys {
+    // Format-specific tags have no common key, so they're found by identifier (fork, upstream #1665: an
+    // m4b whose only author tag is its album artist, aART, imported as "Unknown author")
+    let artistIdentifiers: [AVMetadataIdentifier] = [
+      .identifier3GPUserDataAuthor,
+      .iTunesMetadataArtist,
+      .iTunesMetadataAlbumArtist,
+      .id3MetadataOriginalArtist,
+      // TPE2, the ID3 album artist most taggers write
+      .id3MetadataBand,
+    ]
+
+    return await firstValue(in: metadata, commonKeys: artistKeys, identifiers: artistIdentifiers)
+  }
+
+  /// The first non-empty string among the items with `commonKeys`, in order, then among those with
+  /// `identifiers`. Empty when there's none
+  private func firstValue(
+    in metadata: [AVMetadataItem],
+    commonKeys: [AVMetadataKey],
+    identifiers: [AVMetadataIdentifier]
+  ) async -> String {
+    for key in commonKeys {
       if let metadataItem = metadata.first(where: { $0.commonKey == key }),
-         let artistValue = try? await metadataItem.load(.stringValue),
-         !artistValue.isEmpty {
-        return artistValue
+         let value = try? await metadataItem.load(.stringValue),
+         !value.isEmpty {
+        return value
       }
     }
-    
+
+    for identifier in identifiers {
+      for metadataItem in AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: identifier) {
+        if let value = try? await metadataItem.load(.stringValue),
+           !value.isEmpty {
+          return value
+        }
+      }
+    }
+
     return ""
   }
 

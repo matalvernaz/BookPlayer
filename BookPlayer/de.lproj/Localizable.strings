@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Das Laden von „%@“ wurde beendet, als BookPlayer über den App-Umschalter geschlossen wurde. Teile den Link erneut.";
 "share_import_failure_unsupported_extension" = "„%@“ scheint keine Hörbuchdatei zu sein: Der Name hat keine Audio-Dateiendung. Versuche den direkten Download-Link.";
 "share_import_failure_unsupported_type" = "„%1$@“ ist keine Hörbuchdatei: Der Server hat %2$@ gesendet. Versuche den direkten Download-Link.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Alle Elemente werden geladen…";

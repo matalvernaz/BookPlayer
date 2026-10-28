@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "توقف تنزيل «%@» عند إغلاق BookPlayer من مبدّل التطبيقات. شارك الرابط مرة أخرى.";
 "share_import_failure_unsupported_extension" = "لا يبدو أن «%@» ملف كتاب صوتي: لا يحتوي اسمه على امتداد ملف صوتي. جرّب رابط التنزيل المباشر.";
 "share_import_failure_unsupported_type" = "«%1$@» ليس ملف كتاب صوتي: أرسل الخادم %2$@. جرّب رابط التنزيل المباشر.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "جارٍ تحميل كل العناصر…";

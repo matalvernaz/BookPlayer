@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Завантаження «%@» зупинилося, коли BookPlayer закрили через перемикач програм. Поділіться посиланням ще раз.";
 "share_import_failure_unsupported_extension" = "«%@» не схожий на файл аудіокниги: у назві немає розширення аудіофайлу. Спробуйте пряме посилання для завантаження.";
 "share_import_failure_unsupported_type" = "«%1$@» — не файл аудіокниги: сервер надіслав %2$@. Спробуйте пряме посилання для завантаження.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Завантаження всіх елементів…";

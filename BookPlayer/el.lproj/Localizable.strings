@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Η λήψη του «%@» σταμάτησε όταν το BookPlayer έκλεισε από την εναλλαγή εφαρμογών. Κοινοποιήστε ξανά τον σύνδεσμο.";
 "share_import_failure_unsupported_extension" = "Το «%@» δεν μοιάζει με αρχείο ηχοβιβλίου: το όνομά του δεν έχει επέκταση αρχείου ήχου. Δοκιμάστε τον άμεσο σύνδεσμο λήψης.";
 "share_import_failure_unsupported_type" = "Το «%1$@» δεν είναι αρχείο ηχοβιβλίου: ο διακομιστής έστειλε %2$@. Δοκιμάστε τον άμεσο σύνδεσμο λήψης.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Φόρτωση όλων των στοιχείων…";

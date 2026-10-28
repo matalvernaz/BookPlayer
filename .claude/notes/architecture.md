@@ -558,6 +558,55 @@ to repair what it caused (zero then bounded tolerances, the autoplay gate).
 6.0 loads local and cloud files with precise timing and seeks with default
 tolerance, so long FLAC books start slowly again, as in upstream.
 
+## Select-all and whole-level actions load the whole level (6.0 base, slice 7)
+
+A Jellyfin folder or search, and Audiobookshelf's Books tab, load 20 items
+at a time as you scroll. Upstream's select-all, whole-level Stream and (on
+Audiobookshelf) whole-level Download acted on the items loaded so far
+(upstream #1661). Now each loads the rest first (`loadRemainingItems()` on
+both view models), then acts:
+
+- Jellyfin asks once, from where the pages stopped, with no limit (checked
+  on a live server: a folder of 1661 asked from item 20 returned 1641).
+  Audiobookshelf asks for the whole tab (`limit: 0`, as its Folders tab and
+  filtered levels do) in the tab's sort and replaces the pages. Either way
+  the total becomes the count received, so paging stops (Jellyfin's
+  `updatedTotal` would publish a placeholder a page past the end; the
+  Audiobookshelf server counts rows the app can't read).
+- The load takes the fetch slot, stopping a page in flight, and is stopped
+  like a page: the screen closing, a search or sort change, leaving
+  selection, and a second tap on select-all, which reads "Cancel" while it
+  runs. Every fetch in the slot (pages, Jellyfin's top level, Audiobookshelf's
+  search) stays silent once superseded and clears the handle only if it wasn't
+  cancelled (whoever cancels clears it), so a late answer can't change the
+  list or let a page start alongside the load.
+  A cancelled request (`URLError.cancelled` from URLSession and Get) is no
+  error.
+- The loading overlay says "Loading every item…" and VoiceOver hears it;
+  when select-all's load lands, the selection count is announced, since
+  VoiceOver doesn't read the title changing.
+- Audiobookshelf's whole-level Download loads before its dialog, so the
+  count is right (Jellyfin's already resolved its requests first).
+- A selection resolves in the order shown (`items.filter`), not the
+  selection set's.
+
+Seams for tests: `loadPage` (Jellyfin), `loadBooksPage` and
+`loadSearchResults` (Audiobookshelf), defaulting to the services, and the
+Audiobookshelf screen's `searchDebounce` (350 ms; tests set a long one so a
+query they set never refetches on its own).
+
+## Title and author tags (6.0 base, slice 7)
+
+`AudioMetadataService` compared each tag's common key with format-specific
+keys (aART, the 3GP author, ID3's original artist…), which have none, so
+those fallbacks never matched: an m4b whose only author tag is its album
+artist imported as "Unknown author" (upstream #1665). The common keys come
+first as before (author, artist; title, album name), then the
+format-specific tags by identifier (`AVMetadataItem.metadataItems(from:
+filteredByIdentifier:)`): author from the 3GP author, ©ART, aART, ID3's
+original artist and TPE2 (the ID3 album artist); title from TALB, ©alb and
+TOAL. A file that read an author or title before reads the same one.
+
 ## Session-expired vs sign-in 401
 
 Sign-in 401 = wrong credentials (different UX path). A mid-session

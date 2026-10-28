@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Il download di “%@” si è interrotto quando BookPlayer è stato chiuso dal selettore delle app. Condividi di nuovo il link.";
 "share_import_failure_unsupported_extension" = "“%@” non sembra un file di audiolibro: il nome non ha un’estensione di file audio. Prova il link di download diretto.";
 "share_import_failure_unsupported_type" = "“%1$@” non è un file di audiolibro: il server ha inviato %2$@. Prova il link di download diretto.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Caricamento di tutti gli elementi…";

@@ -43,6 +43,11 @@ protocol IntegrationLibraryViewModelProtocol: ObservableObject {
   /// gating has to be explicit.
   var isPreparingDownload: Bool { get }
 
+  /// True while the items the pages haven't brought load, before select-all or a whole-level
+  /// Stream or Download acts on the level (fork, upstream #1661). Shows the loading overlay with
+  /// its message; select-all reads "Cancel" meanwhile, since a tap stops the load
+  var isLoadingAllItems: Bool { get }
+
   /// Count shown in the whole-level download confirmation. Declared here, not only in the
   /// extension, so a conformer whose download reaches past the loaded page can override it
   /// — an extension-only member would dispatch statically through `Model` and ignore them.
@@ -87,6 +92,9 @@ extension IntegrationLibraryViewModelProtocol {
 
   /// Only the Jellyfin folder screen resolves anything before confirming.
   var isPreparingDownload: Bool { false }
+
+  /// Only the paged screens (a Jellyfin folder or search, Audiobookshelf's Books tab) have pages to load.
+  var isLoadingAllItems: Bool { false }
 
   var isGridEnabled: Bool { true }
   var showsLayoutPreferences: Bool { true }

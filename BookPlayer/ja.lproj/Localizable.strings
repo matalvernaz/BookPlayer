@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "BookPlayerがAppスイッチャーから閉じられたため、「%@」のダウンロードが止まりました。もう一度リンクを共有してください。";
 "share_import_failure_unsupported_extension" = "「%@」はオーディオブックのファイルではないようです: 名前にオーディオファイルの拡張子がありません。直接ダウンロードのリンクを試してください。";
 "share_import_failure_unsupported_type" = "「%1$@」はオーディオブックのファイルではありません: サーバが%2$@を送信しました。直接ダウンロードのリンクを試してください。";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "すべての項目を読み込み中…";

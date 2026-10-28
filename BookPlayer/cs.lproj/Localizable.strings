@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "Stahování „%@“ se zastavilo, když byl BookPlayer zavřen v přepínači aplikací. Sdílejte odkaz znovu.";
 "share_import_failure_unsupported_extension" = "„%@“ nevypadá jako soubor audioknihy: jeho název nemá příponu zvukového souboru. Zkuste přímý odkaz ke stažení.";
 "share_import_failure_unsupported_type" = "„%1$@“ není soubor audioknihy: server poslal %2$@. Zkuste přímý odkaz ke stažení.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Načítání všech položek…";

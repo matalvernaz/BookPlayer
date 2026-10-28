@@ -47,9 +47,17 @@ protocol JellyfinFolderImporting: AnyObject, BPLogger {
   var pendingImportBatch: ExternalImportBatch? { get set }
 
   func virtualImportFolderAudiobooks(useSelectedItems: Bool) async
+  /// Loads whatever of the level the pages haven't brought yet. A requirement, not only an
+  /// extension member, so `importCandidates` reaches each screen's own
+  func loadRemainingItems() async throws
   func onDownloadTapped()
   func confirmDownloadFolder()
   func goToSubscribe()
+}
+
+/// URLSession (and Get, over it) cancels with `URLError.cancelled`, not `CancellationError`
+private func isCancellation(_ error: Error) -> Bool {
+  error is CancellationError || (error as? URLError)?.code == .cancelled
 }
 
 extension JellyfinFolderImporting {
@@ -71,15 +79,30 @@ extension JellyfinFolderImporting {
     navigation.dismiss?()
   }
 
+  /// What a Stream acts on: the selection, in the order shown, or the whole level, whose pages not
+  /// yet loaded are loaded first (fork, upstream #1661: it streamed only the pages scrolled into view).
+  /// Both filter on isDownloadable so a selection can never carry something the whole-level branch
+  /// would have skipped
+  func importCandidates(useSelectedItems: Bool) async throws -> [JellyfinLibraryItem] {
+    if useSelectedItems {
+      return items.filter { selectedItems.contains($0.id) && $0.isDownloadable }
+    }
+    try await loadRemainingItems()
+    return items.filter { $0.isDownloadable }
+  }
+
   /// The shared import body — callers hold the isImporting guard.
   func runFolderImport(useSelectedItems: Bool) async {
-    // Both branches filter on isDownloadable so a selection can never carry something
-    // the whole-level branch would have skipped
-    let audiobooks = useSelectedItems
-      ? selectedItems.compactMap({ id in
-        self.items.first(where: { $0.id == id && $0.isDownloadable })
-      })
-      : self.items.filter { $0.isDownloadable }
+    let audiobooks: [JellyfinLibraryItem]
+    do {
+      audiobooks = try await importCandidates(useSelectedItems: useSelectedItems)
+    } catch {
+      // Stopped: the screen closed, or a search or sort replaced the level
+      if !isCancellation(error) {
+        self.error = error
+      }
+      return
+    }
 
     guard !audiobooks.isEmpty else { return }
 
@@ -132,6 +155,19 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
     case done
   }
 
+  /// The arguments of `JellyfinConnectionService.fetchItems(in:startIndex:limit:sortBy:searchTerm:recursive:)`
+  struct PageRequest: Equatable {
+    let folderID: String?
+    let startIndex: Int
+    /// nil asks for everything from `startIndex`
+    let limit: Int?
+    let sortBy: JellyfinLayout.SortBy
+    let searchTerm: String?
+    let recursive: Bool
+  }
+
+  typealias Page = (items: [JellyfinLibraryItem], nextStartIndex: Int, maxCountItems: Int)
+
   var navigation: BPNavigation
   let navigationTitle: String
 
@@ -142,6 +178,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
   var sortBy: JellyfinLayout.SortBy = .smart {
     didSet {
       guard let folderID = folderID else { return }
+      cancelSelectAll()
       fetchTask?.cancel()
       items = []
       nextStartItemIndex = 0
@@ -161,6 +198,8 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
   @Published var selectedItems: Set<JellyfinLibraryItem.ID> = []
   @Published var showingDownloadConfirmation = false
   @Published private(set) var isPreparingDownload = false
+  /// While the items the pages haven't brought load, for select-all or the whole-level Stream (fork)
+  @Published private(set) var isLoadingAllItems = false
 
   /// Resolved BEFORE the confirmation so the dialog can state the real figure: this
   /// folder's download reaches the complete level, which `items` alone can't count.
@@ -177,8 +216,14 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
   let connectionService: JellyfinConnectionService
   var accountService: AccountService
   private let singleFileDownloadService: SingleFileDownloadService
+  /// A page of the folder or of the search, from the service. A seam, so tests can hold a response back
+  var loadPage: @MainActor (PageRequest) async throws -> Page
 
   private var fetchTask: Task<(), any Error>?
+  /// The load of every remaining item, while it runs. It holds the fetch slot too
+  private var remainingItemsTask: Task<(), any Error>?
+  /// Select-all, waiting for that load
+  private var selectAllTask: Task<(), Never>?
   private var nextStartItemIndex = 0
 
   private static let itemBatchSize = 20
@@ -188,6 +233,11 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
 
   var canFetchMoreItems: Bool {
     nextStartItemIndex < totalItems
+  }
+
+  /// A folder or a search with pages still to come (the top level is one request)
+  private var hasUnloadedItems: Bool {
+    (folderID != nil || !searchQuery.isEmpty) && canFetchMoreItems
   }
 
   /// While a confirmation is pending this is the exact number of requests about to run.
@@ -217,6 +267,16 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
     self.accountService = accountService
     self.navigation = navigation
     self.navigationTitle = navigationTitle
+    self.loadPage = { [connectionService] request in
+      try await connectionService.fetchItems(
+        in: request.folderID,
+        startIndex: request.startIndex,
+        limit: request.limit,
+        sortBy: request.sortBy,
+        searchTerm: request.searchTerm,
+        recursive: request.recursive
+      )
+    }
 
     $searchQuery
       .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -245,6 +305,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
   }
 
   func cancelFetchItems() {
+    cancelSelectAll()
     fetchTask?.cancel()
     fetchTask = nil
   }
@@ -276,26 +337,32 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
     }
   }
 
+  /// Like every fetch in the slot, a superseded one stays silent and keeps its hands off the handle: a
+  /// cancelled task can still get its response, and its cleanup would otherwise clear its replacement's
+  /// handle (whoever cancels it clears the slot)
   private func fetchTopLevelItems() {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer {
+        if !Task.isCancelled { self.fetchTask = nil }
+      }
       items = []
 
       do {
         let items = try await connectionService.fetchTopLevelItems()
+        guard !Task.isCancelled else { return }
 
         self.totalItems = items.count
         self.items = items
-      } catch is CancellationError {
-        // ignore
       } catch {
+        guard !Task.isCancelled, !isCancellation(error) else { return }
         self.error = error
       }
     }
   }
 
   private func onSearchQueryChanged() {
+    cancelSelectAll()
     fetchTask?.cancel()
     fetchTask = nil
     editMode = .inactive
@@ -315,27 +382,29 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
 
   private func fetchGlobalSearchItems() {
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer {
+        if !Task.isCancelled { self.fetchTask = nil }
+      }
 
       let capturedQuery = searchQuery
       let previousNextStart = nextStartItemIndex
       do {
-        let (newItems, nextStart, maxNumItems) = try await connectionService.fetchItems(
-          in: nil,
+        let (newItems, nextStart, maxNumItems) = try await loadPage(PageRequest(
+          folderID: nil,
           startIndex: nextStartItemIndex,
           limit: Self.itemBatchSize,
           sortBy: sortBy,
-          searchTerm: capturedQuery
-        )
+          searchTerm: capturedQuery,
+          recursive: false
+        ))
 
         guard searchQuery == capturedQuery, !Task.isCancelled else { return }
         self.nextStartItemIndex = max(self.nextStartItemIndex, nextStart)
         self.items.append(contentsOf: newItems)
         let rawAdded = max(0, nextStart - previousNextStart)
         self.totalItems = updatedTotal(forRawAdded: rawAdded, serverTotal: maxNumItems)
-      } catch is CancellationError {
-        // ignore
       } catch {
+        guard !Task.isCancelled, !isCancellation(error) else { return }
         self.error = error
       }
     }
@@ -343,33 +412,104 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
 
   private func fetchFolderItems(folderID: String) {
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer {
+        if !Task.isCancelled { self.fetchTask = nil }
+      }
 
       let capturedQuery = searchQuery
       let capturedFolderID = folderID
       let previousNextStart = nextStartItemIndex
       do {
         let searchParam: String? = capturedQuery.isEmpty ? nil : capturedQuery
-        let (newItems, nextStart, maxNumItems) = try await connectionService.fetchItems(
-          in: capturedFolderID,
+        let (newItems, nextStart, maxNumItems) = try await loadPage(PageRequest(
+          folderID: capturedFolderID,
           startIndex: nextStartItemIndex,
           limit: Self.itemBatchSize,
           sortBy: sortBy,
           searchTerm: searchParam,
           recursive: recursive
-        )
+        ))
 
         guard searchQuery == capturedQuery, !Task.isCancelled else { return }
         self.nextStartItemIndex = max(self.nextStartItemIndex, nextStart)
         self.items.append(contentsOf: newItems)
         let rawAdded = max(0, nextStart - previousNextStart)
         self.totalItems = updatedTotal(forRawAdded: rawAdded, serverTotal: maxNumItems)
-      } catch is CancellationError {
-        // ignore
       } catch {
+        guard !Task.isCancelled, !isCancellation(error) else { return }
         self.error = error
       }
     }
+  }
+
+  /// Loads every item of the level the pages haven't brought yet, in one request from where they
+  /// stopped (fork, upstream #1661: select-all and the whole-level Stream acted on the loaded pages
+  /// only). It takes the fetch slot, stopping a page in flight, and is stopped as a page is: the
+  /// screen closing, a new search or sort. Cancelling the caller stops it too
+  func loadRemainingItems() async throws {
+    guard hasUnloadedItems else { return }
+
+    cancelRemainingItemsLoad()
+    fetchTask?.cancel()
+    let capturedQuery = searchQuery
+    // A page's request (`fetchFolderItems` / `fetchGlobalSearchItems`) without the limit
+    let request = PageRequest(
+      folderID: folderID,
+      startIndex: nextStartItemIndex,
+      limit: nil,
+      sortBy: sortBy,
+      searchTerm: capturedQuery.isEmpty ? nil : capturedQuery,
+      recursive: folderID == nil ? false : recursive
+    )
+    let task = Task { @MainActor in
+      let page = try await self.loadPage(request)
+      // Stopped, or the search changed: whatever replaced it owns the list
+      guard !Task.isCancelled, self.searchQuery == capturedQuery else {
+        throw CancellationError()
+      }
+      self.nextStartItemIndex = max(self.nextStartItemIndex, page.nextStartIndex)
+      self.items.append(contentsOf: page.items)
+      // Everything is here. Not `updatedTotal`: without the server's count it publishes a page
+      // past the end, which would keep paging on
+      self.totalItems = self.items.count
+    }
+    fetchTask = task
+    remainingItemsTask = task
+    isLoadingAllItems = true
+    UIAccessibility.post(notification: .announcement, argument: "integration_loading_all_items".localized)
+    defer {
+      if remainingItemsTask == task {
+        remainingItemsTask = nil
+        isLoadingAllItems = false
+      }
+      if fetchTask == task {
+        fetchTask = nil
+      }
+    }
+
+    try await withTaskCancellationHandler {
+      try await task.value
+    } onCancel: {
+      task.cancel()
+    }
+  }
+
+  /// Stops the load of every remaining item, if one runs
+  private func cancelRemainingItemsLoad() {
+    guard let task = remainingItemsTask else { return }
+    task.cancel()
+    remainingItemsTask = nil
+    isLoadingAllItems = false
+    if fetchTask == task {
+      fetchTask = nil
+    }
+  }
+
+  /// Stops select-all and the load it waits for (or a whole-level Stream's)
+  private func cancelSelectAll() {
+    selectAllTask?.cancel()
+    selectAllTask = nil
+    cancelRemainingItemsLoad()
   }
 
   /// Resolves the value to publish for `totalItems` after a paginated fetch.
@@ -403,6 +543,7 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
     }
 
     if !editMode.isEditing {
+      cancelSelectAll()
       selectedItems.removeAll()
     }
   }
@@ -418,25 +559,51 @@ final class JellyfinLibraryViewModel: IntegrationLibraryViewModelProtocol, Jelly
     }
   }
 
+  /// Selects every item of the level, loading the pages not loaded yet first (fork, upstream #1661: it
+  /// selected the loaded pages only). A tap while that load runs stops it; with a selection, a tap
+  /// clears it
   @MainActor
   func onSelectAllTapped() {
-    if selectedItems.isEmpty {
-      let ids: [JellyfinLibraryItem.ID] = items.compactMap { item in
-        guard item.isDownloadable else { return nil }
-        return item.id
-      }
-
-      selectedItems = Set(ids)
-    } else {
-      selectedItems.removeAll()
+    if isLoadingAllItems {
+      cancelSelectAll()
+      return
     }
+    guard selectedItems.isEmpty else {
+      selectedItems.removeAll()
+      return
+    }
+    guard hasUnloadedItems else {
+      selectLoadedItems()
+      return
+    }
+
+    selectAllTask = Task { @MainActor in
+      do {
+        try await loadRemainingItems()
+      } catch {
+        if !isCancellation(error) {
+          self.error = error
+        }
+        return
+      }
+      guard !Task.isCancelled else { return }
+
+      selectLoadedItems()
+      // The title shows the count, but VoiceOver doesn't read a title that changes
+      UIAccessibility.post(
+        notification: .announcement,
+        argument: String(format: "integration_selection_count".localized, selectedItems.count, totalItems)
+      )
+    }
+  }
+
+  private func selectLoadedItems() {
+    selectedItems = Set(items.filter { $0.isDownloadable }.map(\.id))
   }
 
   @MainActor
   func onDownloadTapped() {
-    let items = selectedItems.compactMap({ id in
-      self.items.first(where: { $0.id == id && $0.isDownloadable })
-    })
+    let items = self.items.filter { selectedItems.contains($0.id) && $0.isDownloadable }
 
     var requests = [URLRequest]()
     for item in items {
@@ -676,9 +843,7 @@ final class JellyfinPersonBooksViewModel: IntegrationLibraryViewModelProtocol, J
 
   @MainActor
   func onDownloadTapped() {
-    let downloadItems = selectedItems.compactMap { id in
-      items.first(where: { $0.id == id && $0.isDownloadable })
-    }
+    let downloadItems = items.filter { selectedItems.contains($0.id) && $0.isDownloadable }
     guard !downloadItems.isEmpty else { return }
     var requests = [URLRequest]()
     for item in downloadItems {
@@ -704,6 +869,9 @@ final class JellyfinPersonBooksViewModel: IntegrationLibraryViewModelProtocol, J
     defer { isImporting = false }
     await runFolderImport(useSelectedItems: useSelectedItems)
   }
+
+  /// Nothing to load: `fetchInitialItems` asks for `limit: nil`, so `items` is the whole level
+  func loadRemainingItems() async throws {}
 
   @MainActor
   func onDownloadFolderTapped() {

@@ -675,3 +675,6 @@
 "share_import_failure_stopped_by_force_quit" = "A(z) „%@” letöltése leállt, amikor a BookPlayert bezárták az appváltóban. Ossza meg újra a hivatkozást.";
 "share_import_failure_unsupported_extension" = "A(z) „%@” nem tűnik hangoskönyvfájlnak: a nevében nincs hangfájl-kiterjesztés. Próbálja a közvetlen letöltési hivatkozást.";
 "share_import_failure_unsupported_type" = "A(z) „%1$@” nem hangoskönyvfájl: a szerver ezt küldte: %2$@. Próbálja a közvetlen letöltési hivatkozást.";
+
+/* Fork: select-all loads the whole level */
+"integration_loading_all_items" = "Az összes elem betöltése…";

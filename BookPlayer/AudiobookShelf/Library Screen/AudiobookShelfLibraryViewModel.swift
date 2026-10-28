@@ -22,6 +22,17 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   let onImportConfirmed: ([SimpleExternalResource]) -> Void
   var accountService: AccountService
   
+  /// The arguments of `AudiobookShelfConnectionService.fetchItems(in:limit:page:sortBy:desc:filter:)`
+  /// for the Books tab, which has no filter
+  struct BooksPageRequest: Equatable {
+    let libraryID: String
+    /// 0 asks for every book
+    let limit: Int
+    let page: Int
+    let sortBy: String
+    let desc: Bool?
+  }
+
   enum Routes {
     case done
   }
@@ -50,6 +61,9 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   @Published var editMode: EditMode = .inactive
   @Published var selectedItems: Set<AudiobookShelfLibraryItem.ID> = []
   @Published var showingDownloadConfirmation = false
+  /// While the books the pages haven't brought load, for select-all or a whole-level Stream or
+  /// Download (fork)
+  @Published private(set) var isLoadingAllItems = false
   
   var onTransition: BPTransition<Routes>?
 
@@ -58,8 +72,16 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   /// The whole library's books, for the Folders tab to group by path (ABS has no folder endpoint).
   /// A seam so tests can hold a response back; the default is the service's limit-0 fetch
   var loadFolderItems: @MainActor (String) async throws -> [AudiobookShelfLibraryItem]
+  /// A request for the Books tab's books, from the service. A seam, so tests can hold a response back
+  var loadBooksPage: @MainActor (BooksPageRequest) async throws -> (items: [AudiobookShelfLibraryItem], total: Int)
+  /// The Books tab's search (library id, query), from the service. A seam, so tests can hold a response back
+  var loadSearchResults: @MainActor (String, String) async throws -> [AudiobookShelfLibraryItem]
 
   private var fetchTask: Task<(), any Error>?
+  /// The load of every remaining book, while it runs. It holds the fetch slot too
+  private var remainingItemsTask: Task<(), any Error>?
+  /// Select-all, waiting for that load
+  private var selectAllTask: Task<(), Never>?
   private var nextPage = 0
   private var allItems: [AudiobookShelfLibraryItem] = []
 
@@ -128,6 +150,8 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     usesPagedFetching && items.count < totalItems
   }
 
+  /// `searchDebounce` is how long the search field settles before the list is fetched again; tests pass a
+  /// long one, so a query they set never refetches behind their back
   init(
     source: AudiobookShelfLibraryViewSource,
     connectionService: AudiobookShelfConnectionService,
@@ -135,7 +159,8 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     accountService: AccountService,
     onImportConfirmed: @escaping ([SimpleExternalResource]) -> Void,
     navigation: BPNavigation,
-    navigationTitle: String
+    navigationTitle: String,
+    searchDebounce: RunLoop.SchedulerTimeType.Stride = .milliseconds(350)
   ) {
     self.source = source
     self.connectionService = connectionService
@@ -154,9 +179,26 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
         filter: nil
       ).items
     }
+    self.loadBooksPage = { [connectionService] request in
+      try await connectionService.fetchItems(
+        in: request.libraryID,
+        limit: request.limit,
+        page: request.page,
+        sortBy: request.sortBy,
+        desc: request.desc,
+        filter: nil
+      )
+    }
+    self.loadSearchResults = { [connectionService] libraryID, query in
+      try await connectionService.searchItems(
+        in: libraryID,
+        query: query,
+        limit: Self.searchResultLimit
+      )
+    }
 
     $searchQuery
-      .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
+      .debounce(for: searchDebounce, scheduler: RunLoop.main)
       .removeDuplicates()
       .dropFirst()
       .sink { [weak self] _ in
@@ -184,6 +226,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   }
 
   func cancelFetchItems() {
+    cancelSelectAll()
     fetchTask?.cancel()
     fetchTask = nil
   }
@@ -221,6 +264,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
 
     if !editMode.isEditing {
+      cancelSelectAll()
       selectedItems.removeAll()
     }
   }
@@ -236,18 +280,48 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
   }
 
+  /// Selects every item of the level, loading the Books tab's pages not loaded yet first (fork, upstream
+  /// #1661: it selected the loaded pages only). A tap while that load runs stops it; with a selection, a
+  /// tap clears it
   @MainActor
   func onSelectAllTapped() {
     guard allowsEditing else { return }
 
-    if selectedItems.isEmpty {
-      let ids = items.compactMap { item in
-        item.isDownloadable ? item.id : nil
-      }
-      selectedItems = Set(ids)
-    } else {
-      selectedItems.removeAll()
+    if isLoadingAllItems {
+      cancelSelectAll()
+      return
     }
+    guard selectedItems.isEmpty else {
+      selectedItems.removeAll()
+      return
+    }
+    guard canFetchMoreItems else {
+      selectLoadedItems()
+      return
+    }
+
+    selectAllTask = Task { @MainActor in
+      do {
+        try await loadRemainingItems()
+      } catch {
+        if !Self.isCancellation(error) {
+          self.error = error
+        }
+        return
+      }
+      guard !Task.isCancelled else { return }
+
+      selectLoadedItems()
+      // The title shows the count, but VoiceOver doesn't read a title that changes
+      UIAccessibility.post(
+        notification: .announcement,
+        argument: String(format: "integration_selection_count".localized, selectedItems.count, totalItems)
+      )
+    }
+  }
+
+  private func selectLoadedItems() {
+    selectedItems = Set(items.filter { $0.isDownloadable }.map(\.id))
   }
   
   /// Stream never downloads: without the entitlement it sells the entitlement.
@@ -260,21 +334,37 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     Task { await virtualImportFolderAudiobooks(useSelectedItems: useSelectedItems) }
   }
   
+  /// What a Stream acts on: the selection, in the order shown, or the whole level, whose pages not
+  /// loaded yet are loaded first (fork, upstream #1661: it streamed only the pages scrolled into view).
+  /// Both filter on isDownloadable so a selection can never carry something the whole-level branch
+  /// would have skipped
+  func importCandidates(useSelectedItems: Bool) async throws -> [AudiobookShelfLibraryItem] {
+    if useSelectedItems {
+      return items.filter { selectedItems.contains($0.id) && $0.isDownloadable }
+    }
+    try await loadRemainingItems()
+    return items.filter { $0.isDownloadable }
+  }
+
   @MainActor
   func virtualImportFolderAudiobooks(useSelectedItems: Bool) async {
-    // Reentrancy guard: a double-tap mid-hydration must not run two imports
+    // Reentrancy guard: a double-tap mid-hydration (or mid-load) must not run two imports
     guard !isImporting else { return }
-    // Both branches filter on isDownloadable so a selection can never carry something
-    // the whole-level branch would have skipped
-    let audiobooks = useSelectedItems
-      ? selectedItems.compactMap({ id in
-        self.items.first(where: { $0.id == id && $0.isDownloadable })
-      })
-      : self.items.filter { $0.isDownloadable }
-    
-    guard !audiobooks.isEmpty else { return }
     isImporting = true
     defer { isImporting = false }
+
+    let audiobooks: [AudiobookShelfLibraryItem]
+    do {
+      audiobooks = try await importCandidates(useSelectedItems: useSelectedItems)
+    } catch {
+      // Stopped: the screen closed, or a search or sort replaced the level
+      if !Self.isCancellation(error) {
+        self.error = error
+      }
+      return
+    }
+
+    guard !audiobooks.isEmpty else { return }
 
     do {
       let resources = try await VirtualImportPipeline.run(
@@ -319,9 +409,27 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
   }
   
+  /// The dialog says how many books will download, so the Books tab's pages not loaded yet are loaded
+  /// first, as the Jellyfin folder resolves its requests first (fork, upstream #1661: it counted and
+  /// downloaded the loaded pages only)
   @MainActor
   func onDownloadFolderTapped() {
-    showingDownloadConfirmation = true
+    guard canFetchMoreItems else {
+      showingDownloadConfirmation = true
+      return
+    }
+
+    Task { @MainActor in
+      do {
+        try await loadRemainingItems()
+      } catch {
+        if !Self.isCancellation(error) {
+          self.error = error
+        }
+        return
+      }
+      self.showingDownloadConfirmation = true
+    }
   }
   
   @MainActor
@@ -346,9 +454,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
 
   @MainActor
   func onDownloadTapped() {
-    let items = selectedItems.compactMap { id in
-      self.items.first(where: { $0.id == id && $0.isDownloadable })
-    }
+    let items = self.items.filter { selectedItems.contains($0.id) && $0.isDownloadable }
 
     var requests = [URLRequest]()
     for item in items {
@@ -553,32 +659,104 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
   }
 
+  /// Like the folder fetch, a superseded page (by select-all's load, a search or a sort) stays silent and
+  /// keeps its hands off the handle: whoever cancels it clears the slot
   private func fetchBooksPage() {
     guard case .books(let libraryID, let filter) = source else { return }
     guard filter == nil, fetchTask == nil, canFetchMoreItems else { return }
 
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer {
+        if !Task.isCancelled { self.fetchTask = nil }
+      }
 
       do {
-        let (items, totalItems) = try await connectionService.fetchItems(
-          in: libraryID,
+        let (items, totalItems) = try await loadBooksPage(BooksPageRequest(
+          libraryID: libraryID,
           limit: Self.itemBatchSize,
           page: nextPage,
           sortBy: sortParameter,
-          desc: sortDescending,
-          filter: nil
-        )
+          desc: sortDescending
+        ))
+        guard !Task.isCancelled else { return }
 
         self.nextPage += 1
         self.totalItems = totalItems
         self.items.append(contentsOf: items)
-      } catch is CancellationError {
-        // ignore
       } catch {
+        guard !Task.isCancelled, !Self.isCancellation(error) else { return }
         self.error = error
       }
     }
+  }
+
+  /// Loads every book of the Books tab the pages haven't brought, in one request in the tab's sort
+  /// (fork, upstream #1661: select-all and the whole-level Stream and Download acted on the loaded
+  /// pages only). The other levels arrive whole. It takes the fetch slot, stopping a page in flight,
+  /// and is stopped as a page is: the screen closing, a new search or sort. Cancelling the caller stops
+  /// it too
+  func loadRemainingItems() async throws {
+    guard case .books(let libraryID, .none) = source, canFetchMoreItems else { return }
+
+    cancelRemainingItemsLoad()
+    fetchTask?.cancel()
+    let capturedQuery = searchQuery
+    // Everything (limit 0, as the Folders tab and the filtered levels ask), in the pages' sort
+    let request = BooksPageRequest(
+      libraryID: libraryID,
+      limit: 0,
+      page: 0,
+      sortBy: sortParameter,
+      desc: sortDescending
+    )
+    let task = Task { @MainActor in
+      let books = try await self.loadBooksPage(request).items
+      // Stopped, or a search started: whatever replaced it owns the list
+      guard !Task.isCancelled, self.searchQuery == capturedQuery else {
+        throw CancellationError()
+      }
+      // The whole tab replaces the pages. Its own count is the total, not the server's: rows the app
+      // can't read are dropped, and paging would go on looking for them
+      self.items = books
+      self.totalItems = books.count
+    }
+    fetchTask = task
+    remainingItemsTask = task
+    isLoadingAllItems = true
+    UIAccessibility.post(notification: .announcement, argument: "integration_loading_all_items".localized)
+    defer {
+      if remainingItemsTask == task {
+        remainingItemsTask = nil
+        isLoadingAllItems = false
+      }
+      if fetchTask == task {
+        fetchTask = nil
+      }
+    }
+
+    try await withTaskCancellationHandler {
+      try await task.value
+    } onCancel: {
+      task.cancel()
+    }
+  }
+
+  /// Stops the load of every remaining book, if one runs
+  private func cancelRemainingItemsLoad() {
+    guard let task = remainingItemsTask else { return }
+    task.cancel()
+    remainingItemsTask = nil
+    isLoadingAllItems = false
+    if fetchTask == task {
+      fetchTask = nil
+    }
+  }
+
+  /// Stops select-all and the load it waits for (or a whole-level Stream's or Download's)
+  private func cancelSelectAll() {
+    selectAllTask?.cancel()
+    selectAllTask = nil
+    cancelRemainingItemsLoad()
   }
 
   private func fetchAllFilteredBooks(libraryID: String, filter: AudiobookShelfItemFilter?) {
@@ -615,23 +793,24 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
     }
   }
 
+  /// Like the pages, a superseded search (the query cleared or changed, select-all's load after it) stays
+  /// silent and keeps its hands off the handle: its late answer would otherwise put its results back over
+  /// whatever replaced them
   private func searchLibraryItems(libraryID: String, query: String) {
     fetchTask?.cancel()
     fetchTask = Task { @MainActor in
-      defer { self.fetchTask = nil }
+      defer {
+        if !Task.isCancelled { self.fetchTask = nil }
+      }
 
       do {
-        let items = try await connectionService.searchItems(
-          in: libraryID,
-          query: query,
-          limit: Self.searchResultLimit
-        )
+        let items = try await loadSearchResults(libraryID, query)
+        guard !Task.isCancelled, self.searchQuery == query else { return }
 
         self.totalItems = items.count
         self.items = sortItems(items)
-      } catch is CancellationError {
-        // ignore
       } catch {
+        guard !Task.isCancelled, !Self.isCancellation(error) else { return }
         self.error = error
       }
     }
@@ -851,6 +1030,7 @@ final class AudiobookShelfLibraryViewModel: IntegrationLibraryViewModelProtocol,
   }
 
   private func resetForFreshFetch() {
+    cancelSelectAll()
     fetchTask?.cancel()
     fetchTask = nil
     resetSelectionState()
