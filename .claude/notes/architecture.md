@@ -523,6 +523,41 @@ writes back what the other is writing. July's single-file
 launch; its `ShareCancelStore` is gone (nothing could ever write it:
 Done blocks the extension's window before Cancel could follow it).
 
+## Player clock: the seek in flight and the paused position (6.0 base, slice 6)
+
+Upstream 6.0's `PlayerManager` judges every player reading against the
+last position it trusts (`PlayerTimeSample`, from upstream's CarPlay fix
+#1605) and seeks back when the player jumps to a file's start on its own.
+The fork moved that state out of `PlayerManager` into `PlayerClock`
+(`BookPlayer/Player/PlayerClock.swift`, a value type with tests) and added
+one state, a seek of ours in flight:
+
+- A user seek (`jumpTo`, the resume seek in `initializeChapterTime`, smart
+  rewind) goes through `seekPlayer(to:)`: readings are held back until the
+  seek lands (a reading within 1.5 s of the target, or the seek's own
+  completion), so a tick that still reads the old position can't become
+  the baseline. Without it, restarting a chapter from more than 30 s in
+  could be undone (upstream #1641/#1664: the landed 0.1 judged against the
+  stale old position read as a snap to the start). Not reproduced on a
+  simulator; the code allowed it.
+- Bounded: a seek whose completion doesn't come stops holding readings
+  back after 3 s, and they're judged against its target as before, so the
+  original race can come back after that. A pause inside that window
+  takes no snapshot (the seek's own landed save covers it).
+- Where a seek lands is saved (book time for bound books). Completions are
+  matched by a per-seek id, so a late one can't settle a newer seek, even
+  to the same time.
+- On pause, before `.bookPaused` is posted, the player's own reading is
+  saved when it's on the current chapter's file (and attached to the
+  player), nothing of ours is in flight, and the clock takes the reading,
+  so listeners (the Hummingbird reporter) don't get the last 1 Hz tick.
+
+Not re-ported from July: the FLAC fast start (loading flac/ogg/opus/wav
+without precise timing, the #1504 fix) and the seek-tolerance stack built
+to repair what it caused (zero then bounded tolerances, the autoplay gate).
+6.0 loads local and cloud files with precise timing and seeks with default
+tolerance, so long FLAC books start slowly again, as in upstream.
+
 ## Session-expired vs sign-in 401
 
 Sign-in 401 = wrong credentials (different UX path). A mid-session

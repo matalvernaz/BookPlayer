@@ -256,6 +256,9 @@ Captured in the per-agent reports. Bulk are:
 
 # 2026-06-19 follow-on: unindexed-FLAC seek audit
 
+Historical (July code on test/all-changes). Not re-ported on the 6.0 base:
+see architecture.md "Player clock" for what replaced it.
+
 Focused re-audit of the unindexed-FLAC seek/position path in
 `BookPlayer/Player/PlayerManager.swift` (the `unindexedFormats` / `seekTolerance`
 / `beginInitialSeek` / `snapshotPlayerPosition` machinery). Verdict: the
@@ -502,8 +505,8 @@ reset). Still open.
   it; worth fixing upstream (carry the item, or post once).
 - **No flush on stop**: `stopPlayback()` posts nothing, so a Hummingbird
   book loses up to one 15 s tick when playback is stopped rather than
-  paused; `.bookPaused` fires before the pause, so its report can be about a
-  second stale until slice 6 reorders it.
+  paused. (Slice 6 snapshots the paused position before `.bookPaused`, so
+  the pause report is no longer a tick behind.)
 - **An API refusal with a message but no numeric code** reads "The server
   responded with 0: …" (`serverMessage(code: 0, …)`). Every refusal seen
   from SoundBooth carries a code; a SoundBooth-specific error type would be
@@ -524,3 +527,9 @@ reset). Still open.
   downloads to the app. Device tests owed: a link shared with BookPlayer
   force-quit (imports at next open, or reports "stopped"), one with
   BookPlayer in the background, and a bad link (the alert shows).
+- **Player, slice 6, still open:** long FLAC/Ogg/Opus/WAV books start
+  slowly (July's fast start is the #1504 fix, out of the catch-up; it would
+  come back together with a tolerance policy). The seek guard is bounded
+  (3 s), so a seek slower than that can still be undone by the old race.
+  Device test owed: in a book made of one file per chapter, play a chapter
+  past 30 s, press previous chapter, and check it restarts.

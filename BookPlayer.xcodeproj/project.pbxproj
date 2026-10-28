@@ -56,6 +56,7 @@
 		3F7B64422E0FB27000299D97 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B64412E0FB27000299D97 /* AnyCodable.swift */; };
 		3F7B64452E0FB29600299D97 /* BooksData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7B64442E0FB29600299D97 /* BooksData.swift */; };
 		44C9FE1AAB4C0D86D85F0FF4 /* SoundBoothModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93DF05C1771834A50B049AD3 /* SoundBoothModels.swift */; };
+		45F329B401B5E32B06BC0C4D /* PlayerClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187B149F31FFAC619F7E0119 /* PlayerClock.swift */; };
 		46C1525A617E0F3A31065118 /* HummingbirdLoanExpiryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8A766FF87829A87FD21FC6 /* HummingbirdLoanExpiryScanner.swift */; };
 		4AF38A2010EED4735B01B0D5 /* HummingbirdLibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C9B27BF16908653D9CA32D /* HummingbirdLibraryItem.swift */; };
 		50514AE4F9B53CDBF4DB190D /* MediaServerDownloadFolders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0C3CC76921FFB2CAD2208D /* MediaServerDownloadFolders.swift */; };
@@ -191,6 +192,7 @@
 		D217B6CFDF185F7BB9FC3FD0 /* HummingbirdProgressReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 556D276EFF4F45C0A99C5938 /* HummingbirdProgressReporter.swift */; };
 		D299275B670C269299C1EFCF /* MediaServerSourceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8577F85955A2024B40F10D19 /* MediaServerSourceStoreTests.swift */; };
 		D9492FC96347F9871B8C3D03 /* SoundBoothConnectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */; };
+		DA42F6526F881D9DA9ACAEA9 /* PlayerClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29D04A89E4D125337BD52B8 /* PlayerClockTests.swift */; };
 		DD28F2D51B255279FD8CBFB2 /* SoundBoothAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB413CC0B7108E78B8736AB5 /* SoundBoothAPIClientTests.swift */; };
 		DEF28DF16A55FEF13AF25A13 /* ShareLinkSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDF92CFE145EFF5C0ADAF99 /* ShareLinkSheetView.swift */; };
 		E06511F120887CC705C2192F /* SoundBoothLibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC3BE09C0C2B0BDB7EAEE32 /* SoundBoothLibraryItem.swift */; };
@@ -1255,6 +1257,7 @@
 		10425312567FCC673D6F22C9 /* SoundBoothLibraryListItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothLibraryListItemView.swift; sourceTree = "<group>"; };
 		12EDB8401F38342155CBBC91 /* mp3_NO_chapters.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = mp3_NO_chapters.mp3; sourceTree = "<group>"; };
 		13C407B5BD19D3CF9CC64EC7 /* IntegrationLibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationLibraryView.swift; sourceTree = "<group>"; };
+		187B149F31FFAC619F7E0119 /* PlayerClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClock.swift; sourceTree = "<group>"; };
 		193C3709EE828ED71AFC2B37 /* SoundBoothDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothDownloadTests.swift; sourceTree = "<group>"; };
 		1BA32C89144C68DD64FD0B62 /* mp3_NO_toc_v23.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = mp3_NO_toc_v23.mp3; sourceTree = "<group>"; };
 		1C6581B92E4D292C2AFC361A /* SyncResponseFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncResponseFixtures.swift; sourceTree = "<group>"; };
@@ -1415,6 +1418,7 @@
 		D5B3A2F00EC630B8B39600DE /* ShareDownloadsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDownloadsTests.swift; sourceTree = "<group>"; };
 		D8CC97D03043FDEB26FD9595 /* HummingbirdRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdRootView.swift; sourceTree = "<group>"; };
 		D8EA414E2EC0911BCBDD1875 /* SoundBoothConnectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionService.swift; sourceTree = "<group>"; };
+		E29D04A89E4D125337BD52B8 /* PlayerClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClockTests.swift; sourceTree = "<group>"; };
 		E5D2935519D4462878032F8B /* SoundBoothHTTPClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothHTTPClientTests.swift; sourceTree = "<group>"; };
 		E6C9B27BF16908653D9CA32D /* HummingbirdLibraryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HummingbirdLibraryItem.swift; sourceTree = "<group>"; };
 		E73768D19B8E7B23F7DFF31E /* SoundBoothConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoothConnectionView.swift; sourceTree = "<group>"; };
@@ -2743,6 +2747,7 @@
 				730EC9788E81A550CC46D98C /* ViewModels */,
 				349F568001B5C23CF1DD5AF6 /* Resources */,
 				4E36925172192BAD41132019 /* MediaServerIntegration */,
+				E29D04A89E4D125337BD52B8 /* PlayerClockTests.swift */,
 			);
 			path = BookPlayerTests;
 			sourceTree = "<group>";
@@ -4353,6 +4358,7 @@
 				9F5011F82A6580800075FEBA /* ShakeMotionService.swift */,
 				C3EC372D206EE0650094B4E8 /* SleepTimer.swift */,
 				4151A6A526E3A40600E49DBE /* SpeedService.swift */,
+				187B149F31FFAC619F7E0119 /* PlayerClock.swift */,
 			);
 			path = Player;
 			sourceTree = "<group>";
@@ -5663,6 +5669,7 @@
 				8DAE7DB6A37B17FE2C66B008 /* HummingbirdBookmarkPuller.swift in Sources */,
 				269C81CDA747FB96C179E1A9 /* ShareDownloadSessions.swift in Sources */,
 				B61AE067D99199713614F152 /* ShareImportFailure+Message.swift in Sources */,
+				45F329B401B5E32B06BC0C4D /* PlayerClock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5760,6 +5767,7 @@
 				B1D8961C3A5A0DB7162A6E97 /* HummingbirdProgressTests.swift in Sources */,
 				54DBAAD85945E5AA03FD939E /* ShareDownloadsTests.swift in Sources */,
 				7AF3C5CE69E6645A9EDD5F9F /* ShareDownloadReceiverTests.swift in Sources */,
+				DA42F6526F881D9DA9ACAEA9 /* PlayerClockTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

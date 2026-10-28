@@ -890,9 +890,11 @@ it from the diff against upstream.
   Connect) and #1567 (Audiobookshelf SSO). Open: #1516 (share-sheet URL
   import). Still fork-only: Hummingbird/NNELS, SoundBooth, the Audiobookshelf
   share-link flow and Folders tab, the share-sheet URL import, the library
-  export fix, the media-server progress sync store, the FLAC/bound-book seek
-  stack, and the TestFlight and Pro-gating bypasses — those last ones must
-  never appear in an upstream PR.
+  export fix, the media-server progress sync store, the player's seek guard
+  and paused-position snapshot (`PlayerClock`; July's FLAC fast start and
+  seek-tolerance stack were not re-ported, see `.claude/notes/architecture.md`),
+  and the TestFlight and Pro-gating bypasses — those last ones must never
+  appear in an upstream PR.
 - **Secrets layout:** signing certs, ASC API key, and account identifiers
   live on the Mac at `~/.appstoreconnect/private_keys/` and
   `~/.config/bookplayer-deploy/`. Nothing sensitive crosses GitHub Secrets
