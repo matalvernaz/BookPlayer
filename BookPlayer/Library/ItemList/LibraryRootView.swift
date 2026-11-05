@@ -258,14 +258,11 @@ struct LibraryRootView: View {
   }
 
   func handleOperationCompletion(_ importSource: ImportSource, suggestedFolderName: String?) {
-    let filesCount: Int
-    switch importSource {
-    case .local(let files):
-      filesCount = files.count
-    case .external(let externals):
-      filesCount = externals.count
+    let (filesCount, isStream): (Int, Bool) = switch importSource {
+    case .local(let files): (files.count, false)
+    case .external(let externals): (externals.count, true)
     }
-    
+
     guard filesCount > 0 else {
       return
     }
@@ -273,10 +270,6 @@ struct LibraryRootView: View {
     /// Where the import lands: the location browsed now, not after the network calls below
     let importNode = path.last ?? .root
 
-    let isStream: Bool = {
-      if case .external = importSource { return true }
-      return false
-    }()
     let streamTitle = String.localizedStringWithFormat("import_processing_description".localized, filesCount)
     if isStream {
       // A file import shows its copying; a stream import has none, so its insert and Hardcover's

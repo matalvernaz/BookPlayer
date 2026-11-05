@@ -40,6 +40,8 @@ public enum KeychainKeys: String {
   case soundboothConnection = "soundbooth_connection"
   /// Stores Hardcover API access token
   case hardcoverToken = "hardcover_token"
+  /// Stores the Hardcover OAuth sign-in's tokens (HardcoverTokenSet)
+  case hardcoverSession = "hardcover_session"
 }
 
 public final class KeychainService: KeychainServiceProtocol, Sendable {

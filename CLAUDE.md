@@ -122,6 +122,18 @@ a build phase) and its output is committed.
   The upgrade scenario drives the *previous* release with labels only, since older builds lack the identifiers,
   and runs it on the frameworks it embeds: its copy of the `.xctestrun` drops the candidate's `DYLD_*` paths, or a
   symbol the candidate removed from `BookPlayerKit` would stop the old app at launch.
+- **Sentry releases** (`ci_scripts/ci_post_xcodebuild.sh`): Xcode Cloud uploads every archive's dSYMs. For an
+  archive of a `release-*` branch, `ci_scripts/sentry_release_commits.py` also creates the Sentry release
+  (`<bundle id>@<version>+<build>`, read from the archived app, as the SDK names it) and sends it every commit
+  after the previous version tag as one list. Xcode Cloud's clone has no tags or history, so the tag comes from
+  `git ls-remote` and the script first fetches the history it reads, from the same public URL (no build
+  credentials): commits and trees, no file contents (about 2 s and 14 MB on the build machine). Not GitHub's API: without a token it allows 60 requests an
+  hour per IP, which Xcode Cloud's machines share. Don't hand Sentry a ref range
+  instead (`sentry-cli releases set-commits --auto`, `--commit A..B`): it keeps only the newest 100 commits (6.0.0
+  had 103). With the commits attached, a `Fixes BOOKPLAYER-<id>` line (see Conventions) resolves the issue in that
+  release. A failure here only prints a warning: this metadata never blocks a release. The script is the same file
+  as the Android repo's `scripts/sentry-commits/` (change both); `--dry-run` reads everything and sends nothing, and
+  CI runs its tests (`python3 -I -B -m unittest discover -s ci_scripts`).
 - **Lint/format is enforced by tools — do NOT flag style they own.** `.swiftlint.yml` **disables**: `line_length`,
   `identifier_name`, `type_name`, `type_body_length`, `file_length`, `nesting`, `force_try`, `trailing_comma`,
   `trailing_newline`, `trailing_whitespace`, `switch_case_alignment`, `private_over_fileprivate`, `opening_brace`,
@@ -563,7 +575,8 @@ lines). It is the highest-risk file in the app.
 
 - `BuildConfiguration/*.xcconfig` define `BP_*` keys; `Info.plist` substitutes them (`$(BP_…)`);
   `Shared/Configuration.swift` (`ConfigurationKeys`) reads them. **`Bundle.configurationValue(for:)` uses `try!`
-  — a missing key crashes at launch.** Keys: API scheme/domain/port, bundle id, RevenueCat key, Sentry DSN.
+  — a missing key crashes at launch.** Keys: API scheme/domain/port, bundle id, RevenueCat key, Sentry DSN, Hardcover client id
+  (`BP_HARDCOVER_CLIENT_ID`, the one key read without `try!`: always set, as signing in is the only way to connect Hardcover; a local xcconfig without it still launches, but signing in fails).
 - **`Debug.xcconfig` and `Release.xcconfig` are gitignored and hold the working-tree real values —
   never commit or overwrite them.** Nuance a reviewer should know: `Debug.xcconfig` is untracked and holds real
   prod secrets; `Release.xcconfig` is *also* gitignored **but is already tracked** with placeholder values
@@ -576,7 +589,7 @@ lines). It is the highest-risk file in the app.
 
 - `kSecClassGenericPassword`, service = the bundle identifier, accessibility
   **`kSecAttrAccessibleAfterFirstUnlock`** (so background sync/downloads work while locked). Stores JWT `.token`,
-  `.jellyfinConnection`, `.audiobookshelfConnection`, `.hardcoverToken`.
+  `.jellyfinConnection`, `.audiobookshelfConnection`, `.hardcoverToken`, `.hardcoverSession`.
 - **Correction to older docs: the Keychain is NOT scoped via an App Group / `kSecAttrAccessGroup`** — there is no
   access group set; sharing relies on the default app access group. (The App Group
   `group.$(BP_BUNDLE_IDENTIFIER).files` is used for `UserDefaults.sharedDefaults` and file storage, **not** the
@@ -662,10 +675,23 @@ data, and share the error type `MediaServerIntegration/IntegrationError.swift` (
 - **Hardcover** (`Hardcover/`, `@Observable HardcoverService`, GraphQL): two-way **reading-progress** sync, not a
   media server. Status `HardcoverBook.Status { local=0, library=1, reading=2, read=3 }`; **only 1/2/3 are ever
   POSTed** (`.local` is a local-only marker). Monotonic guards prevent backwards writes; auto-match on import has
-  explicit duplicate detection; API failures are log-and-swallowed so a Hardcover outage never blocks local
-  playback. Token is Keychain `.hardcoverToken`; no token → subscriptions torn down. It holds the bare API key
-  (`hc_pat_…`): `HardcoverService.apiKey(from:)` drops a pasted `Bearer ` (older tokens were copied with it, and
-  ones saved that way read without it), and requests send `Authorization: Bearer <key>`, which the API requires.
+  explicit duplicate detection. Progress goes on the book's read in progress (`update_user_book_read`), only while it's Currently Reading there, since that status starts the read: the percentage carried onto the read's own edition, seconds or pages by its `reading_format_id`, only forward, and kept short of the end, which would finish the read (finishing stays the Read status). A read whose edition has no length gets no progress (logged): no other edition is picked for it, since the edition on a user's read is theirs (decided). BookPlayer only chooses an edition when it adds the book to the user's library: its audiobook edition — `insert_user_book` with `edition_id`, found first by `libraryEntryQuery`: the default audiobook edition with a duration, else the most read one — since the read Hardcover starts takes the entry's edition; a book the user already has keeps theirs, and without an audiobook edition Hardcover gives the entry its default print edition. Sent whenever the book's whole-number percentage changes (`HardcoverProgressChanges`), off the 10 s progress feed: about 20 requests an hour on a 10-hour book, against Hardcover's per-user 5,000 a day / 60 a minute, shared with the user's other apps and keys (decided over a fixed cadence: a 10 s one would be ~720 an hour). API failures are log-and-swallowed so a Hardcover outage never blocks local
+  playback. **One account at a time** (decided), connected one of two ways; neither connected → subscriptions torn
+  down. Settings shows only Sign In until the user signs in (OAuth), then its toggles, which apply as they change
+  (`@AppStorage`, no Save). An API key in Keychain `.hardcoverToken`, the bare key (`hc_pat_…`), can no longer be
+  entered: one saved by an earlier version keeps syncing, but Settings shows Sign In for it, and signing in
+  replaces it. `HardcoverService.apiKey(from:)`
+  drops a pasted `Bearer ` (older tokens were copied with it, and ones saved that way read without it), and
+  requests send `Authorization: Bearer <key>`, which the API requires. Or an OAuth sign-in (`HardcoverOAuth`):
+  authorization code + PKCE through `ASWebAuthenticationSession` in a private (`.ephemeral`) browser session, so Hardcover's login form always shows and a logged-out user can switch accounts (Hardcover advertises no `prompt` values), redirect `bookplayer://hardcover/callback`,
+  scopes `read:catalog read:library write:library read:me`, public client id `HardcoverOAuth.clientId` from `BP_HARDCOVER_CLIENT_ID` (no secret). Its tokens are one `HardcoverTokenSet` in `.hardcoverSession`, owned by the
+  `HardcoverOAuthSession` actor: access tokens last a week, refresh tokens rotate on every use and a spent one sent
+  again revokes the whole sign-in, so refreshes run one at a time and are never retried; only `invalid_grant` ends
+  the sign-in. A refresh keeps the scopes first granted, so adding one to `HardcoverOAuth.scopes` leaves existing sign-ins without it
+  (`HardcoverTokenSet.missingScopes`): calls that need it are skipped, not sent to a 403. Settings has no Sign In Again prompt yet (logging out and signing in again grants the scope): add one along with the first new scope. A sign-in replaces the key; OAuth wins if both exist. A link records the account's Hardcover user id
+  (`me`, cached in `hardcoverUserId`) as its `hostId`; links made before that, or offline, have none. The
+  server identifies a link by (item, provider, providerId) without the host, so letting several accounts link one
+  item would need a server change first.
 
 ---
 
@@ -808,6 +834,15 @@ data, and share the error type `MediaServerIntegration/IntegrationError.swift` (
   is the norm — match it. A sink that touches UI needs `.receive(on: DispatchQueue.main)`.
 - **`@MainActor` is the UI/service isolation convention.** Off-main → main hops are explicit
   (`Task { @MainActor in … }` / `.receive(on:)`).
+- **Crash fixes carry a Sentry trailer.** When a commit fixes a crash tracked in Sentry, put
+  `Fixes BOOKPLAYER-<id>` on its own line in the **commit message** (the short id is in the Sentry issue URL; one
+  per line). Sentry's GitHub integration then resolves the issue in the release that ships the commit, so a crash
+  from that release or later reopens it and one from an older build doesn't. PRs land as merge commits or
+  squashes: keep the line in the fix commit, or in the squash commit's message. A PR description alone never
+  reaches git history. Don't plain-"Resolve" an issue in the Sentry UI, since any older build's crash reopens it.
+  A fix that shipped without the line is backfilled with
+  `PUT /api/0/organizations/tortuga-power/issues/<id>/` and
+  `{"status":"resolved","statusDetails":{"inRelease":"com.tortugapower.audiobookplayer@X.Y.Z+build"}}`.
 
 ---
 
