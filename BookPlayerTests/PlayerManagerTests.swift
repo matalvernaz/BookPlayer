@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import AVFoundation
 import MediaPlayer
 
 @testable import BookPlayer
@@ -718,4 +719,189 @@ class PlayerManagerTests: XCTestCase {
     XCTAssertEqual(playbackServiceMock.getPlayableItemBeforeParentFolderCallsCount, 1)
     XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 1, accuracy: 0.0001)
   }
+
+  // MARK: - Seeks in flight
+
+  /// A chapter long enough to sit past `PlayerTimeSample`'s file-start threshold
+  private func installLongChapterItem(currentTime: TimeInterval) -> SeekControlledPlayer {
+    let chapter = PlayableChapter(
+      title: "chapter 1",
+      author: "author",
+      start: 0,
+      duration: 600,
+      relativePath: "",
+      remoteURL: nil,
+      externalURL: nil,
+      index: 1
+    )
+    sut.currentItem = PlayableItem(
+      title: "test book",
+      author: "test author",
+      chapters: [chapter],
+      currentTime: currentTime,
+      duration: 600,
+      relativePath: "",
+      uuid: "LEGACY_UUID",
+      parentFolder: nil,
+      percentCompleted: 10,
+      lastPlayDate: nil,
+      isFinished: false,
+      isBoundBook: false
+    )
+
+    let player = SeekControlledPlayer()
+    player.reportedTime = currentTime
+    let item = ReadyPlayerItem(url: URL(fileURLWithPath: "/dev/null"))
+    /// The fork settles a seek only while the player plays the current chapter's own file
+    player.playingItem = item
+    sut.audioPlayer = player
+    sut.playerItem = item
+    sut.playerItemRelativePath = ""
+    return player
+  }
+
+  private func drainMainQueue() {
+    let drained = expectation(description: "main queue drained")
+    DispatchQueue.main.async { drained.fulfill() }
+    wait(for: [drained], timeout: 1)
+  }
+
+  /// GH #1641, #1664: the periodic observer fires while the seek is in flight and reads the old
+  /// position. Recording it made the landing at the file start look like the player moved alone.
+  func testRestartingAChapterSurvivesATickFromBeforeTheSeekLands() {
+    let player = installLongChapterItem(currentTime: 120)
+
+    sut.skipToPreviousChapter()
+    sut.updateTime()
+    player.finishSeek()
+    drainMainQueue()
+    /// Inside `PlayerTimeSample`'s file-start window: against the old position this reading is the
+    /// snap-back that triggers the recovery, and `jumpTo` already wrote 0.1, so 0.3 shows it was accepted
+    player.reportedTime = 0.3
+    sut.updateTime()
+
+    XCTAssertEqual(player.seekTargets.count, 1)
+    XCTAssertEqual(player.seekTargets.first ?? -1, 0.1, accuracy: 0.0001)
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 0.3, accuracy: 0.0001)
+  }
+
+  /// Paused, the player's only tick for a seek arrives before it lands, so the landing has to publish
+  /// the position itself, or the player screen and Now Playing keep the old one
+  func testALandedSeekPublishesThePositionWithoutWaitingForATick() {
+    let player = installLongChapterItem(currentTime: 120)
+
+    sut.jumpTo(300, recordBookmark: false)
+    sut.updateTime()
+    let published = expectation(forNotification: .bookPlaying, object: nil)
+    player.finishSeek()
+
+    wait(for: [published], timeout: 1)
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 300, accuracy: 0.0001)
+  }
+
+  func testATickBeforeASeekLandsDoesNotRecordTheOldPosition() {
+    let player = installLongChapterItem(currentTime: 120)
+
+    sut.jumpTo(300, recordBookmark: false)
+    sut.updateTime()
+
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 300, accuracy: 0.0001)
+    player.finishSeek()
+    drainMainQueue()
+    player.reportedTime = 301
+    sut.updateTime()
+
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 301, accuracy: 0.0001)
+  }
+
+  func testOnlyTheLatestSeekEndsTheWait() {
+    let player = installLongChapterItem(currentTime: 120)
+
+    sut.jumpTo(300, recordBookmark: false)
+    sut.jumpTo(300, recordBookmark: false)
+    // AVPlayer finishes a superseded seek first
+    player.finishSeek(finished: false)
+    drainMainQueue()
+    sut.updateTime()
+
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 300, accuracy: 0.0001)
+  }
+
+  /// Fork: an unfinished seek keeps holding readings back until one lands near its target or
+  /// `PlayerClock.seekTimeout` passes, and that bound is what stops the clock waiting for good
+  /// (upstream, which has no bound, ends the wait at the unfinished completion instead)
+  func testAnInterruptedSeekStillResumesTracking() {
+    let player = installLongChapterItem(currentTime: 120)
+    var now = Date(timeIntervalSince1970: 1_000_000)
+    sut.clockNow = { now }
+
+    sut.jumpTo(300, recordBookmark: false)
+    // A seek outside of PlayerManager, like Picture in Picture's skip back, took over
+    player.finishSeek(finished: false)
+    drainMainQueue()
+    player.reportedTime = 280
+    sut.updateTime()
+
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 300, accuracy: 0.0001, "held back while the seek is new")
+    now = now.addingTimeInterval(PlayerClock.seekTimeout)
+    sut.updateTime()
+
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 280, accuracy: 0.0001)
+  }
+
+  /// Fork: a completion settles the clock even when the clock refuses where the player says it
+  /// landed. The file start, from a seek well into the file, is the iOS 27 snap-back, and it's put
+  /// back at once instead of at the next tick, which never comes while paused
+  func testALandingAtTheFileStartIsPutBackAtOnce() {
+    let player = installLongChapterItem(currentTime: 120)
+
+    sut.jumpTo(300, recordBookmark: false)
+    player.finishSeek()
+    // By the time the completion runs, the player reports the file start
+    player.reportedTime = 0.2
+    drainMainQueue()
+
+    XCTAssertEqual(player.seekTargets.count, 2)
+    XCTAssertEqual(player.seekTargets.last ?? -1, 300, accuracy: 0.0001)
+    XCTAssertEqual(sut.currentItem?.currentTime ?? -1, 300, accuracy: 0.0001)
+  }
+}
+
+/// `AVPlayer` whose seeks land when a test says so, reporting the old position until then
+private final class SeekControlledPlayer: AVPlayer {
+  var reportedTime: TimeInterval = 0
+  /// What it reports as its item (fork): set to the manager's `playerItem`, as a loaded file is
+  var playingItem: AVPlayerItem?
+  private(set) var seekTargets: [TimeInterval] = []
+  private var pendingSeeks: [(target: TimeInterval, completion: (Bool) -> Void)] = []
+
+  override var currentItem: AVPlayerItem? { playingItem }
+
+  override func currentTime() -> CMTime {
+    CMTime(seconds: reportedTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+  }
+
+  override func seek(to time: CMTime) {
+    seek(to: time) { _ in }
+  }
+
+  override func seek(to time: CMTime, completionHandler: @escaping (Bool) -> Void) {
+    seekTargets.append(time.seconds)
+    pendingSeeks.append((time.seconds, completionHandler))
+  }
+
+  /// Completes the oldest seek, moving the reported position if it wasn't interrupted
+  func finishSeek(finished: Bool = true) {
+    guard !pendingSeeks.isEmpty else { return }
+
+    let seek = pendingSeeks.removeFirst()
+    if finished {
+      reportedTime = seek.target
+    }
+    seek.completion(finished)
+  }
+}
+
+private final class ReadyPlayerItem: AVPlayerItem {
+  override var status: AVPlayerItem.Status { .readyToPlay }
 }

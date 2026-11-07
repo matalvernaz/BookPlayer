@@ -558,6 +558,32 @@ to repair what it caused (zero then bounded tolerances, the autoplay gate).
 6.0 loads local and cloud files with precise timing and seeks with default
 tolerance, so long FLAC books start slowly again, as in upstream.
 
+Upstream fixed #1641 its own way in #1686 (2026-11-07): `ClockState.seeking`
+replaces `.recovering`, holds readings until the latest seek's completion,
+and has no time bound, so an unfinished completion ends the wait. Cherry-
+picked on 2026-11-08 keeping `PlayerClock`, the fork took the rest of it:
+
+- The restore before resuming (`restorePlayerTimeIfNeeded`, the iOS 27
+  paused snap-back) is a seek of ours through `seekPlayer(to:)`, so readings
+  of the file start before it lands no longer trigger a second seek back.
+- A completion that settles the clock runs `updateTime()`, which judges and
+  publishes where it landed (position, chapter, Now Playing, `.bookPlaying`).
+  Paused, the player's one tick for a seek can come before it lands and be
+  held back, and no other follows. A landing the clock refuses (the file
+  start, from a seek well into it) is put back at once.
+- Upstream's `PlayerManagerTests` seek harness (`SeekControlledPlayer`,
+  `ReadyPlayerItem`), with seams `audioPlayer`, `playerItem`,
+  `playerItemRelativePath` and `clockNow` internal for tests. The fake
+  reports the installed item as its `currentItem`, since the fork settles a
+  seek only on the current chapter's file.
+
+Kept from the fork: the 1.5 s landed shortcut, the 3 s bound, per-seek ids,
+the current-file check, and an unfinished seek holding readings until the
+bound (upstream's reason to end the wait there, a clock stuck for good, is
+what the bound already prevents). Upstream's test that an interrupted seek
+resumes tracking is adapted to that. When upstream `develop` is next merged,
+resolve `PlayerManager`'s clock hunks to the fork's side.
+
 ## Select-all and whole-level actions load the whole level (6.0 base, slice 7)
 
 A Jellyfin folder or search, and Audiobookshelf's Books tab, load 20 items

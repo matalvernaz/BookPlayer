@@ -31,7 +31,8 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   private let shakeMotionService: ShakeMotionServiceProtocol
   private let widgetReloadService: WidgetReloadServiceProtocol
 
-  private var audioPlayer = AVPlayer()
+  /// Internal for tests, which install a player whose seeks land on demand
+  var audioPlayer = AVPlayer()
 
   private var fadeTimer: Timer?
 
@@ -71,6 +72,8 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   /// How far we trust the player's clock: the baseline for spotting moves the player makes on its own,
   /// and our seek in flight (see `PlayerClock`)
   private var clock = PlayerClock()
+  /// What `clock` measures a seek's hold against. Internal for tests, which move it past the hold
+  var clockNow: () -> Date = Date.init
   private var observeStatus: Bool = false {
     didSet {
       guard oldValue != self.observeStatus else { return }
@@ -88,11 +91,13 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   weak var syncProgressDelegate: PlaybackSyncProgressDelegate?
   /// Reference to the ongoing play task
   private var playTask: Task<(), Error>?
-  private var playerItem: AVPlayerItem?
+  /// Internal for tests, which install an item that is ready to play
+  var playerItem: AVPlayerItem?
   /// The chapter file `playerItem` plays. A chapter change moves `currentItem.currentChapter`
   /// before its file loads, so a load cancelled midway (a pause) leaves the previous file's item
-  /// behind; `prepareForPlayback` reloads instead of playing it.
-  private var playerItemRelativePath: String?
+  /// behind; `prepareForPlayback` reloads instead of playing it. Internal for tests, which install
+  /// an item as the current chapter's file
+  var playerItemRelativePath: String?
   private var loadChapterTask: Task<(), Never>?
   @Published var currentItem: PlayableItem?
   @Published var currentSpeed: Float = 1.0
@@ -803,26 +808,30 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
   private func restorePlayerTimeIfNeeded() {
     guard let target = clock.restoreTarget(for: CMTimeGetSeconds(audioPlayer.currentTime())) else { return }
 
-    audioPlayer.seek(to: CMTime(seconds: target, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
+    /// A seek of ours like any other (upstream #1686): until it lands, readings are still the file start
+    seekPlayer(to: target)
   }
 
   /// Seeks the player to `time` in the current file as a seek of ours (fork): readings are held back
-  /// until it lands, and where it lands is saved (see `PlayerClock`)
+  /// until it lands, then where it lands is saved and shown (see `PlayerClock`)
   private func seekPlayer(to time: TimeInterval) {
-    let seekID = clock.beginSeek(to: time, at: Date())
+    let seekID = clock.beginSeek(to: time, at: clockNow())
     audioPlayer.seek(to: CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))) { [weak self] finished in
       DispatchQueue.main.async {
-        guard let self, let currentItem = self.currentItem else { return }
-        let reading = CMTimeGetSeconds(self.audioPlayer.currentTime())
-        guard
-          let landed = self.clock.seekCompleted(
-            id: seekID,
-            finished: finished,
-            reading: reading,
-            onCurrentFile: self.isPlayingCurrentChapterFile
-          )
-        else { return }
-        self.updatePlaybackTime(item: currentItem, time: self.bookTime(fromPlayerTime: landed, in: currentItem))
+        guard let self else { return }
+        let waiting = self.clock.state
+        _ = self.clock.seekCompleted(
+          id: seekID,
+          finished: finished,
+          reading: CMTimeGetSeconds(self.audioPlayer.currentTime()),
+          onCurrentFile: self.isPlayingCurrentChapterFile
+        )
+        /// Still waiting: a newer seek took over, this one didn't finish, or the player is on another file
+        guard self.clock.state != waiting else { return }
+        /// Judge and publish where it landed, as a tick would (upstream #1686). Paused, the player's only
+        /// tick for a seek can come before it lands and be held back, and no other follows, so the player
+        /// screen and Now Playing would keep the old position until playback resumed
+        self.updateTime()
       }
     }
   }
@@ -868,7 +877,7 @@ final class PlayerManager: NSObject, PlayerManagerProtocol, ObservableObject {
 
     let currentTime: TimeInterval
 
-    switch clock.observe(CMTimeGetSeconds(self.audioPlayer.currentTime()), at: Date()) {
+    switch clock.observe(CMTimeGetSeconds(self.audioPlayer.currentTime()), at: clockNow()) {
     case .record(let playerTime):
       currentTime = bookTime(fromPlayerTime: playerTime, in: currentItem)
     case .ignore:

@@ -383,6 +383,16 @@ lines). It is the highest-risk file in the app.
   timer and the Now Playing chapter title (the `.chapterChange` notification is posted from that sink).
 - **KVO on `AVPlayerItem.status`** is balanced via `observeStatus` didSet + a `hasObserverRegistered` guard;
   nulling the player item resets the guard. An imbalance crashes on `removeObserver`.
+- **Invariant — every `PlayerManager` seek goes through `seekPlayer(to:)`**, never `audioPlayer.seek` directly;
+  the one exception is the clock's own seek back, `recoverPlayerTime(to:)`, held by `PlayerClock`'s `.recovering`.
+  (Fork: upstream's #1686 `clockState` is the fork's `PlayerClock`, see `.claude/notes/architecture.md`.) Until
+  the seek lands (a reading within 1.5 s of the target, or the latest seek finishing) `clock.observe` holds
+  readings back, which are still the position being left. Recording one makes a landing near the file start look
+  like the iOS 27 snap-back (`PlayerTimeSample`), and the clock recovery seeks back over it (GH #1641). The hold
+  ends after `PlayerClock.seekTimeout` (3 s) whatever happens, so a seek that never completes, or one taken over
+  from outside (Picture in Picture seeks the player directly), can't stop the clock for good. A completion that
+  settles the clock runs `updateTime()` once: a paused player sends its only tick for the seek before it lands,
+  so without that call the player screen and Now Playing keep the old position.
 - **AVAudioSession:** activated in `play()` (`.playback` / `.spokenAudio`); deactivated ~0.1s after `.paused`
   (delay avoids clipping). Interruption observer is **kept** on `.began` (so `.ended`+`.shouldResume` can resume)
   and removed on user pause/stop. `mediaServicesWereReset` re-applies the category and recreates the player.
@@ -888,16 +898,20 @@ it from the diff against upstream.
 - **Base:** in October 2026 the branch was rebuilt on upstream 6.0 (develop
   `a8e2cac7`) by re-porting the fork's features slice by slice on
   `catchup/upstream-6.0`, not by merging; the July history stays reachable as
-  a parent of the switch-over merge. Until the switch, `catchup/upstream-6.0`
-  is work in progress and must not be shipped.
+  a parent of the switch-over merge (`d39d91e0`, shipped 2026-10-28). Since
+  then upstream fixes come in from `develop` by cherry-pick or merge (#1686
+  and #1687 were cherry-picked on 2026-11-08). Upstream's Hardcover sign-in
+  (#1680) waits on `merge/upstream-hardcover` until the fork has a Hardcover
+  client id.
 - **Upstream:** TortugaPower/BookPlayer. Merged upstream from this fork:
   #1491 (multi-server), #1503, #1510, #1524, #1565, #1566 (Jellyfin Quick
   Connect) and #1567 (Audiobookshelf SSO). Open: #1516 (share-sheet URL
   import). Still fork-only: Hummingbird/NNELS, SoundBooth, the Audiobookshelf
   share-link flow and Folders tab, the share-sheet URL import, the library
-  export fix, the media-server progress sync store, the player's seek guard
-  and paused-position snapshot (`PlayerClock`; July's FLAC fast start and
-  seek-tolerance stack were not re-ported, see `.claude/notes/architecture.md`),
+  export fix, the media-server progress sync store, the player's paused-position
+  snapshot and its own form of the seek guard (`PlayerClock`, kept over
+  upstream's #1686 version; July's FLAC fast start and seek-tolerance stack
+  were not re-ported, see `.claude/notes/architecture.md`),
   select-all and the whole-level actions loading every page (upstream #1661),
   the title/author tag fallbacks (#1665), and the TestFlight and Pro-gating
   bypasses — those last ones must never appear in an upstream PR.
